@@ -1,22 +1,128 @@
 // styles.js
 export const styles = `
   :host {
-    display: block;
-    font-family: system-ui, -apple-system, sans-serif;
+      display: block;
+      font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  @keyframes ai-button-glow {
+      0% {
+          background-position: 0 0;
+      }
+
+      50% {
+          background-position: 200% 0;
+      }
+
+      100% {
+          background-position: 0 0;
+      }
+  }
+
+  @keyframes pulse {
+      0% {
+          filter: blur(0);
+      }
+
+      50% {
+          filter: blur(0.5em);
+      }
+
+      100% {
+          filter: blur(0);
+      }
+  }
+
+  @keyframes shake {
+
+      0%,
+      100% {
+          transform: rotate(0deg);
+      }
+
+      25% {
+          transform: rotate(5deg);
+      }
+
+      50% {
+          transform: rotate(-5deg);
+      }
+
+      75% {
+          transform: rotate(5deg);
+      }
   }
 
   .modal-trigger {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.9em;
+      background: #fff;
+      border: 0;
+      border-radius: 2em;
+      box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      transition: box-shadow 250ms ease-in-out;
+      font-family: sans-serif;
+      font-weight: bold;
+      background-image: linear-gradient(to right,
+              #da22ff 0%,
+              #9733ee 51%,
+              #da22ff 100%);
+      color: white;
+      text-shadow: 1px 1px 2px #9733ee;
+
+      &:hover {
+          box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.1);
+          background-position: right center;
+          /* change the direction of the change here */
+          color: #fff;
+          text-decoration: none;
+
+          &:before {
+              width: 100%;
+              height: 100%;
+              filter: blur(0.5em);
+              opacity: 1;
+          }
+      }
+
+      &:before {
+          content: "";
+          opacity: 0;
+          position: absolute;
+          left: 0;
+          top: 0;
+          background: linear-gradient(45deg,
+                  #fb0094,
+                  #0000ff,
+                  #00ff00,
+                  #ffff00,
+                  #ff0000);
+          background-size: 200%;
+          width: 100%;
+          height: 100%;
+          border-radius: 10em;
+          z-index: -1;
+          animation: ai-button-glow 5s linear infinite;
+          transition: filter 250ms ease-in-out, opacity 250ms ease-in-out;
+      }
+
+      svg {
+          margin-right: 0.5em;
+          height: 1em;
+      }
   }
 
   .modal-trigger:hover {
-    background: #2563eb;
+      box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.1);
+      background-position: right center;
+  }
+
+  .modal-trigger:hover svg {
+      animation: shake 0.5s ease-in-out;
   }
 
   .modal {
@@ -101,13 +207,22 @@ export const styles = `
     flex-wrap: wrap;
   }
 
-  .tool-button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    background: #e5e7eb;
-    cursor: pointer;
-  }
+.tool-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #e5e7eb;
+  cursor: pointer;
+}
+
+.tool-button svg,
+.action-button svg {
+  width: 16px;
+  height: 16px;
+}
 
   .tool-button:hover {
     background: #d1d5db;
@@ -137,11 +252,14 @@ export const styles = `
   }
 
   .action-button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-  }
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
 
   .action-button.primary {
     background: #3b82f6;

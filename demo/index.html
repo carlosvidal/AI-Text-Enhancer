@@ -8,18 +8,36 @@
     <!-- TinyMCE -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.7.0/tinymce.min.js"></script>
 
+    <!-- CKEditor 5 -->
+    <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
+
+    <!-- Quill -->
+    <link
+      href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+    <!-- Froala (requiere licencia) -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/froala-editor@latest/css/froala_editor.pkgd.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/froala-editor@latest/js/froala_editor.pkgd.min.js"></script>
+
     <!-- Estilos de demostración -->
     <style>
       body {
         font-family: system-ui, -apple-system, sans-serif;
-        max-width: 1200px;
+        max-width: 1400px;
         margin: 0 auto;
         padding: 20px;
+        background: #f9fafb;
       }
 
       .container {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
         gap: 20px;
         margin-bottom: 40px;
       }
@@ -28,12 +46,23 @@
         padding: 20px;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
+        margin-bottom: 20px;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        min-height: 400px;
       }
 
       .editor-container h2 {
         margin-top: 0;
         margin-bottom: 20px;
         color: #1f2937;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .editor-container h2 img {
+        height: 24px;
       }
 
       textarea {
@@ -47,6 +76,15 @@
         line-height: 1.5;
         resize: vertical;
         box-sizing: border-box;
+      }
+
+      textarea,
+      .ql-container,
+      #ckeditor-container,
+      .fr-box,
+      .tox-tinymce {
+        height: 300px !important;
+        min-height: 300px !important;
       }
 
       .controls {
@@ -84,103 +122,33 @@
         margin-right: 10px;
       }
 
-      /* BOTON IA */
-      .center {
-        display: flex;
-        flex: 1;
-        height: 100%;
-        align-items: center;
-        justify-content: center;
+      /* Editor specific styles */
+      .ql-container {
+        font-size: 0.875rem;
+        font-family: inherit;
       }
 
-      #box {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.9em;
-        background: #fff;
-        border-radius: 2em;
-        box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.25);
-        cursor: pointer;
-        transition: box-shadow 250ms ease-in-out;
-        font-family: sans-serif;
-        font-weight: bold;
-        background-image: linear-gradient(
-          to right,
-          #da22ff 0%,
-          #9733ee 51%,
-          #da22ff 100%
-        );
-        color: white;
-        text-shadow: 1px 1px 2px #9733ee;
-
-        &:hover {
-          box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.1);
-
-          &:before {
-            width: 100%;
-            height: 100%;
-            filter: blur(0.5em);
-            opacity: 1;
-          }
-        }
-
-        &:before {
-          content: "";
-          opacity: 0;
-          position: absolute;
-          left: 0;
-          top: 0;
-          background: linear-gradient(
-            45deg,
-            #fb0094,
-            #0000ff,
-            #00ff00,
-            #ffff00,
-            #ff0000
-          );
-          background-size: 200%;
-          width: 100%;
-          height: 100%;
-          border-radius: 10em;
-          z-index: -1;
-          animation: ai-button-glow 5s linear infinite;
-          transition: filter 250ms ease-in-out, opacity 250ms ease-in-out;
-        }
-
-        svg {
-          margin-right: 0.5em;
-          height: 1em;
-        }
+      .ql-toolbar {
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
       }
 
-      @keyframes ai-button-glow {
-        0% {
-          background-position: 0 0;
-        }
-
-        50% {
-          background-position: 200% 0;
-        }
-
-        100% {
-          background-position: 0 0;
-        }
+      .ql-container {
+        border-bottom-left-radius: 6px;
+        border-bottom-right-radius: 6px;
       }
 
-      @keyframes pulse {
-        0% {
-          filter: blur(0);
-        }
+      /* CKEditor necesita estos ajustes adicionales */
+      .ck-editor__editable {
+        min-height: 300px !important;
+        max-height: 300px !important;
+        overflow-y: auto !important;
+      }
 
-        50% {
-          filter: blur(0.5em);
-        }
-
-        100% {
-          filter: blur(0);
-        }
+      /* Froala ajustes */
+      .fr-box.fr-basic .fr-element {
+        min-height: 300px !important;
+        height: 300px !important;
       }
     </style>
   </head>
@@ -194,47 +162,9 @@
       <button onclick="updateApiKeys()">Actualizar API Key</button>
     </div>
 
-    <div class="container">
-      <!-- TinyMCE Editor -->
-      <div class="editor-container">
-        <h2>Editor TinyMCE</h2>
-        <div id="tinymce-editor"></div>
-        <ai-text-enhancer
-          id="tinymce-enhancer"
-          editor-id="tinymce-editor"
-          api-provider="openai"
-          api-model="gpt-4"
-        >
-          ></ai-text-enhancer
-        >
-      </div>
-
-      <!-- Textarea normal -->
-      <div class="editor-container">
-        <h2>Textarea Normal</h2>
-        <textarea
-          id="simple-editor"
-          placeholder="Escribe o pega tu texto aquí..."
-        >
-Este es un ejemplo de descripción de producto que se puede mejorar usando IA.
-
-El producto es resistente y duradero, hecho con buenos materiales. Tiene varias funciones útiles y es fácil de usar. Viene en diferentes colores y tamaños para adaptarse a tus necesidades.
-
-Es una buena opción para quien busque calidad a buen precio.</textarea
-        >
-        <ai-text-enhancer
-          id="simple-enhancer"
-          editor-id="simple-editor"
-          api-provider="openai"
-          api-model="gpt-4"
-        >
-          ></ai-text-enhancer
-        >
-      </div>
-    </div>
-
-    <div class="center">
-      <div id="box">
+    <!-- Textarea normal -->
+    <div class="editor-container">
+      <h2>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="24"
@@ -245,20 +175,96 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
           stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-          class="lucide lucide-wand-sparkles"
         >
           <path
-            d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"
+            d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
           />
-          <path d="m14 7 3 3" />
-          <path d="M5 6v4" />
-          <path d="M19 14v4" />
-          <path d="M10 2v2" />
-          <path d="M7 8H3" />
-          <path d="M21 16h-4" />
-          <path d="M11 3H9" />
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
         </svg>
-        <span> Mejorar con IA</span>
+        Textarea Normal
+      </h2>
+      <textarea
+        id="simple-editor"
+        placeholder="Escribe o pega tu texto aquí..."
+      >
+Este es un ejemplo de descripción básica que se puede mejorar usando IA.
+
+El producto es resistente y duradero, hecho con buenos materiales. Tiene varias funciones útiles y es fácil de usar. Viene en diferentes colores y tamaños para adaptarse a tus necesidades.
+
+Es una buena opción para quien busque calidad a buen precio.</textarea
+      >
+      <ai-text-enhancer
+        id="simple-enhancer"
+        editor-id="simple-editor"
+        api-provider="openai"
+        api-model="gpt-4"
+        prompt="Eres un asistente experto en marketing y copywriting, especializado en mejorar descripciones de productos."
+      ></ai-text-enhancer>
+    </div>
+
+    <div class="container">
+      <!-- TinyMCE Editor -->
+      <div class="editor-container">
+        <h2>
+          <img src="https://www.tiny.cloud/favicon.ico" alt="TinyMCE Logo" />
+          Editor TinyMCE
+        </h2>
+        <div id="tinymce-editor"></div>
+        <ai-text-enhancer
+          id="tinymce-enhancer"
+          editor-id="tinymce-editor"
+          api-provider="openai"
+          api-model="gpt-4"
+          prompt="Eres un asistente experto en SEO, especializado en optimizar contenido para motores de búsqueda."
+        ></ai-text-enhancer>
+      </div>
+
+      <!-- CKEditor -->
+      <div class="editor-container">
+        <h2>
+          <img src="https://ckeditor.com/favicon.ico" alt="CKEditor Logo" />
+          CKEditor 5
+        </h2>
+        <div id="ckeditor-container"></div>
+        <ai-text-enhancer
+          id="ckeditor-enhancer"
+          editor-id="ckeditor-container"
+          api-provider="openai"
+          api-model="gpt-4"
+          prompt="Eres un experto en copywriting, especializado en crear contenido persuasivo."
+        ></ai-text-enhancer>
+      </div>
+
+      <!-- Quill Editor -->
+      <div class="editor-container">
+        <h2>
+          <img src="https://quilljs.com/favicon.ico" alt="Quill Logo" />
+          Quill Editor
+        </h2>
+        <div id="quill-editor"></div>
+        <ai-text-enhancer
+          id="quill-enhancer"
+          editor-id="quill-editor"
+          api-provider="openai"
+          api-model="gpt-4"
+          prompt="Eres un experto en marketing digital, especializado en crear contenido que conecta con la audiencia."
+        ></ai-text-enhancer>
+      </div>
+
+      <!-- Froala Editor -->
+      <div class="editor-container">
+        <h2>
+          <img src="https://froala.com/favicon.ico" alt="Froala Logo" />
+          Froala Editor
+        </h2>
+        <div id="froala-editor"></div>
+        <ai-text-enhancer
+          id="froala-enhancer"
+          editor-id="froala-editor"
+          api-provider="openai"
+          api-model="gpt-4"
+          prompt="Eres un experto en e-commerce, especializado en descripciones de productos que venden."
+        ></ai-text-enhancer>
       </div>
     </div>
 
@@ -282,7 +288,6 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
             const enhancer = enhancers[i];
             console.log(`🔄 Processing enhancer ${i + 1}`);
 
-            // Esperar a que el componente esté listo
             if (!enhancer.isInitialized) {
               console.log(`⏳ Waiting for enhancer ${i + 1} to initialize`);
               await new Promise((resolve) => {
@@ -308,7 +313,7 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
       };
     </script>
 
-    <!-- Importar el componente -->
+    <!-- Importar el componente y inicializar editores -->
     <script type="module">
       // Esperar a que el DOM esté listo
       document.addEventListener("DOMContentLoaded", async () => {
@@ -342,20 +347,74 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
             ],
             toolbar:
               "undo redo | blocks | bold italic forecolor | alignleft aligncenter " +
-              "alignright alignjustify | bullist numlist outdent indent | " +
-              "removeformat | help",
+              "alignright alignjustify | bullist numlist outdent indent | removeformat | help",
             content_style:
               "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
             setup: function (editor) {
               editor.on("init", function () {
                 editor.setContent(
-                  "Este es un ejemplo de descripción en TinyMCE que se puede mejorar usando IA."
+                  "Este es un ejemplo de descripción en TinyMCE que se puede optimizar para SEO usando IA."
                 );
               });
             },
           });
+
+          // Inicializar CKEditor 5
+          ClassicEditor.create(document.querySelector("#ckeditor-container"))
+            .then((editor) => {
+              editor.editing.view.change((writer) => {
+                writer.setStyle(
+                  "min-height",
+                  "300px",
+                  editor.editing.view.document.getRoot()
+                );
+              });
+              editor.setData(
+                "Este es un ejemplo de descripción en CKEditor que se puede mejorar con técnicas de copywriting usando IA."
+              );
+            })
+            .catch((error) => {
+              console.error(error);
+            });
+
+          // Inicializar Quill
+          const quill = new Quill("#quill-editor", {
+            theme: "snow",
+            modules: {
+              toolbar: [
+                ["bold", "italic", "underline", "strike"],
+                ["blockquote", "code-block"],
+                [{ header: 1 }, { header: 2 }],
+                [{ list: "ordered" }, { list: "bullet" }],
+                [{ script: "sub" }, { script: "super" }],
+                [{ indent: "-1" }, { indent: "+1" }],
+                [{ direction: "rtl" }],
+                [{ size: ["small", false, "large", "huge"] }],
+                [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                [{ color: [] }, { background: [] }],
+                [{ font: [] }],
+                [{ align: [] }],
+                ["clean"],
+              ],
+            },
+          });
+
+          // Usar contenido inicial y configurar el observer manualmente para evitar warnings
+          quill.setContents([
+            {
+              insert:
+                "Este es un ejemplo de descripción en Quill que se puede mejorar con estrategias de marketing digital usando IA.\n",
+            },
+          ]);
+
+          // Inicializar Froala (requiere licencia)
+          new FroalaEditor("#froala-editor", {
+            height: 300,
+            placeholderText:
+              "Este es un ejemplo de descripción en Froala que se puede mejorar con técnicas de e-commerce usando IA.",
+          });
         } catch (error) {
-          console.error("Error inicializando el componente:", error);
+          console.error("Error inicializando los componentes:", error);
         }
       });
     </script>

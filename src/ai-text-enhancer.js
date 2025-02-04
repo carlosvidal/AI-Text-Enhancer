@@ -6,11 +6,13 @@ import { createAPIClient } from "./api-client.js";
 import { createCacheManager } from "./cache-manager.js";
 import { ModelManager } from "./model-manager.js";
 import { TRANSLATIONS } from "./translations.js";
+import { EditorAdapter } from "./editor-adapter.js";
 
 class AITextEnhancer extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this.editorAdapter = null;
 
     // Initialize cache manager
     this.cacheManager = createCacheManager({
@@ -29,7 +31,14 @@ class AITextEnhancer extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ["editor-id", "api-key", "api-provider", "api-model", "language"];
+    return [
+      "editor-id",
+      "api-key",
+      "api-provider",
+      "api-model",
+      "language",
+      "prompt",
+    ];
   }
 
   // Getters for attributes
@@ -50,25 +59,7 @@ class AITextEnhancer extends HTMLElement {
   }
 
   get currentContent() {
-    try {
-      const editor = document.getElementById(this.editorId);
-      if (!editor) return "";
-
-      // Check if TinyMCE is being used
-      if (window.tinymce) {
-        const tinymceEditor = tinymce.get(this.editorId);
-        // Check if TinyMCE editor exists and is initialized
-        if (tinymceEditor && tinymceEditor.initialized) {
-          return tinymceEditor.getContent();
-        }
-      }
-
-      // Fallback to regular textarea
-      return editor.value || "";
-    } catch (error) {
-      console.error("Error getting editor content:", error);
-      return "";
-    }
+    return this.editorAdapter?.getContent() || "";
   }
 
   get apiProvider() {
@@ -254,7 +245,32 @@ class AITextEnhancer extends HTMLElement {
     const template = document.createElement("template");
     template.innerHTML = `
       <style>${styles}</style>
-      <button class="modal-trigger">${t.modalTrigger}</button>
+      <button class="modal-trigger">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="lucide lucide-wand-sparkles"
+        >
+          <path
+            d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"
+          />
+          <path d="m14 7 3 3" />
+          <path d="M5 6v4" />
+          <path d="M19 14v4" />
+          <path d="M10 2v2" />
+          <path d="M7 8H3" />
+          <path d="M21 16h-4" />
+          <path d="M11 3H9" />
+        </svg>
+        <span>${t.modalTrigger}</span>
+      </button>
       
       <div class="modal">
         <div class="modal-content">
@@ -266,19 +282,42 @@ class AITextEnhancer extends HTMLElement {
           <div class="modal-body">
             <div class="editor-section">
               <div class="tools">
-                <button class="tool-button" data-action="summarize">${t.tools.summarize}</button>
-                <button class="tool-button" data-action="expand">${t.tools.expand}</button>
-                <button class="tool-button" data-action="paraphrase">${t.tools.paraphrase}</button>
-                <button class="tool-button" data-action="style">${t.tools.style}</button>
+                <button class="tool-button" data-action="summarize">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-minus"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 10h6"/></svg>
+                  ${t.tools.summarize}
+                </button>
+                <button class="tool-button" data-action="expand">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-plus"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 10h6"/><path d="M12 7v6"/></svg>
+                  ${t.tools.expand}
+                </button>
+                <button class="tool-button" data-action="paraphrase">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-restart"><path d="M21 6H3"/><path d="M7 12H3"/><path d="M7 18H3"/><path d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14"/><path d="M11 10v4h4"/></svg>
+                  ${t.tools.paraphrase}
+                </button>
+                <button class="tool-button" data-action="style">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic-2"><path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12"/><circle cx="17" cy="7" r="5"/></svg>
+                  ${t.tools.style}
+                </button>
               </div>
 
               <div class="preview">${t.preview.placeholder}</div>
         
               <div class="actions">
-                <button class="action-button primary generate-button">${t.actions.generate}</button>
-                <button class="action-button" data-action="retry">${t.actions.retry}</button>
-                <button class="action-button success" data-action="insert">${t.actions.insert}</button>
-                <button class="action-button primary" data-action="replace">${t.actions.replace}</button>
+                <button class="action-button primary generate-button">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                  ${t.actions.generate}
+                </button>
+                <button class="action-button" data-action="retry">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-restart"><path d="M21 6H3"/><path d="M7 12H3"/><path d="M7 18H3"/><path d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14"/><path d="M11 10v4h4"/></svg>
+                  ${t.actions.retry}
+                </button>
+                <button class="action-button success" data-action="insert">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-between-horizontal-start"><rect width="13" height="7" x="8" y="3" rx="1"/><path d="m2 9 3 3-3 3"/><rect width="13" height="7" x="8" y="14" rx="1"/></svg>                  ${t.actions.insert}
+                </button>
+                <button class="action-button primary" data-action="replace">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-replace"><path d="M14 4c0-1.1.9-2 2-2"/><path d="M20 2c1.1 0 2 .9 2 2"/><path d="M22 8c0 1.1-.9 2-2 2"/><path d="M16 10c-1.1 0-2-.9-2-2"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5c0-1.7 1.3-3 3-3h1"/><rect width="8" height="8" x="2" y="14" rx="2"/></svg>
+                  ${t.actions.replace}
+                </button>
               </div>
             </div>
             
@@ -286,7 +325,7 @@ class AITextEnhancer extends HTMLElement {
               <div class="chat-container"></div>
               <form class="chat-form">
                 <input type="text" class="chat-input" placeholder="${t.chat.placeholder}">
-                <button type="submit" class="action-button primary">${t.chat.send}</button>
+                <button type="submit" class="action-button primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
               </form>
             </div>
           </div>
@@ -312,6 +351,7 @@ class AITextEnhancer extends HTMLElement {
     } catch (error) {
       console.error(this.translations.errors.initialization, error);
     }
+    this.editorAdapter = new EditorAdapter(this.editorId);
   }
 
   async initializeComponents() {
@@ -325,6 +365,15 @@ class AITextEnhancer extends HTMLElement {
       this.apiClient = createAPIClient({
         provider: this.apiProvider,
         model: this.apiModel,
+        systemPrompt:
+          this.getAttribute("prompt") ||
+          "Actúa como un experto en redacción de descripciones de productos para tiendas en línea.\n\n" +
+            "Tu tarea es generar o mejorar la descripción de un producto con un enfoque atractivo y persuasivo, destacando sus características principales, beneficios y posibles usos.\n\n" +
+            "Si el usuario ya ha escrito una descripción: Mejórala manteniendo su esencia, pero haciéndola más clara, persuasiva y optimizada para ventas.\n\n" +
+            "Si la descripción está vacía: Genera una nueva descripción atractiva, destacando características y beneficios. Usa un tono profesional y cercano, adaptado a una tienda en línea.\n\n" +
+            "Si hay una imagen del producto, aprovecha los detalles visuales para enriquecer la descripción.\n\n" +
+            "Si aplica, menciona información relevante del comercio para reforzar la confianza del comprador (envíos, garantía, atención al cliente, etc.).\n\n" +
+            "Mantén el texto claro, sin repeticiones innecesarias, y optimizado para SEO si es posible.",
       });
 
       // Set API key if available
@@ -459,40 +508,8 @@ class AITextEnhancer extends HTMLElement {
   }
 
   setEditorContent(content, mode = "replace") {
-    const editor = document.getElementById(this.editorId);
-    if (!editor) return;
-
-    try {
-      const html =
-        window.tinymce && tinymce.get(this.editorId)
-          ? this.markdownHandler.convertForTinyMCE(content)
-          : this.markdownHandler.getPlainText(content);
-
-      if (window.tinymce && tinymce.get(this.editorId)) {
-        if (mode === "insert") {
-          tinymce.get(this.editorId).insertContent(html);
-        } else {
-          tinymce.get(this.editorId).setContent(html);
-        }
-      } else {
-        if (mode === "insert") {
-          const start = editor.selectionStart;
-          editor.value =
-            editor.value.substring(0, start) +
-            html +
-            editor.value.substring(editor.selectionEnd);
-          editor.selectionStart = editor.selectionEnd = start + html.length;
-        } else {
-          editor.value = html;
-        }
-      }
-    } catch (error) {
-      console.error("Error setting editor content:", error);
-      if (mode === "insert") {
-        editor.value += content;
-      } else {
-        editor.value = content;
-      }
+    if (this.editorAdapter) {
+      this.editorAdapter.setContent(content, mode);
     }
   }
 

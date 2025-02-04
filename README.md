@@ -1,6 +1,6 @@
 # AI Text Enhancer
 
-A powerful web component for enhancing product descriptions using AI. This component integrates seamlessly with existing text editors and provides real-time AI-powered text enhancement capabilities.
+A powerful web component for enhancing product descriptions using AI. This component integrates seamlessly with multiple rich text editors and provides real-time AI-powered text enhancement capabilities.
 
 ## Features
 
@@ -14,9 +14,15 @@ A powerful web component for enhancing product descriptions using AI. This compo
 - 💬 Interactive chat interface for specific content queries
 - 🔄 Smart caching system for improved performance
 - 📝 Markdown support with live preview
-- 🎯 TinyMCE integration support
+- 🔌 Multiple editor integrations:
+  - Plain textarea
+  - TinyMCE
+  - CKEditor 5
+  - Quill
+  - Froala Editor
 - 🌐 Multiple AI provider support (OpenAI, Deepseek)
 - 🔒 Shadow DOM encapsulation for style isolation
+- 🤖 Customizable AI system prompt
 
 ## Installation
 
@@ -27,7 +33,7 @@ A powerful web component for enhancing product descriptions using AI. This compo
 
 ## Usage
 
-### Basic Implementation
+### Basic Implementation (Textarea)
 
 ```html
 <!-- Add the component to your HTML -->
@@ -50,12 +56,71 @@ A powerful web component for enhancing product descriptions using AI. This compo
   api-key="your-api-key">
 </ai-text-enhancer>
 
-<textarea id="tinymce-editor"></textarea>
+<div id="tinymce-editor"></div>
 
 <script>
   tinymce.init({
     selector: '#tinymce-editor',
+    height: 300
     // Your TinyMCE configuration...
+  });
+</script>
+```
+
+### CKEditor 5 Integration
+
+```html
+<ai-text-enhancer
+  editor-id="ckeditor-container"
+  api-key="your-api-key">
+</ai-text-enhancer>
+
+<div id="ckeditor-container"></div>
+
+<script>
+  ClassicEditor.create(document.querySelector('#ckeditor-container'))
+    .then(editor => {
+      editor.editing.view.change(writer => {
+        writer.setStyle('min-height', '300px', editor.editing.view.document.getRoot());
+      });
+    });
+</script>
+```
+
+### Quill Integration
+
+```html
+<ai-text-enhancer
+  editor-id="quill-editor"
+  api-key="your-api-key">
+</ai-text-enhancer>
+
+<div id="quill-editor"></div>
+
+<script>
+  const quill = new Quill('#quill-editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [/* your toolbar config */]
+    }
+  });
+</script>
+```
+
+### Froala Integration
+
+```html
+<ai-text-enhancer
+  editor-id="froala-editor"
+  api-key="your-api-key">
+</ai-text-enhancer>
+
+<div id="froala-editor"></div>
+
+<script>
+  new FroalaEditor('#froala-editor', {
+    height: 300
+    // Your Froala configuration...
   });
 </script>
 ```
@@ -64,11 +129,24 @@ A powerful web component for enhancing product descriptions using AI. This compo
 
 | Attribute | Description | Default |
 |-----------|-------------|---------|
-| editor-id | ID of the target text editor | Required |
+| editor-id | ID of the target editor element | Required |
 | api-key | Your AI provider API key | Required |
 | api-provider | AI service provider (openai/deepseek) | "openai" |
 | api-model | Model to use for text generation | Provider default |
 | language | Interface language (en/es/fr/de/pt) | "en" |
+| prompt | Custom system prompt for the AI | Default marketing expert prompt |
+
+### Editor Support
+
+The component automatically detects and adapts to different editor types:
+
+| Editor | Support Level | Notes |
+|--------|--------------|-------|
+| Textarea | Full | Default fallback |
+| TinyMCE | Full | Versions 5.x and 6.x |
+| CKEditor 5 | Full | Classic build |
+| Quill | Full | Version 1.3.6+ |
+| Froala | Full | Requires license |
 
 ### Language Support
 
@@ -79,30 +157,6 @@ The component supports multiple languages for its interface:
 - French (fr)
 - German (de)
 - Portuguese (pt)
-
-Example using different languages:
-
-```html
-<!-- English (default) -->
-<ai-text-enhancer 
-  editor-id="my-editor" 
-  api-key="your-api-key">
-</ai-text-enhancer>
-
-<!-- Spanish -->
-<ai-text-enhancer 
-  editor-id="my-editor" 
-  api-key="your-api-key" 
-  language="es">
-</ai-text-enhancer>
-
-<!-- French -->
-<ai-text-enhancer 
-  editor-id="my-editor" 
-  api-key="your-api-key" 
-  language="fr">
-</ai-text-enhancer>
-```
 
 ## Cache Configuration
 
@@ -123,13 +177,14 @@ const cacheOptions = {
 /ai-text-enhancer
   ├── src/
   │   ├── ai-text-enhancer.js       # Main component
+  │   ├── editor-adapter.js         # Editor integration layer
   │   ├── styles.js                 # Encapsulated styles
   │   ├── markdown-handler.js       # Markdown processing
   │   ├── cache-manager.js          # Caching system
   │   └── api-client.js             # API client
   ├── demo/
   │   ├── index.html               # Demo page
-  │   └── tinymce-integration.html # TinyMCE demo
+  │   └── editor-demo.html         # Rich text editors demo
   └── README.md                    # Documentation
 ```
 
@@ -139,34 +194,7 @@ const cacheOptions = {
 
 - Modern web browser with Web Components support
 - API key from supported providers (OpenAI/Deepseek)
-
-### Local Development
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/ai-text-enhancer.git
-cd ai-text-enhancer
-```
-
-2. Open demo/index.html in your browser to test the component.
-
-## Browser Support
-
-- Chrome/Edge (latest)
-- Firefox (latest)
-- Safari (latest)
-
-## Dependencies
-
-- marked.js (loaded dynamically for Markdown support)
-- No other external dependencies required
-
-## Security Considerations
-
-- API keys should be properly secured and not exposed in client-side code
-- Component uses Shadow DOM for style encapsulation
-- All content is processed locally before API transmission
-- Cache data is stored in sessionStorage by default
+- Editor dependencies as needed (TinyMCE, CKEditor, etc.)
 
 ## Contributing
 
@@ -188,5 +216,6 @@ For support, please open an issue in the GitHub repository or contact the mainta
 
 - OpenAI for GPT API
 - Deepseek for their API service
+- TinyMCE, CKEditor, Quill, and Froala teams for their editors
 - marked.js for Markdown processing
-- TinyMCE team for editor compatibility
+- Lucide for icons

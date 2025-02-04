@@ -2,30 +2,29 @@
 
 export const TRANSLATIONS = {
   en: {
-    modalTrigger: "Enhance Description",
-    modalTitle: "Enhance Your Description",
+    modalTrigger: "Enhance with AI",
+    modalTitle: "Enhance Your Text",
     tabs: {
       editor: "Editor",
       chat: "Chat",
     },
     tools: {
-      summarize: "📄 Summarize",
-      expand: "📝 Expand",
-      paraphrase: "💭 Paraphrase",
-      style: "🎨 Style",
+      summarize: "Summarize",
+      expand: "Expand",
+      paraphrase: "Paraphrase",
+      style: "Style",
     },
     actions: {
-      retry: "🔄 Retry",
-      insert: "➕ Insert",
-      replace: "🔁 Replace",
-      generate: "✨ Generate",
+      retry: "Retry",
+      insert: "Insert",
+      replace: "Replace",
+      generate: "Generate",
     },
     preview: {
       placeholder: "Enhanced text will appear here",
     },
     chat: {
       placeholder: "Ask a question about the product description...",
-      send: "💬",
     },
     errors: {
       apiKey: "Error: API key not configured. Please provide a valid API key.",
@@ -34,30 +33,29 @@ export const TRANSLATIONS = {
     },
   },
   es: {
-    modalTrigger: "Mejorar Descripción",
-    modalTitle: "Mejora tu Descripción",
+    modalTrigger: "Mejorar con IA",
+    modalTitle: "Mejora tu texto",
     tabs: {
       editor: "Editor",
       chat: "Chat",
     },
     tools: {
-      summarize: "📄 Resumir",
-      expand: "📝 Ampliar",
-      paraphrase: "💭 Parafrasear",
-      style: "🎨 Estilo",
+      summarize: "Resumir",
+      expand: "Ampliar",
+      paraphrase: "Parafrasear",
+      style: "Estilo",
     },
     actions: {
-      retry: "🔄 Reintentar",
-      insert: "➕ Insertar",
-      replace: "🔁 Reemplazar",
-      generate: "✨ Generar",
+      retry: "Reintentar",
+      insert: "Insertar",
+      replace: "Reemplazar",
+      generate: "Generar",
     },
     preview: {
       placeholder: "El texto mejorado aparecerá aquí",
     },
     chat: {
       placeholder: "Haz una pregunta sobre la descripción del producto...",
-      send: "💬",
     },
     errors: {
       apiKey:
@@ -67,29 +65,28 @@ export const TRANSLATIONS = {
     },
   },
   fr: {
-    modalTrigger: "Améliorer la Description",
-    modalTitle: "Améliorez votre Description",
+    modalTrigger: "Améliorer avec IA",
+    modalTitle: "Améliorez votre texte",
     tabs: {
       editor: "Éditeur",
       chat: "Chat",
     },
     tools: {
-      summarize: "📄 Résumer",
-      expand: "📝 Développer",
-      paraphrase: "💭 Paraphraser",
-      style: "🎨 Style",
+      summarize: "Résumer",
+      expand: "Développer",
+      paraphrase: "Paraphraser",
+      style: "Style",
     },
     actions: {
-      retry: "🔄 Réessayer",
-      insert: "➕ Insérer",
-      replace: "🔁 Remplacer",
+      retry: "Réessayer",
+      insert: "Insérer",
+      replace: "Remplacer",
     },
     preview: {
       placeholder: "Le texte amélioré apparaîtra ici",
     },
     chat: {
       placeholder: "Posez une question sur la description du produit...",
-      send: "💬",
     },
     errors: {
       apiKey:
@@ -106,22 +103,21 @@ export const TRANSLATIONS = {
       chat: "Chat",
     },
     tools: {
-      summarize: "📄 Zusammenfassen",
-      expand: "📝 Erweitern",
-      paraphrase: "💭 Umformulieren",
-      style: "🎨 Stil",
+      summarize: "Zusammenfassen",
+      expand: "Erweitern",
+      paraphrase: "Umformulieren",
+      style: "Stil",
     },
     actions: {
-      retry: "🔄 Wiederholen",
-      insert: "➕ Einfügen",
-      replace: "🔁 Ersetzen",
+      retry: "Wiederholen",
+      insert: "Einfügen",
+      replace: "Ersetzen",
     },
     preview: {
       placeholder: "Verbesserter Text erscheint hier",
     },
     chat: {
       placeholder: "Stellen Sie eine Frage zur Produktbeschreibung...",
-      send: "💬",
     },
     errors: {
       apiKey:
@@ -131,29 +127,28 @@ export const TRANSLATIONS = {
     },
   },
   pt: {
-    modalTrigger: "Melhorar Descrição",
-    modalTitle: "Melhore sua Descrição",
+    modalTrigger: "Melhorar com IA",
+    modalTitle: "Melhore sua texto",
     tabs: {
       editor: "Editor",
       chat: "Chat",
     },
     tools: {
-      summarize: "📄 Resumir",
-      expand: "📝 Expandir",
-      paraphrase: "💭 Parafrasear",
-      style: "🎨 Estilo",
+      summarize: "Resumir",
+      expand: "Expandir",
+      paraphrase: "Parafrasear",
+      style: "Estilo",
     },
     actions: {
-      retry: "🔄 Tentar Novamente",
-      insert: "➕ Inserir",
-      replace: "🔁 Substituir",
+      retry: "Tentar Novamente",
+      insert: "Inserir",
+      replace: "Substituir",
     },
     preview: {
       placeholder: "O texto melhorado aparecerá aqui",
     },
     chat: {
       placeholder: "Faça uma pergunta sobre a descrição do produto...",
-      send: "💬",
     },
     errors: {
       apiKey:

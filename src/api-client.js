@@ -26,9 +26,7 @@ class APIClient {
       },
       temperature: config.temperature || 0.7,
       apiKey: config.apiKey || "",
-      systemPrompt:
-        config.systemPrompt ||
-        "Eres un asistente experto en marketing y copywriting, especializado en mejorar descripciones de productos para tiendas online.",
+      systemPrompt: config.systemPrompt,
     };
   }
 
