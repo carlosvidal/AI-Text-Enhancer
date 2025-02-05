@@ -28,6 +28,7 @@ class AITextEnhancer extends HTMLElement {
     this.enhancedText = "";
     this.chatMessages = [];
     this.isInitialized = false;
+    this.productImage = null;
   }
 
   static get observedAttributes() {
@@ -38,6 +39,7 @@ class AITextEnhancer extends HTMLElement {
       "api-model",
       "language",
       "prompt",
+      "image-url",
     ];
   }
 
@@ -75,6 +77,10 @@ class AITextEnhancer extends HTMLElement {
       // Return default model if specified model is invalid
       return this.modelManager.getDefaultModel();
     }
+  }
+
+  get imageUrl() {
+    return this.getAttribute("image-url");
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -116,6 +122,11 @@ class AITextEnhancer extends HTMLElement {
       case "language":
         if (this.isInitialized) {
           this.updateTranslations();
+        }
+        break;
+      case "image-url":
+        if (this.isInitialized) {
+          this.handleImageUrlChange(newValue);
         }
         break;
     }
@@ -281,6 +292,27 @@ class AITextEnhancer extends HTMLElement {
           
           <div class="modal-body">
             <div class="editor-section">
+            <!-- Add image upload section before tools -->
+            <div class="image-upload">
+              <div class="image-preview" id="imagePreview">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
+                  <line x1="16" y1="5" x2="22" y2="5"/>
+                  <line x1="19" y1="2" x2="19" y2="8"/>
+                  <circle cx="9" cy="9" r="2"/>
+                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                </svg>
+              </div>
+              <button class="upload-button" id="uploadButton" type="button">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
+                  <line x1="16" y1="5" x2="22" y2="5"/>
+                  <line x1="19" y1="2" x2="19" y2="8"/>
+                </svg>
+                Upload Product Image
+              </button>
+              <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            </div>
               <div class="tools">
                 <button class="tool-button" data-action="summarize">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-minus"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 10h6"/></svg>
@@ -337,12 +369,11 @@ class AITextEnhancer extends HTMLElement {
 
   connectedCallback() {
     try {
-      // Crear y adjuntar el template con las traducciones correctas
       const template = this.createTemplate();
       this.shadowRoot.appendChild(template.content.cloneNode(true));
 
-      // Resto de la inicialización...
       this.bindEvents();
+      this.bindImageUploadEvents(); // Add this line
       this.initializeComponents();
 
       if (this.apiKey) {
@@ -404,16 +435,93 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
+  bindImageUploadEvents() {
+    const imagePreview = this.shadowRoot.querySelector("#imagePreview");
+    const uploadButton = this.shadowRoot.querySelector("#uploadButton");
+    const imageInput = this.shadowRoot.querySelector("#imageInput");
+
+    uploadButton.onclick = () => imageInput.click();
+
+    imageInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        this.productImage = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          // Create remove button with correct binding
+          const removeBtn = document.createElement("button");
+          removeBtn.className = "remove-image";
+          removeBtn.textContent = "×";
+          removeBtn.onclick = () => this.removeImage(); // Correct binding
+
+          imagePreview.innerHTML = `
+            <img src="${e.target.result}" alt="Product preview">
+          `;
+          imagePreview.appendChild(removeBtn);
+          imagePreview.classList.add("has-image");
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+  }
+
+  async handleImageUrlChange(url) {
+    if (!url) {
+      this.removeImage();
+      return;
+    }
+
+    const imagePreview = this.shadowRoot.querySelector("#imagePreview");
+
+    try {
+      // Validar que la URL es accesible y es una imagen
+      const response = await fetch(url);
+      const contentType = response.headers.get("content-type");
+
+      if (!contentType || !contentType.startsWith("image/")) {
+        throw new Error("La URL no corresponde a una imagen válida");
+      }
+
+      // Actualizar la vista previa
+      imagePreview.innerHTML = `
+        <img src="${url}" alt="Product preview">
+        <button class="remove-image">×</button>
+      `;
+      imagePreview.classList.add("has-image");
+
+      // Guardar la URL para uso posterior
+      this.productImageUrl = url;
+      this.productImage = null; // Limpiar cualquier archivo subido previamente
+    } catch (error) {
+      console.error("Error loading image from URL:", error);
+      this.updatePreview(`Error loading image: ${error.message}`);
+    }
+  }
+
+  removeImage() {
+    this.productImage = null;
+    this.productImageUrl = null;
+    this.setAttribute('image-url', ''); // Limpiar el atributo
+    
+    const imagePreview = this.shadowRoot.querySelector('#imagePreview');
+    imagePreview.innerHTML = `
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
+        <line x1="16" y1="5" x2="22" y2="5"/>
+        <line x1="19" y1="2" x2="19" y2="8"/>
+        <circle cx="9" cy="9" r="2"/>
+        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+      </svg>
+    `;
+    imagePreview.classList.remove('has-image');
+  }
+}
+
   async handleToolAction(action) {
     try {
-      console.log("🔄 HandleToolAction - Starting", action);
       await this.waitForInitialization();
 
-      console.log("🔑 Current API Key:", this.apiKey ? "Present" : "Missing");
-      console.log("🔧 API Client exists:", !!this.apiClient);
-
       if (!this.apiKey || !this.apiClient) {
-        console.log("❌ Missing API Key or API Client");
         this.updatePreview(
           `Error: API key not configured. Please provide a valid API key.`
         );
@@ -421,27 +529,31 @@ class AITextEnhancer extends HTMLElement {
       }
 
       const content = this.currentContent;
-      console.log("📝 Content length:", content.length);
-
       const preview = this.shadowRoot.querySelector(".preview");
-      preview.textContent = "Generando respuesta...";
+      preview.textContent = "Generating response...";
+
+      // Include image in cache key if present
+      const cacheKey = this.productImage
+        ? `${action}-${content}-${this.productImage.name}`
+        : `${action}-${content}`;
 
       // Check cache first
-      const cachedResult = this.cacheManager.get(action, content);
+      const cachedResult = this.cacheManager.get(action, cacheKey);
       if (cachedResult) {
         this.updatePreview(cachedResult);
         return;
       }
 
-      // If not in cache, call API
+      // If not in cache, call API with image if available
       const enhancedText = await this.apiClient.enhanceText(
         content,
         action,
+        this.productImage,
         (partialResponse) => this.updatePreview(partialResponse)
       );
 
       // Cache the result
-      this.cacheManager.set(action, content, enhancedText);
+      this.cacheManager.set(action, cacheKey, enhancedText);
 
       this.updatePreview(enhancedText);
     } catch (error) {
