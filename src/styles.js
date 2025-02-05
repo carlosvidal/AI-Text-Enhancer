@@ -1,9 +1,75 @@
 // styles.js
 export const styles = `
-  :host {
-      display: block;
-      font-family: system-ui, -apple-system, sans-serif;
-  }
+:host {
+  display: inline-block;
+  font-family: system-ui, -apple-system, sans-serif;
+  position: relative;
+  z-index: 9999;
+}
+
+:host {
+  --ai-enhancer-base-z: 99999;
+  --ai-enhancer-modal-z: var(--ai-enhancer-base-z);
+  --ai-enhancer-content-z: calc(var(--ai-enhancer-base-z) + 1);
+}
+
+.modal-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.5em;
+  padding: 0.9em;
+  background: #fff;
+  border: 0;
+  border-radius: 2em;
+  box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: box-shadow 250ms ease-in-out;
+  font-family: sans-serif;
+  font-weight: bold;
+  background-image: linear-gradient(to right, #da22ff 0%, #9733ee 51%, #da22ff 100%);
+  background-size: 200%;
+  color: white;
+  text-shadow: 1px 1px 2px #9733ee;
+  white-space: nowrap;
+}
+
+.modal-trigger::before {
+  content: "";
+  opacity: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: linear-gradient(45deg, #fb0094, #0000ff, #00ff00, #ffff00, #ff0000);
+  background-size: 400%;
+  width: 100%;
+  height: 100%;
+  border-radius: 2em;
+  z-index: -1;
+  animation: ai-button-glow 5s linear infinite;
+  transition: filter 250ms ease-in-out, opacity 250ms ease-in-out;
+}
+
+.modal-trigger:hover {
+  box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.1);
+  background-position: right center;
+}
+
+.modal-trigger:hover::before {
+  filter: blur(0.5em);
+  opacity: 1;
+  z-index: -1;
+}
+
+.modal-trigger svg {
+  margin-right: 0.5em;
+  height: 1em;
+}
+
+.modal-trigger:hover svg {
+  animation: shake 0.5s ease-in-out;
+}
 
   @keyframes ai-button-glow {
       0% {
@@ -53,77 +119,7 @@ export const styles = `
       }
   }
 
-  .modal-trigger {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.9em;
-      background: #fff;
-      border: 0;
-      border-radius: 2em;
-      box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.25);
-      cursor: pointer;
-      transition: box-shadow 250ms ease-in-out;
-      font-family: sans-serif;
-      font-weight: bold;
-      background-image: linear-gradient(to right,
-              #da22ff 0%,
-              #9733ee 51%,
-              #da22ff 100%);
-      color: white;
-      text-shadow: 1px 1px 2px #9733ee;
-
-      &:hover {
-          box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.1);
-          background-position: right center;
-          /* change the direction of the change here */
-          color: #fff;
-          text-decoration: none;
-
-          &:before {
-              width: 100%;
-              height: 100%;
-              filter: blur(0.5em);
-              opacity: 1;
-          }
-      }
-
-      &:before {
-          content: "";
-          opacity: 0;
-          position: absolute;
-          left: 0;
-          top: 0;
-          background: linear-gradient(45deg,
-                  #fb0094,
-                  #0000ff,
-                  #00ff00,
-                  #ffff00,
-                  #ff0000);
-          background-size: 200%;
-          width: 100%;
-          height: 100%;
-          border-radius: 10em;
-          z-index: -1;
-          animation: ai-button-glow 5s linear infinite;
-          transition: filter 250ms ease-in-out, opacity 250ms ease-in-out;
-      }
-
-      svg {
-          margin-right: 0.5em;
-          height: 1em;
-      }
-  }
-
-  .modal-trigger:hover {
-      box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.1);
-      background-position: right center;
-  }
-
-  .modal-trigger:hover svg {
-      animation: shake 0.5s ease-in-out;
-  }
+  
 
   .modal {
     display: none;
@@ -133,7 +129,7 @@ export const styles = `
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
+    z-index: var(--ai-enhancer-modal-z) !important;
   }
 
   .modal.open {
@@ -152,6 +148,7 @@ export const styles = `
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
+    z-index: var(--ai-enhancer-content-z) !important;
   }
 
   .modal-body {

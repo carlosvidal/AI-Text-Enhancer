@@ -5,76 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
     <style>
-      .modal-trigger {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.9em;
-        background: #fff;
-        border: 0;
-        border-radius: 2em;
-        box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.25);
-        cursor: pointer;
-        transition: box-shadow 250ms ease-in-out;
-        font-family: sans-serif;
-        font-weight: bold;
-        background-image: linear-gradient(
-          to right,
-          #da22ff 0%,
-          #9733ee 51%,
-          #da22ff 100%
-        );
-        color: white;
-        text-shadow: 1px 1px 2px #9733ee;
-
-        &:hover {
-          box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.1);
-          background-position: right center; /* change the direction of the change here */
-          color: #fff;
-          text-decoration: none;
-
-          &:before {
-            width: 100%;
-            height: 100%;
-            filter: blur(0.5em);
-            opacity: 1;
-          }
-
-          svg {
-            animation: shake 1200ms;
-          }
-        }
-
-        &:before {
-          content: "";
-          opacity: 0;
-          position: absolute;
-          left: 0;
-          top: 0;
-          background: linear-gradient(
-            45deg,
-            #fb0094,
-            #0000ff,
-            #00ff00,
-            #ffff00,
-            #ff0000
-          );
-          background-size: 200%;
-          width: 100%;
-          height: 100%;
-          border-radius: 10em;
-          z-index: -1;
-          animation: ai-button-glow 5s linear infinite;
-          transition: filter 250ms ease-in-out, opacity 250ms ease-in-out;
-        }
-
-        svg {
-          margin-right: 0.5em;
-          height: 1em;
-        }
-      }
-
       @keyframes ai-button-glow {
         0% {
           background-position: 0 0;
@@ -108,15 +38,94 @@
         100% {
           transform: rotate(0deg);
         }
+
         25% {
           transform: rotate(5deg);
         }
+
         50% {
           transform: rotate(-5deg);
         }
+
         75% {
           transform: rotate(5deg);
         }
+      }
+
+      .modal-trigger {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.9em;
+        background: #fff;
+        border: 0;
+        border-radius: 2em;
+        box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.25);
+        cursor: pointer;
+        transition: box-shadow 250ms ease-in-out;
+        font-family: sans-serif;
+        font-weight: bold;
+        background-image: linear-gradient(
+          to right,
+          #da22ff 0%,
+          #9733ee 51%,
+          #da22ff 100%
+        );
+        color: white;
+        text-shadow: 1px 1px 2px #9733ee;
+
+        &:hover {
+          box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.1);
+          background-position: right center;
+          /* change the direction of the change here */
+          color: #fff;
+          text-decoration: none;
+
+          &:before {
+            width: 100%;
+            height: 100%;
+            filter: blur(0.5em);
+            opacity: 1;
+          }
+        }
+
+        &:before {
+          content: "";
+          opacity: 0;
+          position: absolute;
+          left: 0;
+          top: 0;
+          background: linear-gradient(
+            45deg,
+            #fb0094,
+            #0000ff,
+            #00ff00,
+            #ffff00,
+            #ff0000
+          );
+          background-size: 200%;
+          width: 100%;
+          height: 100%;
+          border-radius: 10em;
+          z-index: -1;
+          animation: ai-button-glow 5s linear infinite;
+          transition: filter 250ms ease-in-out, opacity 250ms ease-in-out;
+        }
+
+        svg {
+          margin-right: 0.5em;
+          height: 1em;
+        }
+      }
+
+      .modal-trigger:hover {
+        box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.1);
+        background-position: right center;
+      }
+
+      .modal-trigger:hover svg {
+        animation: shake 0.5s ease-in-out;
       }
     </style>
   </head>
@@ -136,16 +145,16 @@
       >
         <path
           d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"
-        />
-        <path d="m14 7 3 3" />
-        <path d="M5 6v4" />
-        <path d="M19 14v4" />
-        <path d="M10 2v2" />
-        <path d="M7 8H3" />
-        <path d="M21 16h-4" />
-        <path d="M11 3H9" />
+        ></path>
+        <path d="m14 7 3 3"></path>
+        <path d="M5 6v4"></path>
+        <path d="M19 14v4"></path>
+        <path d="M10 2v2"></path>
+        <path d="M7 8H3"></path>
+        <path d="M21 16h-4"></path>
+        <path d="M11 3H9"></path>
       </svg>
-      <span> Mejorar con IA</span>
+      <span>Enhance with AI</span>
     </button>
   </body>
 </html>

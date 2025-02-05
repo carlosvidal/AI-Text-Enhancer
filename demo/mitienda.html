@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <form>
+      <h2>Información de tu Producto</h2>
+
+      <label for="nombre">Nombre:</label>
+      <input type="text" id="nombre" name="nombre" value="Jabón Artesanal" />
+
+      <label for="codigo">Número o código de referencia:</label>
+      <input type="text" id="codigo" name="codigo" value="PROD12345" />
+
+      <label for="descripcion">Descripción:</label>
+      <textarea id="descripcion" name="descripcion">
+Un jabón hecho a mano con ingredientes naturales.</textarea
+      >
+
+      <label for="descripcion-detallada">DESCRIPCIÓN:</label>
+      <textarea id="descripcion-detallada" name="descripcion-detallada">
+Prensado en frio, 100% puro y natural</textarea
+      >
+
+      <h3>Dimensiones</h3>
+
+      <label for="altura">Altura:</label>
+      <input type="text" id="altura" name="altura" value="10" />
+
+      <label for="ancho">Ancho:</label>
+      <input type="text" id="ancho" name="ancho" value="5" />
+
+      <label for="largo">Largo:</label>
+      <input type="text" id="largo" name="largo" value="3" />
+
+      <label for="unidad-medida">Unidad de Medida:</label>
+      <select id="unidad-medida" name="unidad-medida">
+        <option value="centimetros" selected>centimetros</option>
+        <option value="metro">metro</option>
+        <option value="pulgadas">pulgadas</option>
+      </select>
+
+      <label for="peso">Peso:</label>
+      <input type="text" id="peso" name="peso" value="200" />
+
+      <label for="unidad-peso">Unidad de Medida:</label>
+      <select id="unidad-peso" name="unidad-peso">
+        <option value="gramos" selected>gramos</option>
+        <option value="kilogramos">kilogramos</option>
+        <option value="libras">libras</option>
+      </select>
+
+      <label for="peso-volumetrico">Peso Volumétrico:</label>
+      <input
+        type="text"
+        id="peso-volumetrico"
+        name="peso-volumetrico"
+        value="0.5"
+      />
+
+      <h3>Imágenes</h3>
+
+      <label for="imagen">Añadir imagen:</label>
+      <input type="file" id="imagen" name="imagen" accept="image/*" />
+
+      <p>Por favor sube una imagen de máximo 9 Mb.</p>
+
+      <h3>Categorías</h3>
+
+      <label
+        ><input type="checkbox" name="categoria" value="ABARROTES" checked />
+        ABARROTES</label
+      >
+      <label
+        ><input type="checkbox" name="categoria" value="Aceites y Vinagres" />
+        Aceites y Vinagres</label
+      >
+      <label
+        ><input type="checkbox" name="categoria" value="Arroz y Pastas" /> Arroz
+        y Pastas</label
+      >
+      <!-- Continuar con las demás categorías -->
+
+      <h3>Marcas</h3>
+
+      <label for="marca">Seleccione una marca:</label>
+      <select id="marca" name="marca">
+        <option value="" disabled>Seleccione una marca...</option>
+        <option value="7 DRAGONES" selected>7 DRAGONES</option>
+        <option value="AGUA KANGEN">AGUA KANGEN</option>
+        <option value="ALAMEDRA INTEGRAL">ALAMEDRA INTEGRAL</option>
+        <!-- Continuar con las demás marcas -->
+      </select>
+
+      <button type="submit">Enviar</button>
+    </form>
+  </body>
+</html>
