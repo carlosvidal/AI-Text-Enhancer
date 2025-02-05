@@ -2,7 +2,7 @@
 export const MODEL_CONFIGS = {
   openai: {
     models: {
-      "gpt-4-turbo-preview": {
+      "gpt-4-turbo": {
         name: "GPT-4 Turbo",
         contextWindow: 128000,
         description: "Latest GPT-4 model with larger context window",
@@ -25,7 +25,7 @@ export const MODEL_CONFIGS = {
         costPer1k: 0.0015,
       },
     },
-    defaultModel: "gpt-4-turbo-preview",
+    defaultModel: "gpt-4-turbo",
   },
   anthropic: {
     models: {

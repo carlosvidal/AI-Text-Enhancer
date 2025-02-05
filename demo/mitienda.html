@@ -4,98 +4,171 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/yegor256/tacit@gh-pages/tacit-css-1.8.1.min.css"
+    />
+    <style>
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+      }
+
+      div {
+        margin-bottom: 1rem;
+      }
+    </style>
   </head>
   <body>
     <form>
       <h2>Información de tu Producto</h2>
 
-      <label for="nombre">Nombre:</label>
-      <input type="text" id="nombre" name="nombre" value="Jabón Artesanal" />
+      <div>
+        <label for="nombre">Nombre:</label>
+        <input
+          type="text"
+          id="nombre"
+          name="nombre"
+          value="Jabón Menta Natura"
+        />
+      </div>
 
-      <label for="codigo">Número o código de referencia:</label>
-      <input type="text" id="codigo" name="codigo" value="PROD12345" />
+      <div>
+        <label for="codigo">Número o código de referencia:</label>
+        <input type="text" id="codigo" name="codigo" value="PROD12345" />
+      </div>
 
-      <label for="descripcion">Descripción:</label>
-      <textarea id="descripcion" name="descripcion">
-Un jabón hecho a mano con ingredientes naturales.</textarea
+      <div>
+        <label for="descripcion">Descripción:</label>
+        <textarea id="descripcion" name="descripcion">
+Un jabón artesanal hecho a mano con ingredientes naturales y deliciosa fragancia a menta fresca. Prensado en frio, 100% puro y natural
+</textarea
+        >
+      </div>
+      <ai-text-enhancer
+        editor-id="descripcion"
+        api-provider="openai"
+        api-model="gpt-4-vision-preview"
+        language="es"
       >
-
-      <label for="descripcion-detallada">DESCRIPCIÓN:</label>
-      <textarea id="descripcion-detallada" name="descripcion-detallada">
-Prensado en frio, 100% puro y natural</textarea
-      >
-
-      <h3>Dimensiones</h3>
-
-      <label for="altura">Altura:</label>
-      <input type="text" id="altura" name="altura" value="10" />
-
-      <label for="ancho">Ancho:</label>
-      <input type="text" id="ancho" name="ancho" value="5" />
-
-      <label for="largo">Largo:</label>
-      <input type="text" id="largo" name="largo" value="3" />
-
-      <label for="unidad-medida">Unidad de Medida:</label>
-      <select id="unidad-medida" name="unidad-medida">
-        <option value="centimetros" selected>centimetros</option>
-        <option value="metro">metro</option>
-        <option value="pulgadas">pulgadas</option>
-      </select>
-
-      <label for="peso">Peso:</label>
-      <input type="text" id="peso" name="peso" value="200" />
-
-      <label for="unidad-peso">Unidad de Medida:</label>
-      <select id="unidad-peso" name="unidad-peso">
-        <option value="gramos" selected>gramos</option>
-        <option value="kilogramos">kilogramos</option>
-        <option value="libras">libras</option>
-      </select>
-
-      <label for="peso-volumetrico">Peso Volumétrico:</label>
-      <input
-        type="text"
-        id="peso-volumetrico"
-        name="peso-volumetrico"
-        value="0.5"
-      />
+      </ai-text-enhancer>
 
       <h3>Imágenes</h3>
-
-      <label for="imagen">Añadir imagen:</label>
-      <input type="file" id="imagen" name="imagen" accept="image/*" />
+      <img
+        src="https://www.kanbotanicals.com/cdn/shop/files/mentatercerafoto_2.jpg?v=1692628978&width=1946"
+        alt="Jabón Artesanal"
+        style="max-width: 400px; height: auto"
+      />
 
       <p>Por favor sube una imagen de máximo 9 Mb.</p>
 
       <h3>Categorías</h3>
 
-      <label
-        ><input type="checkbox" name="categoria" value="ABARROTES" checked />
-        ABARROTES</label
-      >
-      <label
-        ><input type="checkbox" name="categoria" value="Aceites y Vinagres" />
-        Aceites y Vinagres</label
-      >
-      <label
-        ><input type="checkbox" name="categoria" value="Arroz y Pastas" /> Arroz
-        y Pastas</label
-      >
-      <!-- Continuar con las demás categorías -->
+      <div>
+        <label
+          ><input type="checkbox" name="categoria" value="ABARROTES" checked />
+          ABARROTES</label
+        >
+        <label
+          ><input type="checkbox" name="categoria" value="Aceites y Vinagres" />
+          Aceites y Vinagres</label
+        >
+        <label
+          ><input type="checkbox" name="categoria" value="Arroz y Pastas" />
+          Arroz y Pastas</label
+        >
+      </div>
 
       <h3>Marcas</h3>
 
-      <label for="marca">Seleccione una marca:</label>
-      <select id="marca" name="marca">
-        <option value="" disabled>Seleccione una marca...</option>
-        <option value="7 DRAGONES" selected>7 DRAGONES</option>
-        <option value="AGUA KANGEN">AGUA KANGEN</option>
-        <option value="ALAMEDRA INTEGRAL">ALAMEDRA INTEGRAL</option>
-        <!-- Continuar con las demás marcas -->
-      </select>
+      <div>
+        <label for="marca">Seleccione una marca:</label>
+        <select id="marca" name="marca">
+          <option value="" disabled>Seleccione una marca...</option>
+          <option value="7 DRAGONES" selected>7 DRAGONES</option>
+          <option value="AGUA KANGEN">AGUA KANGEN</option>
+          <option value="ALAMEDRA INTEGRAL">ALAMEDRA INTEGRAL</option>
+          <!-- Continuar con las demás marcas -->
+        </select>
+      </div>
 
       <button type="submit">Enviar</button>
     </form>
+    <p id="resultado"></p>
+
+    <script type="module" src="../src/ai-text-enhancer.js"></script>
+
+    <script>
+      // Espera a que el DOM esté completamente cargado
+      document.addEventListener("DOMContentLoaded", function () {
+        // Elementos del formulario
+        const nombreInput = document.getElementById("nombre");
+        const codigoInput = document.getElementById("codigo");
+        const categoriaCheckboxes = document.querySelectorAll(
+          'input[name="categoria"]'
+        );
+        const marcaSelect = document.getElementById("marca");
+
+        // Variable para almacenar el promt y el contexto
+        let myPrompt = "";
+        let contexto = "";
+
+        const enhancer = document.querySelector("ai-text-enhancer");
+
+        setTimeout(() => {
+          enhancer.setAttribute(
+            "image-url",
+            "https://www.kanbotanicals.com/cdn/shop/files/mentatercerafoto_2.jpg?v=1692628978&width=1946"
+          );
+        }, 1000);
+
+        // Función para actualizar el contexto
+        function actualizarConcatenacion() {
+          const nombre = nombreInput.value || "Sin nombre";
+          const codigo = codigoInput.value || "Sin código";
+          const categoriasSeleccionadas = Array.from(categoriaCheckboxes)
+            .filter((checkbox) => checkbox.checked)
+            .map((checkbox) => checkbox.value);
+          const categoria =
+            categoriasSeleccionadas.length > 0
+              ? categoriasSeleccionadas.join(", ")
+              : "Sin categoría";
+          const marca = marcaSelect.value || "Sin marca";
+
+          myPrompt =
+            `##Instrucciones de generación/mejora:##` +
+            `1. Actúa como un experto en redacción de descripciones de productos para tiendas en líneaen Perú.\n\n` +
+            `2. Tu tarea es generar o mejorar la descripción de un producto con un enfoque atractivo y persuasivo, destacando sus características principales, beneficios y posibles usos, optimizando el contenido para el mercado peruano.\n\n` +
+            `3. Si el usuario ya ha escrito una descripción: Mejórala manteniendo su esencia, pero haciéndola más clara, persuasiva y optimizada para ventas.\n\n` +
+            `4. Si la descripción está vacía: Genera una nueva descripción atractiva, destacando características y beneficios.\n\n` +
+            `5. Si el producto pertenece a una marca reconocida y tiene un modelo o part number: Considera especificaciones técnicas adicionales y detalles relevantes que puedan encontrarse en fuentes confiables.\n\n` +
+            `6. Adapta la descripción al mercado peruano: Usa términos y expresiones locales si es relevante, menciona envíos dentro de Perú y considera detalles como métodos de pago populares en el país.\n\n` +
+            `7. Usa un tono profesional y cercano, adaptado a una tienda en línea.\n\n` +
+            `8. Si hay una imagen del producto, aprovecha los detalles visuales para enriquecer la descripción.\n\n` +
+            `9. Si aplica, menciona información relevante del comercio para reforzar la confianza del comprador (envíos, garantía, atención al cliente, etc.).\n\n` +
+            `10. Mantén el texto claro, sin repeticiones innecesarias, y optimizado para SEO si es posible.\n\n` +
+            `*Importante:* Solo responde con la descripción generada o mejorada, sin agregar ningún otro comentario, explicación o texto adicional.`;
+
+          contexto = `Nombre: ${nombre}, Código: ${codigo}, Categoría: ${categoria}, Marca: ${marca}.\n\n`;
+
+          document.getElementById("resultado").textContent =
+            "Contexto: " + contexto + "\n\n" + "Prompt: " + myPrompt;
+
+          enhancer.setAttribute("prompt", myPrompt);
+          enhancer.setAttribute("context", contexto);
+        }
+
+        // Escuchar cambios en los campos
+        nombreInput.addEventListener("input", actualizarConcatenacion);
+        codigoInput.addEventListener("input", actualizarConcatenacion);
+        categoriaCheckboxes.forEach((checkbox) => {
+          checkbox.addEventListener("change", actualizarConcatenacion);
+        });
+        marcaSelect.addEventListener("change", actualizarConcatenacion);
+
+        // Llamar a la función inicialmente para mostrar valores por defecto
+        actualizarConcatenacion();
+      });
+    </script>
   </body>
 </html>

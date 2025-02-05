@@ -25,8 +25,8 @@ class APIClient {
         mistral: "mistral-large-latest",
       },
       visionModels: {
-        openai: "gpt-4-vision-preview",
-        anthropic: "claude-3-opus-20240229", // Claude 3 supports vision
+        openai: "gpt-4-turbo",
+        anthropic: "claude-3-opus-20240229",
       },
       temperature: config.temperature || 0.7,
       apiKey: config.apiKey || "",
@@ -276,7 +276,10 @@ class APIClient {
               : {}),
           },
           body: JSON.stringify({
-            model: this.config.visionModels[this.config.provider],
+            model:
+              this.config.provider === "anthropic"
+                ? this.config.visionModels[this.config.provider]
+                : "gpt-4-turbo",
             messages: messages,
             temperature: this.config.temperature,
             stream: true,
@@ -325,15 +328,20 @@ class APIClient {
     }
   }
 
-  async enhanceText(content, action = "improve", imageFile = null) {
+  async enhanceText(
+    content,
+    action = "improve",
+    imageFile = null,
+    context = ""
+  ) {
     const prompts = {
-      improve:
-        "Mejora esta descripción de producto para hacerla más atractiva y profesional:",
-      summarize: "Resume esta descripción manteniendo los puntos clave:",
-      expand: "Expande esta descripción añadiendo más detalles y beneficios:",
-      paraphrase: "Reescribe esta descripción manteniendo el mensaje:",
-      style: "Ajusta el estilo para que sea más profesional y persuasivo:",
-      empty: "Crea una descripción profesional para un producto similar:",
+      improve: `Mejora esta descripción considerando estos detalles del producto:\n${context}\n\nDescripción actual:`,
+      summarize: `Teniendo en cuenta estos detalles del producto:\n${context}\n\nCrea un resumen conciso y efectivo de la siguiente descripción:`,
+      expand: `Basándote en estos detalles del producto:\n${context}\n\nExpande esta descripción añadiendo más detalles, beneficios y casos de uso:`,
+      paraphrase: `Considerando estos detalles del producto:\n${context}\n\nReescribe esta descripción manteniendo el mensaje principal pero con un enfoque fresco:`,
+      formal: `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más formal, profesional y técnico, manteniendo la información clave pero usando un lenguaje más sofisticado y corporativo:`,
+      casual: `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más casual y cercano, como si estuvieras explicándolo a un amigo, manteniendo un lenguaje accesible y conversacional pero sin perder profesionalismo:`,
+      empty: `Usando estos detalles del producto:\n${context}\n\nCrea una descripción profesional y atractiva que destaque sus características principales:`,
     };
 
     const prompt = prompts[action] || prompts.improve;

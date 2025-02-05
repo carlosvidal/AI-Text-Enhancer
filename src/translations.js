@@ -9,10 +9,12 @@ export const TRANSLATIONS = {
       chat: "Chat",
     },
     tools: {
+      improve: "Improve",
       summarize: "Summarize",
       expand: "Expand",
       paraphrase: "Paraphrase",
-      style: "Style",
+      formal: "More Formal",
+      casual: "More Casual",
     },
     actions: {
       retry: "Retry",
@@ -40,10 +42,12 @@ export const TRANSLATIONS = {
       chat: "Chat",
     },
     tools: {
+      improve: "Mejorar",
       summarize: "Resumir",
       expand: "Ampliar",
       paraphrase: "Parafrasear",
-      style: "Estilo",
+      formal: "Mas formal",
+      casual: "Mas casual",
     },
     actions: {
       retry: "Reintentar",
@@ -72,10 +76,12 @@ export const TRANSLATIONS = {
       chat: "Chat",
     },
     tools: {
+      improve: "Améliorer",
       summarize: "Résumer",
       expand: "Développer",
       paraphrase: "Paraphraser",
-      style: "Style",
+      formal: "Plus Formel",
+      casual: "Plus Décontracté",
     },
     actions: {
       retry: "Réessayer",
@@ -103,10 +109,12 @@ export const TRANSLATIONS = {
       chat: "Chat",
     },
     tools: {
+      improve: "Verbessern",
       summarize: "Zusammenfassen",
       expand: "Erweitern",
       paraphrase: "Umformulieren",
-      style: "Stil",
+      formal: "Formaler",
+      casual: "Lockerer",
     },
     actions: {
       retry: "Wiederholen",
@@ -134,10 +142,12 @@ export const TRANSLATIONS = {
       chat: "Chat",
     },
     tools: {
+      improve: "Melhorar",
       summarize: "Resumir",
       expand: "Expandir",
       paraphrase: "Parafrasear",
-      style: "Estilo",
+      formal: "Mais Formal",
+      casual: "Mais Casual",
     },
     actions: {
       retry: "Tentar Novamente",
