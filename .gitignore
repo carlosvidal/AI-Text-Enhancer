@@ -88,4 +88,6 @@ lerna-debug.log
 
 # System Files
 .DS_Store
-Thumbs.dbdemo/mitienda.html
+Thumbs.db
+
+demo/mitienda.html
