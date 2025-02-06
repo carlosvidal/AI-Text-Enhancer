@@ -229,6 +229,20 @@ export const styles = `
     flex: 1;
     overflow-y: auto;
     min-height: 0;
+    position: relative;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .typing {
+    display: inline-block;
+    animation: blink 1s infinite;
+    margin-left: 2px;
+    color: #3b82f6;
+    font-weight: bold;
   }
 
   /* Markdown preview styles */

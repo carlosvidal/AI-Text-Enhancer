@@ -64,6 +64,112 @@ class APIClient {
     }
   }
 
+  async processStream(response, onProgress) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let completeText = ""; // Para acumular todo el texto
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ") && line !== "data: [DONE]") {
+          try {
+            const data = JSON.parse(line.slice(5));
+            if (
+              data.choices &&
+              data.choices[0].delta &&
+              data.choices[0].delta.content
+            ) {
+              const newContent = data.choices[0].delta.content;
+              completeText += newContent; // Acumulamos el texto completo
+              onProgress(newContent); // Enviamos solo el nuevo fragmento
+            }
+          } catch (error) {
+            continue;
+          }
+        }
+      }
+    }
+
+    return completeText; // Devolvemos el texto completo para la caché
+  }
+
+  prepareMessagesWithImage(prompt, content, imageUrl, imageData) {
+    if (this.config.provider === "openai") {
+      return [
+        {
+          role: "system",
+          content: this.config.systemPrompt,
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `${prompt}\n\n${
+                content || "Please create a new description."
+              }`,
+            },
+            {
+              type: "image_url",
+              image_url: imageUrl
+                ? {
+                    url: imageUrl,
+                    detail: "high",
+                  }
+                : {
+                    url: `data:image/jpeg;base64,${imageData}`,
+                    detail: "high",
+                  },
+            },
+          ],
+        },
+      ];
+    } else if (this.config.provider === "anthropic") {
+      return [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: this.config.systemPrompt,
+            },
+            {
+              type: "image",
+              source: imageUrl
+                ? {
+                    type: "url",
+                    url: imageUrl,
+                  }
+                : {
+                    type: "base64",
+                    media_type: "image/jpeg",
+                    data: imageData,
+                  },
+            },
+            {
+              type: "text",
+              text: `${prompt}\n\n${
+                content || "Please create a new description."
+              }`,
+            },
+          ],
+        },
+      ];
+    }
+
+    throw new Error(
+      `Provider ${this.config.provider} not supported for image requests`
+    );
+  }
+
   async makeRequest(prompt, content, onProgress = () => {}) {
     if (!this.config.apiKey) {
       throw new Error("API key not configured");
@@ -93,7 +199,7 @@ class APIClient {
               },
             ],
             temperature: this.config.temperature,
-            stream: true, // Habilitar streaming
+            stream: true,
           }),
         }
       );
@@ -106,65 +212,10 @@ class APIClient {
         );
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let partialResponse = "";
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ") && line !== "data: [DONE]") {
-            try {
-              const data = JSON.parse(line.slice(5));
-              const newContent = data.choices[0].delta?.content || "";
-              partialResponse += newContent;
-              onProgress(partialResponse);
-            } catch (error) {
-              console.error("Error parsing JSON:", error);
-            }
-          }
-        }
-      }
-
-      return partialResponse;
+      return await this.processStream(response, onProgress);
     } catch (error) {
       throw new APIError(error.message, error);
     }
-  }
-
-  async imageToBase64(imageFile) {
-    if (!imageFile) {
-      throw new Error("No image file provided");
-    }
-
-    if (!imageFile.type.startsWith("image/")) {
-      throw new Error("Invalid file type. Please provide an image file.");
-    }
-
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const result = reader.result.split(",")[1];
-          if (!result) {
-            reject(new Error("Failed to convert image to base64"));
-            return;
-          }
-          resolve(result);
-        } catch (error) {
-          reject(new Error("Failed to process image data"));
-        }
-      };
-      reader.onerror = () => reject(new Error("Failed to read image file"));
-      reader.readAsDataURL(imageFile);
-    });
   }
 
   async makeRequestWithImage(
@@ -183,86 +234,24 @@ class APIClient {
       );
     }
 
-    let imageData;
-    let imageUrl;
-
     try {
-      // Determinar si imageSource es un archivo o una URL
+      let imageData;
+      let imageUrl;
+
       if (typeof imageSource === "string") {
-        // Es una URL
         imageUrl = imageSource;
       } else if (imageSource instanceof File) {
-        // Es un archivo
         imageData = await this.imageToBase64(imageSource);
       } else {
         throw new Error("Invalid image source");
       }
 
-      let messages = [];
-
-      // Configure messages based on provider
-      if (this.config.provider === "openai") {
-        messages = [
-          {
-            role: "system",
-            content: this.config.systemPrompt,
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `${prompt}\n\n${
-                  content || "Please create a new description."
-                }`,
-              },
-              {
-                type: "image_url",
-                image_url: imageUrl
-                  ? {
-                      url: imageUrl,
-                      detail: "high",
-                    }
-                  : {
-                      url: `data:image/jpeg;base64,${imageData}`,
-                      detail: "high",
-                    },
-              },
-            ],
-          },
-        ];
-      } else if (this.config.provider === "anthropic") {
-        messages = [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: this.config.systemPrompt,
-              },
-              {
-                type: "image",
-                source: imageUrl
-                  ? {
-                      type: "url",
-                      url: imageUrl,
-                    }
-                  : {
-                      type: "base64",
-                      media_type: "image/jpeg",
-                      data: imageData,
-                    },
-              },
-              {
-                type: "text",
-                text: `${prompt}\n\n${
-                  content || "Please create a new description."
-                }`,
-              },
-            ],
-          },
-        ];
-      }
+      const messages = this.prepareMessagesWithImage(
+        prompt,
+        content,
+        imageUrl,
+        imageData
+      );
 
       const response = await fetch(
         this.config.endpoints[this.config.provider],
@@ -295,44 +284,46 @@ class APIClient {
         );
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let partialResponse = "";
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ") && line !== "data: [DONE]") {
-            try {
-              const data = JSON.parse(line.slice(5));
-              const newContent = data.choices[0].delta?.content || "";
-              partialResponse += newContent;
-              onProgress(partialResponse);
-            } catch (error) {
-              console.error("Error parsing JSON:", error);
-            }
-          }
-        }
-      }
-
-      return partialResponse;
+      return await this.processStream(response, onProgress);
     } catch (error) {
       throw new Error(`Image processing failed: ${error.message}`);
     }
+  }
+
+  async imageToBase64(imageFile) {
+    if (!imageFile) {
+      throw new Error("No image file provided");
+    }
+
+    if (!imageFile.type.startsWith("image/")) {
+      throw new Error("Invalid file type. Please provide an image file.");
+    }
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const result = reader.result.split(",")[1];
+          if (!result) {
+            reject(new Error("Failed to convert image to base64"));
+            return;
+          }
+          resolve(result);
+        } catch (error) {
+          reject(new Error("Failed to process image data"));
+        }
+      };
+      reader.onerror = () => reject(new Error("Failed to read image file"));
+      reader.readAsDataURL(imageFile);
+    });
   }
 
   async enhanceText(
     content,
     action = "improve",
     imageFile = null,
-    context = ""
+    context = "",
+    onProgress = () => {}
   ) {
     const prompts = {
       improve: `Mejora esta descripción considerando estos detalles del producto:\n${context}\n\nDescripción actual:`,
@@ -347,9 +338,14 @@ class APIClient {
     const prompt = prompts[action] || prompts.improve;
 
     if (imageFile) {
-      return this.makeRequestWithImage(prompt, content, imageFile);
+      return await this.makeRequestWithImage(
+        prompt,
+        content,
+        imageFile,
+        onProgress
+      );
     } else {
-      return this.makeRequest(prompt, content);
+      return await this.makeRequest(prompt, content, onProgress);
     }
   }
 

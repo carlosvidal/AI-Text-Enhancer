@@ -30,6 +30,9 @@ class AITextEnhancer extends HTMLElement {
     this.chatMessages = [];
     this.isInitialized = false;
     this.productImage = null;
+
+    // El control de uso ahora es opcional
+    this.usageControl = null;
   }
 
   static get observedAttributes() {
@@ -42,6 +45,9 @@ class AITextEnhancer extends HTMLElement {
       "prompt",
       "context",
       "image-url",
+      "tenant-id",
+      "user-id",
+      "quota-endpoint",
     ];
   }
 
@@ -252,11 +258,6 @@ class AITextEnhancer extends HTMLElement {
     this.shadowRoot.querySelector(".chat-form").onsubmit = (e) =>
       this.handleChatSubmit(e);
 
-    // Generate/Improve button
-    this.shadowRoot.querySelector(".generate-button").onclick = () => {
-      this.handleToolAction(this.currentAction);
-    };
-
     // El botón improve/generate está en tools
     const improveButton = this.shadowRoot.querySelector(
       '[data-action="improve"]'
@@ -448,10 +449,8 @@ class AITextEnhancer extends HTMLElement {
     try {
       await this.markdownHandler.initialize();
 
-      // Initialize ModelManager with current provider
       this.modelManager.setProvider(this.apiProvider);
 
-      // Initialize API client
       this.apiClient = createAPIClient({
         provider: this.apiProvider,
         model: this.apiModel,
@@ -469,6 +468,16 @@ class AITextEnhancer extends HTMLElement {
       // Set API key if available
       if (this.apiKey) {
         this.apiClient.setApiKey(this.apiKey);
+      }
+
+      // Inicializar UsageControl solo si se proporciona quota-endpoint
+      const quotaEndpoint = this.getAttribute("quota-endpoint");
+      if (quotaEndpoint) {
+        this.usageControl = createUsageControl({
+          apiEndpoint: "/api/ai-enhancer/usage",
+          quotaCheckEndpoint: quotaEndpoint,
+          checkQuotaBeforeRequest: true,
+        });
       }
 
       this.isInitialized = true;
@@ -535,19 +544,73 @@ class AITextEnhancer extends HTMLElement {
 
       const content = this.currentContent;
       const preview = this.shadowRoot.querySelector(".preview");
-      preview.textContent = "Generating response...";
 
-      const enhancedText = await this.apiClient.enhanceText(
+      // Verificar cuota solo si existe el control de uso y los atributos necesarios
+      if (this.usageControl) {
+        const tenantId = this.getAttribute("tenant-id");
+        const userId = this.getAttribute("user-id");
+
+        if (tenantId && userId) {
+          try {
+            const quota = await this.usageControl.checkQuota(tenantId, userId);
+            if (!quota.hasAvailableQuota) {
+              this.updatePreview(
+                "Quota exceeded. Please contact your administrator."
+              );
+              return;
+            }
+          } catch (error) {
+            console.warn("Error checking quota:", error);
+            // Continuar con la ejecución si hay error al verificar cuota
+          }
+        }
+      }
+
+      preview.innerHTML = `<span class="typing">|</span>`;
+      let isFirstChunk = true;
+      let accumulatedText = "";
+
+      const completeText = await this.apiClient.enhanceText(
         content,
         action,
         this.productImage || this.productImageUrl,
-        (partialResponse) => this.updatePreview(partialResponse)
+        "",
+        (newContent) => {
+          if (isFirstChunk) {
+            preview.innerHTML = "";
+            isFirstChunk = false;
+          }
+          accumulatedText += newContent;
+          this.updatePreview(accumulatedText);
+        }
       );
 
-      // Cache and update the preview
+      // Registrar uso solo si existe el control y los atributos necesarios
+      if (this.usageControl) {
+        const tenantId = this.getAttribute("tenant-id");
+        const userId = this.getAttribute("user-id");
+
+        if (tenantId && userId) {
+          try {
+            const estimatedTokens = this.usageControl.estimateTokens(content);
+            await this.usageControl.trackUsage(
+              tenantId,
+              userId,
+              action,
+              estimatedTokens
+            );
+          } catch (error) {
+            console.warn("Error tracking usage:", error);
+            // No interrumpir la ejecución si hay error al registrar uso
+          }
+        }
+      }
+
+      // Cache cuando la respuesta está completa
       const cacheKey = `${action}-${content}`;
-      this.cacheManager.set(action, cacheKey, enhancedText);
-      this.updatePreview(enhancedText);
+      this.cacheManager.set(action, cacheKey, completeText);
+
+      this.updatePreview(completeText);
     } catch (error) {
       console.error("Error in handleToolAction:", error);
       this.updatePreview(`Error: ${error.message}`);
@@ -673,6 +736,8 @@ class AITextEnhancer extends HTMLElement {
       const html = this.markdownHandler.convertToHTML(text);
       preview.innerHTML = html;
       this.enhancedText = text;
+      // Hacer scroll al final del contenido
+      preview.scrollTop = preview.scrollHeight;
     } catch (error) {
       console.error("Error updating preview:", error);
       preview.textContent = text;

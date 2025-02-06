@@ -20,6 +20,15 @@
     </style>
   </head>
   <body>
+    <!-- API Key Form -->
+    <div class="api-key-form">
+      <label for="api-key">OpenAI API Key:</label>
+      <input type="password" id="api-key" placeholder="sk-..." />
+      <button type="button" onclick="updateApiKeys()">
+        Actualizar API Key
+      </button>
+    </div>
+
     <form>
       <h2>Información de tu Producto</h2>
 
@@ -96,7 +105,70 @@ Un jabón artesanal hecho a mano con ingredientes naturales y deliciosa fraganci
     </form>
     <p id="resultado"></p>
 
-    <script type="module" src="../src/ai-text-enhancer.js"></script>
+    <!-- Script para updateApiKeys -->
+    <script type="module">
+      // Esperar a que el DOM esté listo
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          // Importar el componente primero
+          await import("../src/ai-text-enhancer.js");
+
+          // Inicializar el manejador de API Key
+          const apiKeyHandler = {
+            async updateApiKeys() {
+              console.log("🔄 updateApiKeys called");
+              const apiKey = document.getElementById("api-key").value;
+              console.log("🔑 API Key length:", apiKey.length);
+
+              if (!apiKey) {
+                console.error("❌ API Key is empty");
+                return;
+              }
+
+              const enhancers = document.querySelectorAll("ai-text-enhancer");
+              console.log(`📝 Found ${enhancers.length} enhancers`);
+
+              try {
+                for (let i = 0; i < enhancers.length; i++) {
+                  const enhancer = enhancers[i];
+                  console.log(`🔄 Processing enhancer ${i + 1}`);
+
+                  if (!enhancer.isInitialized) {
+                    console.log(
+                      `⏳ Waiting for enhancer ${i + 1} to initialize`
+                    );
+                    await new Promise((resolve) => {
+                      const checkInterval = setInterval(() => {
+                        if (enhancer.isInitialized) {
+                          clearInterval(checkInterval);
+                          console.log(`✅ Enhancer ${i + 1} initialized`);
+                          resolve();
+                        }
+                      }, 100);
+                    });
+                  }
+
+                  console.log(`🔑 Setting API Key for enhancer ${i + 1}`);
+                  enhancer.setAttribute("api-key", apiKey);
+                  console.log(`✅ API Key set for enhancer ${i + 1}`);
+                }
+
+                console.log("✅ All API keys updated successfully");
+              } catch (error) {
+                console.error("❌ Error updating API keys:", error);
+              }
+            },
+          };
+
+          // Asignar al window después de la importación
+          window.updateApiKeys = apiKeyHandler.updateApiKeys;
+
+          // Aquí puedes agregar cualquier otra inicialización que necesites
+        } catch (error) {
+          console.error("Error initializing:", error);
+        }
+      });
+    </script>
 
     <script>
       // Espera a que el DOM esté completamente cargado
@@ -136,7 +208,7 @@ Un jabón artesanal hecho a mano con ingredientes naturales y deliciosa fraganci
           const marca = marcaSelect.value || "Sin marca";
 
           myPrompt =
-            `##Instrucciones de generación/mejora:##` +
+            `Instrucciones de generación/mejora:\n\n` +
             `1. Actúa como un experto en redacción de descripciones de productos para tiendas en líneaen Perú.\n\n` +
             `2. Tu tarea es generar o mejorar la descripción de un producto con un enfoque atractivo y persuasivo, destacando sus características principales, beneficios y posibles usos, optimizando el contenido para el mercado peruano.\n\n` +
             `3. Si el usuario ya ha escrito una descripción: Mejórala manteniendo su esencia, pero haciéndola más clara, persuasiva y optimizada para ventas.\n\n` +

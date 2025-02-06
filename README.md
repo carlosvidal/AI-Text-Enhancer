@@ -1,6 +1,6 @@
 # AI Text Enhancer
 
-A powerful web component for enhancing product descriptions using AI. This component integrates seamlessly with multiple rich text editors and provides real-time AI-powered text enhancement capabilities, including image analysis for more accurate product descriptions.
+A powerful web component for enhancing product descriptions using AI. This component integrates seamlessly with multiple rich text editors and provides real-time AI-powered text enhancement capabilities.
 
 ## Features
 
@@ -11,12 +11,6 @@ A powerful web component for enhancing product descriptions using AI. This compo
   - Paraphrase: Rewrites content while preserving the message
   - Style: Adjusts tone for better persuasion
 
-- 🖼️ Image Support:
-  - Upload local images
-  - Use image URLs
-  - Visual analysis for better product descriptions
-  - Image preview with remove option
-
 - 💬 Interactive chat interface for specific content queries
 - 🔄 Smart caching system for improved performance
 - 📝 Markdown support with live preview
@@ -26,11 +20,11 @@ A powerful web component for enhancing product descriptions using AI. This compo
   - CKEditor 5
   - Quill
   - Froala Editor
-- 🌐 Multiple AI provider support:
-  - OpenAI (GPT-4 Vision)
-  - Anthropic (Claude 3)
+- 🌐 Multiple AI provider support (OpenAI, Deepseek)
 - 🔒 Shadow DOM encapsulation for style isolation
 - 🤖 Customizable AI system prompt
+- 📊 Optional usage control and quota management
+- 🏢 Multi-tenant support
 
 ## Installation
 
@@ -41,7 +35,7 @@ A powerful web component for enhancing product descriptions using AI. This compo
 
 ## Usage
 
-### Basic Implementation (With Image Support)
+### Basic Implementation (Textarea)
 
 ```html
 <!-- Add the component to your HTML -->
@@ -49,61 +43,31 @@ A powerful web component for enhancing product descriptions using AI. This compo
   editor-id="my-editor"
   api-key="your-api-key"
   api-provider="openai"
-  api-model="gpt-4-vision-preview"
-  image-url="https://example.com/product-image.jpg">
+  api-model="gpt-4">
 </ai-text-enhancer>
 
 <!-- Reference text editor -->
 <textarea id="my-editor">Your product description here</textarea>
 ```
 
-### Image Support Options
+### With Usage Control
 
-The component supports two ways of providing images:
-
-1. Via URL attribute:
 ```html
 <ai-text-enhancer
-  image-url="https://example.com/product-image.jpg"
-  ...other-attributes>
+  editor-id="my-editor"
+  api-key="your-api-key"
+  quota-endpoint="/api/quota"
+  tenant-id="123"
+  user-id="456">
 </ai-text-enhancer>
 ```
-
-2. Via file upload button in the UI:
-- Click the upload button in the component interface
-- Select a local image file
-- Image will be previewed and used for analysis
-
-### Dynamic Image Updates
-
-You can update the image programmatically:
-
-```javascript
-const enhancer = document.querySelector('ai-text-enhancer');
-
-// Set image via URL
-enhancer.setAttribute('image-url', 'https://example.com/new-image.jpg');
-
-// Clear image
-enhancer.setAttribute('image-url', '');
-```
-
-### Provider Support for Images
-
-Current providers that support image analysis:
-
-| Provider  | Model              | Max Image Size | Supported Formats |
-|-----------|-------------------|----------------|------------------|
-| OpenAI    | gpt-4-vision-preview | 20MB          | PNG, JPEG, GIF, WebP |
-| Anthropic | claude-3-opus     | 100MB         | PNG, JPEG, WebP |
 
 ### TinyMCE Integration
 
 ```html
 <ai-text-enhancer
   editor-id="tinymce-editor"
-  api-key="your-api-key"
-  api-model="gpt-4-vision-preview">
+  api-key="your-api-key">
 </ai-text-enhancer>
 
 <div id="tinymce-editor"></div>
@@ -117,52 +81,150 @@ Current providers that support image analysis:
 </script>
 ```
 
-### Configuration Options
+### CKEditor 5 Integration
+
+```html
+<ai-text-enhancer
+  editor-id="ckeditor-container"
+  api-key="your-api-key">
+</ai-text-enhancer>
+
+<div id="ckeditor-container"></div>
+
+<script>
+  ClassicEditor.create(document.querySelector('#ckeditor-container'))
+    .then(editor => {
+      editor.editing.view.change(writer => {
+        writer.setStyle('min-height', '300px', editor.editing.view.document.getRoot());
+      });
+    });
+</script>
+```
+
+### Quill Integration
+
+```html
+<ai-text-enhancer
+  editor-id="quill-editor"
+  api-key="your-api-key">
+</ai-text-enhancer>
+
+<div id="quill-editor"></div>
+
+<script>
+  const quill = new Quill('#quill-editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [/* your toolbar config */]
+    }
+  });
+</script>
+```
+
+### Froala Integration
+
+```html
+<ai-text-enhancer
+  editor-id="froala-editor"
+  api-key="your-api-key">
+</ai-text-enhancer>
+
+<div id="froala-editor"></div>
+
+<script>
+  new FroalaEditor('#froala-editor', {
+    height: 300
+    // Your Froala configuration...
+  });
+</script>
+```
+
+## Configuration Options
 
 | Attribute | Description | Default |
 |-----------|-------------|---------|
 | editor-id | ID of the target editor element | Required |
 | api-key | Your AI provider API key | Required |
-| api-provider | AI service provider (openai/anthropic) | "openai" |
+| api-provider | AI service provider (openai/deepseek) | "openai" |
 | api-model | Model to use for text generation | Provider default |
 | language | Interface language (en/es/fr/de/pt) | "en" |
 | prompt | Custom system prompt for the AI | Default marketing expert prompt |
-| image-url | URL of the product image to analyze | Optional |
+| quota-endpoint | Endpoint for quota checking | Optional |
+| tenant-id | Tenant identifier for multi-tenant setups | Optional |
+| user-id | User identifier for usage tracking | Optional |
 
-### Using with Image Analysis
+### Usage Control Options
 
-For best results with image analysis:
+The component supports three usage modes:
 
-1. Use high-quality product images
-2. Ensure images are well-lit and focused
-3. Include multiple angles if relevant
-4. Keep image sizes reasonable (< 20MB for OpenAI, < 100MB for Anthropic)
-5. Use supported image formats (PNG, JPEG, WebP)
+1. **Basic Mode** (No usage control):
+```html
+<ai-text-enhancer editor-id="editor" api-key="key">
+```
 
-### Best Practices
+2. **Simple Quota Mode** (Only quota verification):
+```html
+<ai-text-enhancer 
+  editor-id="editor" 
+  api-key="key" 
+  quota-endpoint="/quota.json">
+```
 
-1. Image Selection:
-   - Use clear, high-quality product images
-   - Avoid images with text overlays
-   - Ensure good lighting and focus
-   - Show important product features
+3. **Full Control Mode** (Complete usage tracking):
+```html
+<ai-text-enhancer 
+  editor-id="editor" 
+  api-key="key"
+  quota-endpoint="/api/quota"
+  tenant-id="123"
+  user-id="456">
+```
 
-2. Performance:
-   - Use appropriate image sizes
-   - Enable caching for repeated analyses
-   - Consider using image URLs for faster loading
+### Editor Support
 
-3. Error Handling:
-   - Validate image URLs
-   - Handle failed image loads
-   - Provide fallback descriptions
+The component automatically detects and adapts to different editor types:
+
+| Editor | Support Level | Notes |
+|--------|--------------|-------|
+| Textarea | Full | Default fallback |
+| TinyMCE | Full | Versions 5.x and 6.x |
+| CKEditor 5 | Full | Classic build |
+| Quill | Full | Version 1.3.6+ |
+| Froala | Full | Requires license |
+
+### Language Support
+
+The component supports multiple languages for its interface:
+
+- English (en)
+- Spanish (es)
+- French (fr)
+- German (de)
+- Portuguese (pt)
+
+## Component Architecture
+
+```
+/ai-text-enhancer
+  ├── src/
+  │   ├── ai-text-enhancer.js       # Main component
+  │   ├── editor-adapter.js         # Editor integration layer
+  │   ├── styles.js                 # Encapsulated styles
+  │   ├── markdown-handler.js       # Markdown processing
+  │   ├── cache-manager.js          # Caching system
+  │   └── api-client.js             # API client
+  ├── demo/
+  │   ├── index.html               # Demo page
+  │   └── editor-demo.html         # Rich text editors demo
+  └── README.md                    # Documentation
+```
 
 ## Development
 
 ### Prerequisites
 
 - Modern web browser with Web Components support
-- API key from supported providers (OpenAI/Anthropic)
+- API key from supported providers (OpenAI/Deepseek)
 - Editor dependencies as needed (TinyMCE, CKEditor, etc.)
 
 ## Contributing
@@ -183,8 +245,8 @@ For support, please open an issue in the GitHub repository or contact the mainta
 
 ## Acknowledgments
 
-- OpenAI for GPT-4 Vision API
-- Anthropic for Claude 3 API
-- TinyMCE, CKEditor, Quill, and Froala teams
+- OpenAI for GPT API
+- Deepseek for their API service
+- TinyMCE, CKEditor, Quill, and Froala teams for their editors
 - marked.js for Markdown processing
 - Lucide for icons
