@@ -18,17 +18,189 @@
         margin-bottom: 1rem;
       }
     </style>
+
+    <style>
+      .api-settings-form {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+      }
+
+      .api-settings-form h3 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+      }
+
+      .api-settings-form div {
+        margin-bottom: 1rem;
+      }
+
+      .api-settings-form label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+      }
+
+      .api-settings-form input,
+      .api-settings-form select {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+      }
+
+      .api-settings-form button {
+        width: 100%;
+        padding: 0.75rem;
+        background: #0d6efd;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .api-settings-form button:hover {
+        background: #0b5ed7;
+      }
+    </style>
   </head>
   <body>
     <!-- API Key Form -->
-    <div class="api-key-form">
-      <label for="api-key">OpenAI API Key:</label>
-      <input type="password" id="api-key" placeholder="sk-..." />
-      <button type="button" onclick="updateApiKeys()">
-        Actualizar API Key
+    <!-- API Settings Form -->
+    <div class="api-settings-form">
+      <h3>Configuración API</h3>
+      <div>
+        <label for="api-key">OpenAI API Key:</label>
+        <input type="password" id="api-key" placeholder="sk-..." />
+      </div>
+
+      <div>
+        <label for="api-provider">Proveedor:</label>
+        <select id="api-provider">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="deepseek">Deepseek</option>
+          <option value="cohere">Cohere</option>
+          <option value="google">Google</option>
+          <option value="mistral">Mistral</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="api-model">Modelo:</label>
+        <select id="api-model"></select>
+      </div>
+
+      <button type="button" onclick="updateApiSettings()">
+        Actualizar Configuración
       </button>
     </div>
 
+    <script type="module">
+      import { ModelManager } from "../src/model-manager.js";
+
+      // Crear instancia del ModelManager
+      const modelManager = new ModelManager();
+
+      // Elementos del DOM
+      const apiKeyInput = document.getElementById("api-key");
+      const providerSelect = document.getElementById("api-provider");
+      const modelSelect = document.getElementById("api-model");
+
+      // Cargar modelos disponibles para un provider
+      function loadAvailableModels(provider) {
+        modelManager.setProvider(provider);
+        const models = modelManager.getAvailableModels();
+
+        // Limpiar select actual
+        modelSelect.innerHTML = "";
+
+        // Agregar nuevas opciones
+        models.forEach((model) => {
+          const option = document.createElement("option");
+          option.value = model.id;
+          option.textContent = `${model.name}${
+            model.suggested ? " (Recomendado)" : ""
+          }`;
+          modelSelect.appendChild(option);
+        });
+
+        // Seleccionar modelo por defecto
+        modelSelect.value = modelManager.getDefaultModel();
+      }
+
+      // Cargar configuración guardada
+      function loadSavedSettings() {
+        const settings = JSON.parse(
+          localStorage.getItem("aiEnhancerSettings") || "{}"
+        );
+
+        if (settings.apiKey) apiKeyInput.value = settings.apiKey;
+        if (settings.provider) {
+          providerSelect.value = settings.provider;
+          loadAvailableModels(settings.provider);
+        } else {
+          loadAvailableModels("openai"); // Provider por defecto
+        }
+        if (settings.model) modelSelect.value = settings.model;
+      }
+
+      // Actualizar configuración
+      window.updateApiSettings = async function () {
+        const settings = {
+          apiKey: apiKeyInput.value,
+          provider: providerSelect.value,
+          model: modelSelect.value,
+        };
+
+        // Guardar en localStorage
+        localStorage.setItem("aiEnhancerSettings", JSON.stringify(settings));
+
+        // Actualizar todos los enhancers
+        const enhancers = document.querySelectorAll("ai-text-enhancer");
+        console.log(`📝 Found ${enhancers.length} enhancers`);
+
+        try {
+          for (let i = 0; i < enhancers.length; i++) {
+            const enhancer = enhancers[i];
+            console.log(`🔄 Processing enhancer ${i + 1}`);
+
+            if (!enhancer.isInitialized) {
+              await new Promise((resolve) => {
+                const checkInterval = setInterval(() => {
+                  if (enhancer.isInitialized) {
+                    clearInterval(checkInterval);
+                    console.log(`✅ Enhancer ${i + 1} initialized`);
+                    resolve();
+                  }
+                }, 100);
+              });
+            }
+
+            enhancer.setAttribute("api-key", settings.apiKey);
+            enhancer.setAttribute("api-provider", settings.provider);
+            enhancer.setAttribute("api-model", settings.model);
+          }
+
+          console.log("✅ All settings updated successfully");
+          alert("Configuración actualizada correctamente");
+        } catch (error) {
+          console.error("❌ Error updating settings:", error);
+          alert("Error al actualizar la configuración");
+        }
+      };
+
+      // Event listener para cambio de provider
+      providerSelect.addEventListener("change", (e) => {
+        loadAvailableModels(e.target.value);
+      });
+
+      // Cargar configuración inicial
+      document.addEventListener("DOMContentLoaded", loadSavedSettings);
+    </script>
+
+    <!-- FORM -->
     <form>
       <h2>Información de tu Producto</h2>
 

@@ -11,6 +11,7 @@ import { EditorAdapter } from "./editor-adapter.js";
 class AITextEnhancer extends HTMLElement {
   constructor() {
     super();
+    this.responseHistory = [];
     this.attachShadow({ mode: "open" });
     this.editorAdapter = null;
     this.currentAction = "improve";
@@ -33,6 +34,148 @@ class AITextEnhancer extends HTMLElement {
 
     // El control de uso ahora es opcional
     this.usageControl = null;
+  }
+
+  addResponseToHistory(action, content) {
+    const response = {
+      id: Date.now(),
+      action,
+      content,
+      timestamp: new Date(),
+    };
+    this.responseHistory.push(response);
+    this.renderResponseHistory();
+  }
+
+  renderResponseHistory() {
+    const preview = this.shadowRoot.querySelector(".preview");
+    preview.innerHTML = this.responseHistory
+      .map(
+        (response) => `
+        <div class="response-entry" data-id="${response.id}">
+          <div class="response-header">
+            <div class="response-tool">
+              ${this.getToolIcon(response.action)}
+              ${this.translations.tools[response.action]}
+            </div>
+            <div class="response-timestamp">
+              ${this.formatTimestamp(response.timestamp)}
+            </div>
+          </div>
+          <div class="response-content">
+            ${this.markdownHandler.convertToHTML(response.content)}
+          </div>
+          <div class="response-actions">
+            <button class="response-action copy-button" data-response-id="${
+              response.id
+            }">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy
+            </button>
+            <button class="response-action primary use-button" data-response-id="${
+              response.id
+            }">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m5 12 5 5L20 7"></path>
+              </svg>
+              Use This
+            </button>
+          </div>
+        </div>
+      `
+      )
+      .join("");
+
+    // Agregar event listeners después de renderizar
+    this.addResponseEventListeners();
+  }
+
+  // Nuevo método para agregar event listeners
+  addResponseEventListeners() {
+    // Event listeners para botones de copiar
+    this.shadowRoot.querySelectorAll(".copy-button").forEach((button) => {
+      button.addEventListener("click", (e) => {
+        const responseId = e.target.closest("button").dataset.responseId;
+        this.copyToClipboard(responseId);
+      });
+    });
+
+    // Event listeners para botones de usar
+    this.shadowRoot.querySelectorAll(".use-button").forEach((button) => {
+      button.addEventListener("click", (e) => {
+        const responseId = e.target.closest("button").dataset.responseId;
+        this.useResponse(responseId);
+      });
+    });
+  }
+
+  getToolIcon(action) {
+    const icons = {
+      improve: `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wand-2">
+          <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/>
+          <path d="m14 7 3 3"/>
+        </svg>
+      `,
+      summarize: `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-minus">
+          <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+          <path d="M9 10h6"/>
+        </svg>
+      `,
+      expand: `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-plus">
+          <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+          <path d="M9 10h6"/>
+          <path d="M12 7v6"/>
+        </svg>
+      `,
+      paraphrase: `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-restart">
+          <path d="M21 6H3"/>
+          <path d="M7 12H3"/>
+          <path d="M7 18H3"/>
+          <path d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14"/>
+          <path d="M11 10v4h4"/>
+        </svg>
+      `,
+      formal: `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-briefcase">
+          <rect width="20" height="14" x="2" y="7" rx="2" ry="2"/>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+        </svg>
+      `,
+      casual: `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-smile">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+          <line x1="9" x2="9.01" y1="9" y2="9"/>
+          <line x1="15" x2="15.01" y1="9" y2="9"/>
+        </svg>
+      `,
+      generate: `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles">
+          <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+          <path d="M5 3v4"/>
+          <path d="M19 17v4"/>
+          <path d="M3 5h4"/>
+          <path d="M17 19h4"/>
+        </svg>
+      `,
+    };
+
+    // Si no existe el ícono para la acción, devolver el ícono de improve por defecto
+    return icons[action] || icons.improve;
+  }
+
+  formatTimestamp(date) {
+    return new Intl.DateTimeFormat("default", {
+      hour: "numeric",
+      minute: "numeric",
+    }).format(date);
   }
 
   static get observedAttributes() {
@@ -200,7 +343,12 @@ class AITextEnhancer extends HTMLElement {
     this.shadowRoot.querySelector(".modal-trigger").onclick = () => {
       this.shadowRoot.querySelector(".modal").classList.add("open");
       this.updateVisibleTools();
-      this.updatePreview(this.translations.preview.placeholder);
+      // Renderizar el historial existente en lugar de limpiar el preview
+      if (this.responseHistory.length > 0) {
+        this.renderResponseHistory();
+      } else {
+        this.updatePreview(this.translations.preview.placeholder);
+      }
     };
 
     // Close button
@@ -533,6 +681,7 @@ class AITextEnhancer extends HTMLElement {
     };
   }
 
+  // Modificar el método handleToolAction
   async handleToolAction(action) {
     try {
       await this.waitForInitialization();
@@ -543,31 +692,24 @@ class AITextEnhancer extends HTMLElement {
       }
 
       const content = this.currentContent;
+      let tempResponse; // Declarar aquí para que esté en el scope correcto
+
+      // Crear una nueva entrada temporal para la respuesta en curso
+      tempResponse = {
+        id: Date.now(),
+        action,
+        content: '<span class="typing">|</span>',
+        timestamp: new Date(),
+      };
+
+      // Agregar la entrada temporal al final del historial
+      this.responseHistory.push(tempResponse); // Cambiado de unshift a push
+      this.renderResponseHistory();
+
+      // Hacer scroll hacia abajo para mostrar la nueva respuesta
       const preview = this.shadowRoot.querySelector(".preview");
+      preview.scrollTop = preview.scrollHeight;
 
-      // Verificar cuota solo si existe el control de uso y los atributos necesarios
-      if (this.usageControl) {
-        const tenantId = this.getAttribute("tenant-id");
-        const userId = this.getAttribute("user-id");
-
-        if (tenantId && userId) {
-          try {
-            const quota = await this.usageControl.checkQuota(tenantId, userId);
-            if (!quota.hasAvailableQuota) {
-              this.updatePreview(
-                "Quota exceeded. Please contact your administrator."
-              );
-              return;
-            }
-          } catch (error) {
-            console.warn("Error checking quota:", error);
-            // Continuar con la ejecución si hay error al verificar cuota
-          }
-        }
-      }
-
-      preview.innerHTML = `<span class="typing">|</span>`;
-      let isFirstChunk = true;
       let accumulatedText = "";
 
       const completeText = await this.apiClient.enhanceText(
@@ -576,44 +718,68 @@ class AITextEnhancer extends HTMLElement {
         this.productImage || this.productImageUrl,
         "",
         (newContent) => {
-          if (isFirstChunk) {
-            preview.innerHTML = "";
-            isFirstChunk = false;
-          }
           accumulatedText += newContent;
-          this.updatePreview(accumulatedText);
+          // Actualizar solo el contenido de la respuesta temporal
+          const responseEntry = this.shadowRoot.querySelector(
+            `[data-id="${tempResponse.id}"] .response-content`
+          );
+          if (responseEntry) {
+            responseEntry.innerHTML =
+              this.markdownHandler.convertToHTML(accumulatedText);
+            // Mantener el scroll abajo mientras se genera el contenido
+            preview.scrollTop = preview.scrollHeight;
+          }
         }
       );
 
-      // Registrar uso solo si existe el control y los atributos necesarios
-      if (this.usageControl) {
-        const tenantId = this.getAttribute("tenant-id");
-        const userId = this.getAttribute("user-id");
+      // Actualizar la respuesta temporal con el texto completo
+      tempResponse.content = completeText;
+      this.renderResponseHistory();
+      // Asegurar que el scroll quede abajo después de actualizar
+      preview.scrollTop = preview.scrollHeight;
 
-        if (tenantId && userId) {
-          try {
-            const estimatedTokens = this.usageControl.estimateTokens(content);
-            await this.usageControl.trackUsage(
-              tenantId,
-              userId,
-              action,
-              estimatedTokens
-            );
-          } catch (error) {
-            console.warn("Error tracking usage:", error);
-            // No interrumpir la ejecución si hay error al registrar uso
-          }
-        }
-      }
-
-      // Cache cuando la respuesta está completa
-      const cacheKey = `${action}-${content}`;
-      this.cacheManager.set(action, cacheKey, completeText);
-
-      this.updatePreview(completeText);
+      // Cachear la respuesta
+      this.cacheManager.set(action, content, completeText);
     } catch (error) {
       console.error("Error in handleToolAction:", error);
+      if (tempResponse) {
+        // Verificar si existe
+        this.responseHistory = this.responseHistory.filter(
+          (r) => r.id !== tempResponse.id
+        );
+      }
+      this.renderResponseHistory();
       this.updatePreview(`Error: ${error.message}`);
+    }
+  }
+
+  copyToClipboard(responseId) {
+    const response = this.responseHistory.find(
+      (r) => r.id === parseInt(responseId, 10)
+    );
+    if (response) {
+      navigator.clipboard
+        .writeText(response.content)
+        .then(() => {
+          // Mostrar feedback visual de copiado exitoso
+          const button = this.shadowRoot.querySelector(
+            `.copy-button[data-response-id="${responseId}"]`
+          );
+          const originalText = button.innerHTML;
+          button.innerHTML = "✓ Copied!";
+          setTimeout(() => (button.innerHTML = originalText), 2000);
+        })
+        .catch((err) => console.error("Error al copiar:", err));
+    }
+  }
+
+  useResponse(responseId) {
+    const response = this.responseHistory.find(
+      (r) => r.id === parseInt(responseId, 10)
+    );
+    if (response) {
+      this.setEditorContent(response.content, "replace");
+      this.shadowRoot.querySelector(".modal").classList.remove("open");
     }
   }
 
@@ -733,8 +899,11 @@ class AITextEnhancer extends HTMLElement {
   updatePreview(text) {
     const preview = this.shadowRoot.querySelector(".preview");
     try {
-      const html = this.markdownHandler.convertToHTML(text);
-      preview.innerHTML = html;
+      if (this.responseHistory.length === 0) {
+        const html = this.markdownHandler.convertToHTML(text);
+        preview.innerHTML = html;
+      }
+      // Siempre actualizar enhancedText con el último contenido
       this.enhancedText = text;
       // Hacer scroll al final del contenido
       preview.scrollTop = preview.scrollHeight;

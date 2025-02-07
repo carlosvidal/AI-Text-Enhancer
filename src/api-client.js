@@ -337,14 +337,25 @@ class APIClient {
 
     const prompt = prompts[action] || prompts.improve;
 
-    if (imageFile) {
-      return await this.makeRequestWithImage(
-        prompt,
-        content,
-        imageFile,
-        onProgress
-      );
+    if (imageFile && this.config.visionModels[this.config.provider]) {
+      try {
+        return await this.makeRequestWithImage(
+          prompt,
+          content,
+          imageFile,
+          onProgress
+        );
+      } catch (error) {
+        // Si falla el análisis de imagen, degradamos elegantemente al análisis de solo texto
+        console.warn(
+          "Image analysis failed, falling back to text-only analysis:",
+          error
+        );
+        return await this.makeRequest(prompt, content, onProgress);
+      }
     } else {
+      // Si no hay imagen o el proveedor no soporta análisis de imágenes,
+      // procedemos directamente con el análisis de texto
       return await this.makeRequest(prompt, content, onProgress);
     }
   }
