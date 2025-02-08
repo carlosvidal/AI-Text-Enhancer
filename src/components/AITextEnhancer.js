@@ -18,6 +18,7 @@ import { animations } from "../styles/base/animations.js";
 import { modalTriggerStyles } from "../styles/components/modal-trigger.js";
 import { chatStyles } from "../styles/components/chat.js";
 import { imageUploaderStyles } from "../styles/components/image-uploader.js";
+import { imagePreviewStyles } from "../styles/components/image-preview.js";
 import { toolbarStyles } from "../styles/components/toolbar.js";
 import { modelSelectorStyles } from "../styles/components/model-selector.js";
 
@@ -72,69 +73,102 @@ class AITextEnhancer extends HTMLElement {
 
   renderResponseHistory() {
     const preview = this.shadowRoot.querySelector(".preview");
-    preview.innerHTML = this.responseHistory
+    if (!preview) return;
+
+    // Mostrar la imagen inicial del parámetro si existe y no ha sido reemplazada
+    let content = "";
+    if (this.productImageUrl && !this.productImage) {
+      content = this.renderImagePreview(this.productImageUrl, true);
+    }
+
+    // Agregar el resto del historial
+    content += this.responseHistory
       .map(
         (response) => `
-          <div class="response-entry" data-id="${response.id}">
-            <div class="response-header">
-              <div class="response-tool">
-                ${getToolIcon(response.action)}
-                ${this.translations.tools[response.action]}
-              </div>
-              <div class="response-timestamp">
-                ${this.formatTimestamp(response.timestamp)}
-              </div>
+        <div class="response-entry" data-id="${response.id}">
+          <div class="response-header">
+            <div class="response-tool">
+              ${getToolIcon(response.action)}
+              ${this.translations.tools[response.action] || response.action}
             </div>
-            <div class="response-content">
-              ${this.markdownHandler.convertToHTML(response.content)}
+            <div class="response-timestamp">
+              ${this.formatTimestamp(response.timestamp)}
             </div>
+          </div>
+          <div class="response-content">
             ${
-              response.action === "chat-question"
-                ? `
-              <div class="response-actions">
-                <button class="response-action edit-button" data-response-id="${response.id}">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                  Edit
-                </button>
-              </div>
-            `
-                : response.action === "chat-error"
-                ? ``
-                : `
-              <div class="response-actions">
-                <button class="response-action retry-button" data-response-id="${response.id}" data-action="${response.action}">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14"/>
-                    <path d="M11 10v4h4"/>
-                  </svg>
-                  Retry
-                </button>
-                <button class="response-action copy-button" data-response-id="${response.id}">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
-                  Copy
-                </button>
-                <button class="response-action primary use-button" data-response-id="${response.id}">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="m5 12 5 5L20 7"></path>
-                  </svg>
-                  Use This
-                </button>
-              </div>
-            `
+              response.action === "image-upload"
+                ? response.content
+                : this.markdownHandler.convertToHTML(response.content)
             }
           </div>
-        `
+          ${
+            response.action !== "image-upload"
+              ? this.renderResponseActions(response)
+              : ""
+          }
+        </div>
+      `
       )
       .join("");
 
-    // Agregar event listeners después de renderizar
+    preview.innerHTML = content;
     this.addResponseEventListeners();
+  }
+
+  renderResponseActions(response) {
+    const t = this.translations;
+
+    if (response.action === "chat-question") {
+      return `
+        <div class="response-actions">
+          <button class="response-action edit-button" data-response-id="${
+            response.id
+          }">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            ${t.actions.edit || "Edit"}
+          </button>
+        </div>
+      `;
+    }
+
+    if (response.action === "chat-error") {
+      return "";
+    }
+
+    return `
+      <div class="response-actions">
+        <button class="response-action retry-button" data-response-id="${
+          response.id
+        }" data-action="${response.action}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14"/>
+            <path d="M11 10v4h4"/>
+          </svg>
+          ${t.actions.retry || "Retry"}
+        </button>
+        <button class="response-action copy-button" data-response-id="${
+          response.id
+        }">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          ${t.actions.copy || "Copy"}
+        </button>
+        <button class="response-action primary use-button" data-response-id="${
+          response.id
+        }">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m5 12 5 5L20 7"></path>
+          </svg>
+          ${t.actions.use || "Use This"}
+        </button>
+      </div>
+    `;
   }
 
   // Nuevo método para agregar event listeners
@@ -406,6 +440,23 @@ class AITextEnhancer extends HTMLElement {
     if (chatForm) {
       chatForm.onsubmit = (e) => this.handleChatSubmit(e);
     }
+
+    // Manejar el botón de upload
+    const uploadButton = this.shadowRoot.querySelector(".chat-upload-button");
+    const imageInput = this.shadowRoot.querySelector("#image-upload");
+
+    if (uploadButton && imageInput) {
+      uploadButton.onclick = () => imageInput.click();
+      imageInput.onchange = (e) => this.handleImageChange(e);
+    }
+
+    // Manejar el botón de eliminar imagen usando delegación de eventos
+    this.shadowRoot.addEventListener("click", (e) => {
+      const removeButton = e.target.closest(".image-preview-remove");
+      if (removeButton) {
+        this.removeImage();
+      }
+    });
   }
 
   updateVisibleTools() {
@@ -427,58 +478,67 @@ class AITextEnhancer extends HTMLElement {
         ${modalTriggerStyles}
         ${modalStyles}
         ${previewStyles}
+        ${imagePreviewStyles}
         
-        /* Estilos específicos del contenedor principal */
         :host {
           display: inline-block;
           font-family: var(--ai-font-sans);
           position: relative;
         }
-
+  
         .editor-section {
           flex: 1;
           display: flex;
           flex-direction: column;
           min-height: 0;
         }
-
+  
         .chat-section {
           border-top: 1px solid var(--ai-border);
           margin-top: 1rem;
           padding-top: 1rem;
         }
-
-        .image-upload-section {
-          margin-bottom: 1rem;
-        }
-
+  
         .tools-container {
           margin-bottom: 1rem;
         }
+  
+        .preview {
+          flex: 1;
+          overflow-y: auto;
+          padding: 1rem;
+          background: var(--ai-background);
+          border-radius: var(--ai-radius);
+        }
+
+         .initial-image {
+          border-color: var(--ai-primary);
+          background: var(--ai-background-light);
+          position: relative;
+        }
+
+        .initial-image::before {
+          content: 'Initial image';
+          position: absolute;
+          top: -0.75rem;
+          left: 1rem;
+          background: var(--ai-background);
+          padding: 0 0.5rem;
+          font-size: 0.75rem;
+          color: var(--ai-primary);
+          border-radius: var(--ai-radius-sm);
+        }
+
+        .initial-image .image-preview-label {
+          color: var(--ai-primary);
+          font-weight: 500;
+        }
       </style>
+  
       <button class="modal-trigger">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="lucide lucide-wand-sparkles"
-        >
-          <path
-            d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"
-          />
-          <path d="m14 7 3 3" />
-          <path d="M5 6v4" />
-          <path d="M19 14v4" />
-          <path d="M10 2v2" />
-          <path d="M7 8H3" />
-          <path d="M21 16h-4" />
-          <path d="M11 3H9" />
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/>
+          <path d="m14 7 3 3"/>
         </svg>
         <span>${t.modalTrigger}</span>
       </button>
@@ -492,20 +552,82 @@ class AITextEnhancer extends HTMLElement {
           
           <div class="modal-body">
             <div class="editor-section">
-            <!-- Add image upload section before tools -->
-            <div class="image-upload-section"></div>
               <div class="tools-container"></div>
               <div class="preview">${t.preview.placeholder}</div>
-
+  
               <div class="chat-section">
+                <div class="chat-actions">
+                  <button class="chat-upload-button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
+                      <circle cx="9" cy="9" r="2"/>
+                      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                    </svg>
+                    Upload image
+                  </button>
+                  <input type="file" id="image-upload" accept="image/*" class="hidden">
+                </div>
                 <ai-chat language="${this.language}"></ai-chat>
               </div>
-
             </div>
+          </div>
         </div>
       </div>`;
 
     return template;
+  }
+
+  renderImagePreview(image = null, isInitial = false) {
+    const imageToRender = image || this.productImage || this.productImageUrl;
+    if (!imageToRender) return "";
+
+    const imageUrl =
+      imageToRender instanceof File
+        ? URL.createObjectURL(imageToRender)
+        : imageToRender;
+
+    const filename =
+      imageToRender instanceof File
+        ? imageToRender.name
+        : new URL(imageToRender).pathname.split("/").pop() || "From URL";
+
+    return `
+      <div class="image-preview-card ${
+        isInitial ? "initial-image" : ""
+      }" data-image-id="${Date.now()}">
+        <div class="image-preview-content">
+          <div class="image-preview-thumbnail">
+            <img src="${imageUrl}" alt="Preview">
+          </div>
+          <div class="image-preview-info">
+            <div class="image-preview-label">${
+              isInitial ? "Initial image" : "Uploaded image"
+            }</div>
+            <div class="image-preview-filename">${filename}</div>
+          </div>
+          ${
+            !isInitial && !this.isImageUsed(imageToRender)
+              ? `
+            <button class="image-preview-remove" title="Remove image">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          `
+              : ""
+          }
+        </div>
+      </div>
+    `;
+  }
+
+  isImageUsed(image) {
+    const imageId = image instanceof File ? image.name : image;
+    return this.responseHistory.some(
+      (response) =>
+        response.action !== "image-upload" && response.imageUsed === imageId
+    );
   }
 
   async connectedCallback() {
@@ -518,22 +640,8 @@ class AITextEnhancer extends HTMLElement {
       await new Promise((resolve) => requestAnimationFrame(resolve));
 
       // Initialize components
-      const imageUploadSection = this.shadowRoot.querySelector(
-        ".image-upload-section"
-      );
       const toolsContainer = this.shadowRoot.querySelector(".tools-container");
       const chatComponent = this.shadowRoot.querySelector("ai-chat");
-
-      // Setup image uploader
-      const imageUploader = document.createElement("ai-image-uploader");
-      if (this.getAttribute("image-url")) {
-        imageUploader.setAttribute("image-url", this.getAttribute("image-url"));
-      }
-      imageUploader.addEventListener(
-        "imagechange",
-        this.handleImageChange.bind(this)
-      );
-      imageUploadSection.appendChild(imageUploader);
 
       // Setup toolbar
       const toolbar = document.createElement("ai-toolbar");
@@ -552,7 +660,7 @@ class AITextEnhancer extends HTMLElement {
       );
 
       const modal = this.shadowRoot.querySelector(".modal");
-      if (!modal || !toolsContainer || !imageUploadSection) {
+      if (!modal || !toolsContainer) {
         throw new Error("Required elements not found in the DOM");
       }
 
@@ -574,9 +682,38 @@ class AITextEnhancer extends HTMLElement {
   }
 
   handleImageChange(event) {
-    const { file } = event.detail;
-    this.productImage = file;
-    this.productImageUrl = file ? null : this.getAttribute("image-url");
+    const file = event.target.files?.[0];
+    if (file) {
+      // La nueva imagen reemplaza cualquier imagen existente
+      this.productImage = file;
+      this.productImageUrl = null; // Limpiar la URL inicial
+
+      // Agregar la imagen como un mensaje al historial
+      this.addResponseToHistory("image-upload", this.renderImagePreview(file));
+
+      // Limpiar el input file
+      if (this.shadowRoot.querySelector("#image-upload")) {
+        this.shadowRoot.querySelector("#image-upload").value = "";
+      }
+    }
+  }
+
+  removeImage(imageId) {
+    // Solo permitir eliminar si la imagen no ha sido usada
+    const imageResponse = this.responseHistory.find(
+      (r) => r.action === "image-upload" && r.id === parseInt(imageId, 10)
+    );
+
+    if (imageResponse && !this.isImageUsed(this.productImage)) {
+      this.productImage = null;
+      this.productImageUrl = null;
+
+      // Eliminar la imagen del historial
+      this.responseHistory = this.responseHistory.filter(
+        (r) => r.id !== parseInt(imageId, 10)
+      );
+      this.renderResponseHistory();
+    }
   }
 
   async initializeComponents() {
@@ -639,6 +776,8 @@ class AITextEnhancer extends HTMLElement {
 
   async handleToolAction(event) {
     const action = event.detail?.action || event;
+    let tempResponse = null;
+
     try {
       await this.waitForInitialization();
 
@@ -648,8 +787,6 @@ class AITextEnhancer extends HTMLElement {
       }
 
       const content = this.currentContent;
-      let tempResponse;
-
       tempResponse = {
         id: Date.now(),
         action,
@@ -783,11 +920,9 @@ class AITextEnhancer extends HTMLElement {
         );
 
         if (editingIndex !== -1) {
-          // Eliminar la pregunta y su respuesta (si existe)
           this.responseHistory.splice(editingIndex, 2);
         }
 
-        // Limpiar el modo de edición
         delete chatForm.dataset.editingId;
         const submitButton = chatForm.querySelector("button");
         if (submitButton) {
@@ -801,23 +936,19 @@ class AITextEnhancer extends HTMLElement {
         }
       }
 
-      // Generate a unique cache key for the chat
       const chatContent = `${this.currentContent}-${message}`;
 
-      // Add user question to response history
       this.addResponseToHistory(
         "chat-question",
         `**${this.translations.chat.question}:** ${message}`
       );
 
-      // Check cache first
       const cachedResponse = this.cacheManager.get("chat", chatContent);
       if (cachedResponse) {
         this.addResponseToHistory("chat-response", cachedResponse);
         return;
       }
 
-      // Show typing indicator in preview
       const tempResponse = {
         id: Date.now(),
         action: "chat-response",
@@ -827,17 +958,23 @@ class AITextEnhancer extends HTMLElement {
       this.responseHistory.push(tempResponse);
       this.renderResponseHistory();
 
+      // Pasar la imagen actual (si existe) al chatResponse
+      const imageSource = this.productImage || this.productImageUrl;
       const response = await this.apiClient.chatResponse(
         this.currentContent,
-        message
+        message,
+        imageSource
       );
 
-      // Remove typing indicator and add final response
+      if (imageSource) {
+        const imageId = this.productImage?.name || this.productImageUrl;
+        response.imageUsed = imageId;
+      }
+
       this.responseHistory = this.responseHistory.filter(
         (r) => r.id !== tempResponse.id
       );
 
-      // Cache the response
       this.cacheManager.set("chat", chatContent, response);
       this.addResponseToHistory("chat-response", response);
     } catch (error) {

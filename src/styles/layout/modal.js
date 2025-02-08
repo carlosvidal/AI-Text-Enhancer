@@ -20,7 +20,7 @@ export const modalStyles = `
     background: var(--ai-background);
     width: 95%;
     max-width: 1200px;
-    height: 90vh;
+    height: 85vh;
     margin: 5vh auto;
     padding: 1.5rem;
     border-radius: var(--ai-radius-lg);
