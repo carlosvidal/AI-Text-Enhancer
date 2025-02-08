@@ -1,5 +1,7 @@
 // model-selector.js
-import { ModelManager } from '../constants/model-config.js';
+import { ModelManager } from "../constants/model-config.js";
+import { variables } from "../styles/base/variables.js";
+import { modelSelectorStyles } from "../styles/components/model-selector.js";
 
 export class ModelSelector extends HTMLElement {
   constructor() {
@@ -52,58 +54,14 @@ export class ModelSelector extends HTMLElement {
   render() {
     const models = this.modelManager.getAvailableModels();
     const defaultModel = this.modelManager.getDefaultModel();
-
+    const style = document.createElement("style");
+    style.textContent = `
+      ${variables}
+      ${animations} // Solo si el componente usa animaciones
+      ${componentSpecificStyles}
+    `;
+    this.shadowRoot.appendChild(style);
     this.shadowRoot.innerHTML = `
-      <style>
-        :host {
-          display: block;
-          font-family: system-ui, -apple-system, sans-serif;
-        }
-
-        .model-selector {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-          padding: 1rem;
-          background: #f9fafb;
-          border-radius: 0.5rem;
-          margin-bottom: 1rem;
-        }
-
-        select {
-          padding: 0.5rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.375rem;
-          background-color: white;
-          font-size: 0.875rem;
-          width: 100%;
-        }
-
-        .model-info {
-          font-size: 0.875rem;
-          color: #6b7280;
-        }
-
-        .suggested {
-          color: #059669;
-          font-size: 0.75rem;
-          margin-left: 0.5rem;
-        }
-
-        .context-info {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.75rem;
-          color: #6b7280;
-          margin-top: 0.25rem;
-        }
-
-        .warning {
-          color: #dc2626;
-        }
-      </style>
-
       <div class="model-selector">
         <select>
           ${models

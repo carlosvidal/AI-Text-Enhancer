@@ -3,6 +3,9 @@ import { TRANSLATIONS } from "../constants/translations.js";
 import { createAPIClient } from "../services/api-client.js";
 import { createCacheManager } from "../services/cache-manager.js";
 import { MarkdownHandler } from "../services/markdown-handler.js";
+import { variables } from "../styles/base/variables.js";
+import { animations } from "../styles/base/animations.js";
+import { chatStyles } from "../styles/components/chat.js";
 
 export class Chat extends HTMLElement {
   constructor() {
@@ -39,47 +42,11 @@ export class Chat extends HTMLElement {
   render() {
     const style = document.createElement("style");
     style.textContent = `
-      :host {
-        display: flex;
-        flex-direction: column;
-      }
-  
-      .chat-form {
-        display: flex;
-        gap: 8px;
-        padding: 1rem;
-        border-top: 1px solid #e5e7eb;
-      }
-  
-      .chat-input {
-        flex: 1;
-        padding: 8px;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        font-family: inherit;
-      }
-  
-      .chat-submit {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        background: #3b82f6;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-      }
-  
-      .chat-submit:hover {
-        background: #2563eb;
-      }
-  
-      .chat-submit svg {
-        width: 16px;
-        height: 16px;
-      }
+      ${variables}
+      ${animations}
+      ${chatStyles}
     `;
+    this.shadowRoot.appendChild(style);
 
     this.shadowRoot.innerHTML = `
       <form class="chat-form">

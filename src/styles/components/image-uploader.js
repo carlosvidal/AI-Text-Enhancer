@@ -1,5 +1,5 @@
-// src/styles/components/image-uploader.js
-export const styles = `
+// styles/components/image-uploader.js
+export const imageUploaderStyles = `
   :host {
     display: block;
   }
@@ -22,7 +22,6 @@ export const styles = `
     position: relative;
     overflow: hidden;
     background: #f9fafb;
-    transition: all 0.3s ease;
   }
 
   .image-preview.has-image {
@@ -36,6 +35,12 @@ export const styles = `
     object-fit: contain;
   }
 
+  .image-preview svg {
+    width: 24px;
+    height: 24px;
+    color: #6b7280;
+  }
+
   .upload-button {
     display: inline-flex;
     align-items: center;
@@ -46,11 +51,20 @@ export const styles = `
     border-radius: 6px;
     cursor: pointer;
     font-family: inherit;
-    transition: background-color 0.2s ease;
+    color: #374151;
   }
 
   .upload-button:hover {
     background: #d1d5db;
+  }
+
+  .upload-button svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  input[type="file"] {
+    display: none;
   }
 
   .remove-image {
@@ -67,7 +81,13 @@ export const styles = `
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s ease;
+    font-size: 18px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .image-preview:hover .remove-image {
+    opacity: 1;
   }
 
   .remove-image:hover {
@@ -75,12 +95,24 @@ export const styles = `
   }
 
   .hidden {
+    display: none !important;
+  }
+
+  /* Estilo para el input de archivo nativo */
+  input[type="file"]::file-selector-button {
     display: none;
   }
 
+  /* Estilo para el área de drag & drop */
   .image-preview.dragover {
     border-color: #3b82f6;
     background: #eff6ff;
-    transform: scale(1.02);
+  }
+
+  /* Mejora del contenedor del botón */
+  .button-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
   }
 `;

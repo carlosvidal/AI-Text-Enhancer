@@ -1,7 +1,6 @@
 // ai-text-enhancer.js
 import { ImageUploader } from "./ImageUploader.js";
 import { ToolBar } from "./ToolBar.js";
-import { styles } from "../styles/styles.js";
 import { MarkdownHandler } from "../services/markdown-handler.js";
 import { createAPIClient } from "../services/api-client.js";
 import { createCacheManager } from "../services/cache-manager.js";
@@ -10,6 +9,21 @@ import { TRANSLATIONS } from "../constants/translations.js";
 import { EditorAdapter } from "../services/editor-adapter.js";
 import { Chat } from "./Chat.js";
 import { getToolIcon } from "../services/icon-service.js";
+
+// 1. Imports base
+import { variables } from "../styles/base/variables.js";
+import { animations } from "../styles/base/animations.js";
+
+// 2. Imports componentes
+import { modalTriggerStyles } from "../styles/components/modal-trigger.js";
+import { chatStyles } from "../styles/components/chat.js";
+import { imageUploaderStyles } from "../styles/components/image-uploader.js";
+import { toolbarStyles } from "../styles/components/toolbar.js";
+import { modelSelectorStyles } from "../styles/components/model-selector.js";
+
+// 3. Imports layout
+import { modalStyles } from "../styles/layout/modal.js";
+import { previewStyles } from "../styles/layout/preview.js";
 
 class AITextEnhancer extends HTMLElement {
   constructor() {
@@ -61,40 +75,61 @@ class AITextEnhancer extends HTMLElement {
     preview.innerHTML = this.responseHistory
       .map(
         (response) => `
-        <div class="response-entry" data-id="${response.id}">
-          <div class="response-header">
-            <div class="response-tool">
-              ${getToolIcon(response.action)}
-              ${this.translations.tools[response.action]}
+          <div class="response-entry" data-id="${response.id}">
+            <div class="response-header">
+              <div class="response-tool">
+                ${getToolIcon(response.action)}
+                ${this.translations.tools[response.action]}
+              </div>
+              <div class="response-timestamp">
+                ${this.formatTimestamp(response.timestamp)}
+              </div>
             </div>
-            <div class="response-timestamp">
-              ${this.formatTimestamp(response.timestamp)}
+            <div class="response-content">
+              ${this.markdownHandler.convertToHTML(response.content)}
             </div>
+            ${
+              response.action === "chat-question"
+                ? `
+              <div class="response-actions">
+                <button class="response-action edit-button" data-response-id="${response.id}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                  Edit
+                </button>
+              </div>
+            `
+                : response.action === "chat-error"
+                ? ``
+                : `
+              <div class="response-actions">
+                <button class="response-action retry-button" data-response-id="${response.id}" data-action="${response.action}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14"/>
+                    <path d="M11 10v4h4"/>
+                  </svg>
+                  Retry
+                </button>
+                <button class="response-action copy-button" data-response-id="${response.id}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  Copy
+                </button>
+                <button class="response-action primary use-button" data-response-id="${response.id}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m5 12 5 5L20 7"></path>
+                  </svg>
+                  Use This
+                </button>
+              </div>
+            `
+            }
           </div>
-          <div class="response-content">
-            ${this.markdownHandler.convertToHTML(response.content)}
-          </div>
-          <div class="response-actions">
-            <button class="response-action copy-button" data-response-id="${
-              response.id
-            }">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              Copy
-            </button>
-            <button class="response-action primary use-button" data-response-id="${
-              response.id
-            }">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="m5 12 5 5L20 7"></path>
-              </svg>
-              Use This
-            </button>
-          </div>
-        </div>
-      `
+        `
       )
       .join("");
 
@@ -117,6 +152,23 @@ class AITextEnhancer extends HTMLElement {
       button.addEventListener("click", (e) => {
         const responseId = e.target.closest("button").dataset.responseId;
         this.useResponse(responseId);
+      });
+    });
+
+    // Event listeners para botones de retry
+    this.shadowRoot.querySelectorAll(".retry-button").forEach((button) => {
+      button.addEventListener("click", (e) => {
+        const responseBtn = e.target.closest("button");
+        const action = responseBtn.dataset.action;
+        this.handleToolAction(action);
+      });
+    });
+
+    // Event listeners para botones de edición
+    this.shadowRoot.querySelectorAll(".edit-button").forEach((button) => {
+      button.addEventListener("click", (e) => {
+        const responseId = e.target.closest("button").dataset.responseId;
+        this.editChatQuestion(responseId);
       });
     });
   }
@@ -349,16 +401,6 @@ class AITextEnhancer extends HTMLElement {
       });
     }
 
-    // Actions
-    const actionButtons = this.shadowRoot.querySelectorAll(
-      ".action-button[data-action]"
-    );
-    if (actionButtons.length) {
-      actionButtons.forEach((action) => {
-        action.onclick = () => this.handleAction(action.dataset.action);
-      });
-    }
-
     // Chat form
     const chatForm = this.shadowRoot.querySelector(".chat-form");
     if (chatForm) {
@@ -379,7 +421,41 @@ class AITextEnhancer extends HTMLElement {
 
     const template = document.createElement("template");
     template.innerHTML = `
-      <style>${styles}</style>
+      <style>
+        ${variables}
+        ${animations}
+        ${modalTriggerStyles}
+        ${modalStyles}
+        ${previewStyles}
+        
+        /* Estilos específicos del contenedor principal */
+        :host {
+          display: inline-block;
+          font-family: var(--ai-font-sans);
+          position: relative;
+        }
+
+        .editor-section {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+        }
+
+        .chat-section {
+          border-top: 1px solid var(--ai-border);
+          margin-top: 1rem;
+          padding-top: 1rem;
+        }
+
+        .image-upload-section {
+          margin-bottom: 1rem;
+        }
+
+        .tools-container {
+          margin-bottom: 1rem;
+        }
+      </style>
       <button class="modal-trigger">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -424,20 +500,7 @@ class AITextEnhancer extends HTMLElement {
               <div class="chat-section">
                 <ai-chat language="${this.language}"></ai-chat>
               </div>
-        
-              <div class="actions">
-                <button class="action-button" data-action="retry">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-restart"><path d="M21 6H3"/><path d="M7 12H3"/><path d="M7 18H3"/><path d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14"/><path d="M11 10v4h4"/></svg>
-                  ${t.actions.retry}
-                </button>
-                <button class="action-button success" data-action="insert">
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-between-horizontal-start"><rect width="13" height="7" x="8" y="3" rx="1"/><path d="m2 9 3 3-3 3"/><rect width="13" height="7" x="8" y="14" rx="1"/></svg>                  ${t.actions.insert}
-                </button>
-                <button class="action-button primary" data-action="replace">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-replace"><path d="M14 4c0-1.1.9-2 2-2"/><path d="M20 2c1.1 0 2 .9 2 2"/><path d="M22 8c0 1.1-.9 2-2 2"/><path d="M16 10c-1.1 0-2-.9-2-2"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5c0-1.7 1.3-3 3-3h1"/><rect width="8" height="8" x="2" y="14" rx="2"/></svg>
-                  ${t.actions.replace}
-                </button>
-              </div>
+
             </div>
         </div>
       </div>`;
@@ -637,6 +700,41 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
+  editChatQuestion(responseId) {
+    const response = this.responseHistory.find(
+      (r) => r.id === parseInt(responseId, 10)
+    );
+    if (!response) return;
+
+    // Extraer el texto de la pregunta (eliminando el prefijo "Question:")
+    const questionText = response.content.replace(/^\*\*.*:\*\*\s*/, "");
+
+    // Obtener el chat input y el form
+    const chatInput = this.shadowRoot.querySelector(".chat-input");
+    const chatForm = this.shadowRoot.querySelector(".chat-form");
+
+    if (chatInput && chatForm) {
+      // Guardar la referencia al mensaje que estamos editando
+      chatForm.dataset.editingId = responseId;
+
+      // Cambiar el texto del botón de envío
+      const submitButton = chatForm.querySelector("button");
+      if (submitButton) {
+        submitButton.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/>
+            <path d="m2 6 10 7 10-7"/>
+          </svg>
+          Update
+        `;
+      }
+
+      // Rellenar y enfocar el input
+      chatInput.value = questionText;
+      chatInput.focus();
+    }
+  }
+
   copyToClipboard(responseId) {
     const response = this.responseHistory.find(
       (r) => r.id === parseInt(responseId, 10)
@@ -669,6 +767,8 @@ class AITextEnhancer extends HTMLElement {
 
   async handleChatMessage(event) {
     const message = event.detail.message;
+    const chatForm = this.shadowRoot.querySelector(".chat-form");
+    const editingId = chatForm?.dataset.editingId;
 
     if (!this.apiKey) {
       this.addResponseToHistory("chat-error", this.translations.errors.apiKey);
@@ -676,6 +776,31 @@ class AITextEnhancer extends HTMLElement {
     }
 
     try {
+      // Si estamos editando, eliminar la pregunta anterior y su respuesta
+      if (editingId) {
+        const editingIndex = this.responseHistory.findIndex(
+          (r) => r.id === parseInt(editingId, 10)
+        );
+
+        if (editingIndex !== -1) {
+          // Eliminar la pregunta y su respuesta (si existe)
+          this.responseHistory.splice(editingIndex, 2);
+        }
+
+        // Limpiar el modo de edición
+        delete chatForm.dataset.editingId;
+        const submitButton = chatForm.querySelector("button");
+        if (submitButton) {
+          submitButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14"/>
+              <path d="m12 5 7 7-7 7"/>
+            </svg>
+            Send
+          `;
+        }
+      }
+
       // Generate a unique cache key for the chat
       const chatContent = `${this.currentContent}-${message}`;
 
@@ -758,22 +883,6 @@ class AITextEnhancer extends HTMLElement {
 
     container.appendChild(message);
     container.scrollTop = container.scrollHeight;
-  }
-
-  handleAction(action) {
-    switch (action) {
-      case "retry":
-        this.handleToolAction("improve");
-        break;
-      case "insert":
-        this.setEditorContent(this.enhancedText, "insert");
-        this.shadowRoot.querySelector(".modal").classList.remove("open");
-        break;
-      case "replace":
-        this.setEditorContent(this.enhancedText, "replace");
-        this.shadowRoot.querySelector(".modal").classList.remove("open");
-        break;
-    }
   }
 }
 

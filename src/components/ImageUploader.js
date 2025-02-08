@@ -1,4 +1,7 @@
 // src/components/ImageUploader.js
+import { variables } from "../styles/base/variables.js";
+import { animations } from "../styles/base/animations.js";
+import { imageUploaderStyles } from "../styles/components/image-uploader.js";
 
 export class ImageUploader extends HTMLElement {
   constructor() {
@@ -33,72 +36,14 @@ export class ImageUploader extends HTMLElement {
   }
 
   render() {
+    const style = document.createElement("style");
+    style.textContent = `
+      ${variables}
+      ${animations}
+      ${imageUploaderStyles}
+    `;
+    this.shadowRoot.appendChild(style);
     this.shadowRoot.innerHTML = `
-      <style>
-        .image-upload {
-          margin-bottom: 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .image-preview {
-          width: 200px;
-          height: 200px;
-          border: 2px dashed #d1d5db;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .image-preview.has-image {
-          border-style: solid;
-        }
-
-        .image-preview img {
-          max-width: 100%;
-          max-height: 100%;
-          object-fit: contain;
-        }
-
-        .upload-button {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 16px;
-          background: #e5e7eb;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-        }
-
-        .upload-button:hover {
-          background: #d1d5db;
-        }
-
-        .remove-image {
-          position: absolute;
-          top: 8px;
-          right: 8px;
-          background: rgba(0, 0, 0, 0.5);
-          color: white;
-          border: none;
-          border-radius: 50%;
-          width: 24px;
-          height: 24px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .hidden {
-          display: none;
-        }
-      </style>
       <div class="image-upload">
         <div class="image-preview" id="imagePreview">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -107,14 +52,16 @@ export class ImageUploader extends HTMLElement {
             <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
           </svg>
         </div>
-        <button class="upload-button" id="uploadButton" type="button">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
-            <line x1="16" y1="5" x2="22" y2="5"/>
-            <line x1="19" y1="2" x2="19" y2="8"/>
-          </svg>
-          Upload Product Image
-        </button>
+        <div class="button-container">
+          <button class="upload-button" id="uploadButton" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
+              <line x1="16" y1="5" x2="22" y2="5"/>
+              <line x1="19" y1="2" x2="19" y2="8"/>
+            </svg>
+            Upload Product Image
+          </button>
+        </div>
         <input type="file" id="imageInput" accept="image/*" class="hidden">
       </div>
     `;

@@ -1,6 +1,8 @@
 // src/components/ToolBar.js
 import { TRANSLATIONS } from "../constants/translations.js";
 import { getToolIcon } from "../services/icon-service.js";
+import { variables } from "../styles/base/variables.js";
+import { toolbarStyles } from "../styles/components/toolbar.js";
 
 export class ToolBar extends HTMLElement {
   constructor() {
