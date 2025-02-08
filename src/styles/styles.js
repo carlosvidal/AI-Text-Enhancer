@@ -153,11 +153,12 @@ export const styles = `
 
   .modal-body {
     display: flex;
+    flex-direction: column;
     flex: 1;
     min-height: 0;
-    gap: 20px;
   }
 
+  
   .editor-section {
     flex: 1;
     display: flex;
@@ -166,12 +167,10 @@ export const styles = `
   }
   
   .chat-section {
-    width: 300px;
-    display: flex;
-    flex-direction: column;
-    border-left: 1px solid #e5e7eb;
-    padding-left: 20px;
-  }
+  border-top: 1px solid #e5e7eb;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
 
   .modal-header h2 {
     margin: 0;

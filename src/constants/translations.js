@@ -15,6 +15,9 @@ export const TRANSLATIONS = {
       paraphrase: "Paraphrase",
       formal: "More Formal",
       casual: "More Casual",
+      "chat-question": "Question",
+      "chat-response": "Response",
+      "chat-error": "Error",
     },
     actions: {
       retry: "Retry",
@@ -27,6 +30,7 @@ export const TRANSLATIONS = {
     },
     chat: {
       placeholder: "Ask a question about the product description...",
+      question: "Question",
     },
     errors: {
       apiKey: "Error: API key not configured. Please provide a valid API key.",
@@ -48,6 +52,9 @@ export const TRANSLATIONS = {
       paraphrase: "Parafrasear",
       formal: "Mas formal",
       casual: "Mas casual",
+      "chat-question": "Pregunta",
+      "chat-response": "Respuesta",
+      "chat-error": "Error",
     },
     actions: {
       retry: "Reintentar",
@@ -60,6 +67,7 @@ export const TRANSLATIONS = {
     },
     chat: {
       placeholder: "Haz una pregunta sobre la descripción del producto...",
+      question: "Pregunta",
     },
     errors: {
       apiKey:
@@ -82,6 +90,9 @@ export const TRANSLATIONS = {
       paraphrase: "Paraphraser",
       formal: "Plus Formel",
       casual: "Plus Décontracté",
+      "chat-question": "Question",
+      "chat-response": "Réponse",
+      "chat-error": "Erreur",
     },
     actions: {
       retry: "Réessayer",
@@ -93,6 +104,7 @@ export const TRANSLATIONS = {
     },
     chat: {
       placeholder: "Posez une question sur la description du produit...",
+      question: "Question",
     },
     errors: {
       apiKey:
@@ -115,6 +127,9 @@ export const TRANSLATIONS = {
       paraphrase: "Umformulieren",
       formal: "Formaler",
       casual: "Lockerer",
+      "chat-question": "Frage",
+      "chat-response": "Antwort",
+      "chat-error": "Fehler",
     },
     actions: {
       retry: "Wiederholen",
@@ -126,6 +141,7 @@ export const TRANSLATIONS = {
     },
     chat: {
       placeholder: "Stellen Sie eine Frage zur Produktbeschreibung...",
+      question: "Frage",
     },
     errors: {
       apiKey:
@@ -148,6 +164,9 @@ export const TRANSLATIONS = {
       paraphrase: "Parafrasear",
       formal: "Mais Formal",
       casual: "Mais Casual",
+      "chat-question": "Pergunta",
+      "chat-response": "Resposta",
+      "chat-error": "Erro",
     },
     actions: {
       retry: "Tentar Novamente",
@@ -159,6 +178,7 @@ export const TRANSLATIONS = {
     },
     chat: {
       placeholder: "Faça uma pergunta sobre a descrição do produto...",
+      question: "Pergunta",
     },
     errors: {
       apiKey:

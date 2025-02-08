@@ -8,6 +8,8 @@ import { createCacheManager } from "../services/cache-manager.js";
 import { ModelManager } from "../services/model-manager.js";
 import { TRANSLATIONS } from "../constants/translations.js";
 import { EditorAdapter } from "../services/editor-adapter.js";
+import { Chat } from "./Chat.js";
+import { getToolIcon } from "../services/icon-service.js";
 
 class AITextEnhancer extends HTMLElement {
   constructor() {
@@ -24,9 +26,15 @@ class AITextEnhancer extends HTMLElement {
       ttl: 30 * 60 * 1000, // 30 minutes
     });
 
-    this.modelManager = new ModelManager();
+    // Initialize cache manager
+    this.cacheManager = createCacheManager({
+      prefix: "ai-text-enhancer",
+      maxItems: 20,
+      ttl: 30 * 60 * 1000, // 30 minutes
+    });
 
     // Initialize components
+    this.modelManager = new ModelManager();
     this.markdownHandler = new MarkdownHandler();
     this.enhancedText = "";
     this.chatMessages = [];
@@ -56,7 +64,7 @@ class AITextEnhancer extends HTMLElement {
         <div class="response-entry" data-id="${response.id}">
           <div class="response-header">
             <div class="response-tool">
-              ${this.getToolIcon(response.action)}
+              ${getToolIcon(response.action)}
               ${this.translations.tools[response.action]}
             </div>
             <div class="response-timestamp">
@@ -218,6 +226,10 @@ class AITextEnhancer extends HTMLElement {
         break;
       case "language":
         if (this.isInitialized) {
+          const chatComponent = this.shadowRoot.querySelector("ai-chat");
+          if (chatComponent) {
+            chatComponent.setAttribute("language", newValue);
+          }
           this.updateTranslations();
         }
         break;
@@ -408,6 +420,10 @@ class AITextEnhancer extends HTMLElement {
             <div class="image-upload-section"></div>
               <div class="tools-container"></div>
               <div class="preview">${t.preview.placeholder}</div>
+
+              <div class="chat-section">
+                <ai-chat language="${this.language}"></ai-chat>
+              </div>
         
               <div class="actions">
                 <button class="action-button" data-action="retry">
@@ -423,15 +439,6 @@ class AITextEnhancer extends HTMLElement {
                 </button>
               </div>
             </div>
-            
-            <div class="chat-section">
-              <div class="chat-container"></div>
-              <form class="chat-form">
-                <input type="text" class="chat-input" placeholder="${t.chat.placeholder}">
-                <button type="submit" class="action-button primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
-              </form>
-            </div>
-          </div>
         </div>
       </div>`;
 
@@ -447,18 +454,14 @@ class AITextEnhancer extends HTMLElement {
       // Esperar a que el DOM esté listo
       await new Promise((resolve) => requestAnimationFrame(resolve));
 
-      // Verificar que los elementos principales existen
-      const modal = this.shadowRoot.querySelector(".modal");
-      const toolsContainer = this.shadowRoot.querySelector(".tools-container");
+      // Initialize components
       const imageUploadSection = this.shadowRoot.querySelector(
         ".image-upload-section"
       );
+      const toolsContainer = this.shadowRoot.querySelector(".tools-container");
+      const chatComponent = this.shadowRoot.querySelector("ai-chat");
 
-      if (!modal || !toolsContainer || !imageUploadSection) {
-        throw new Error("Required elements not found in the DOM");
-      }
-
-      // Inicializar los componentes hijos
+      // Setup image uploader
       const imageUploader = document.createElement("ai-image-uploader");
       if (this.getAttribute("image-url")) {
         imageUploader.setAttribute("image-url", this.getAttribute("image-url"));
@@ -469,6 +472,7 @@ class AITextEnhancer extends HTMLElement {
       );
       imageUploadSection.appendChild(imageUploader);
 
+      // Setup toolbar
       const toolbar = document.createElement("ai-toolbar");
       toolbar.setAttribute("language", this.language);
       toolbar.setAttribute(
@@ -477,6 +481,17 @@ class AITextEnhancer extends HTMLElement {
       );
       toolbar.addEventListener("toolaction", this.handleToolAction.bind(this));
       toolsContainer.appendChild(toolbar);
+
+      // Setup chat event listener
+      chatComponent.addEventListener(
+        "chatMessage",
+        this.handleChatMessage.bind(this)
+      );
+
+      const modal = this.shadowRoot.querySelector(".modal");
+      if (!modal || !toolsContainer || !imageUploadSection) {
+        throw new Error("Required elements not found in the DOM");
+      }
 
       // Esperar a que los componentes hijos estén listos
       await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -652,21 +667,11 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
-  async handleChatSubmit(e) {
-    e.preventDefault();
-    const input = this.shadowRoot.querySelector(".chat-input");
-    const message = input.value.trim();
-
-    if (!message) return;
-
-    this.addChatMessage("user", message);
-    input.value = "";
+  async handleChatMessage(event) {
+    const message = event.detail.message;
 
     if (!this.apiKey) {
-      this.addChatMessage(
-        "assistant",
-        "Error: API key not configured. Please provide a valid API key."
-      );
+      this.addResponseToHistory("chat-error", this.translations.errors.apiKey);
       return;
     }
 
@@ -674,26 +679,45 @@ class AITextEnhancer extends HTMLElement {
       // Generate a unique cache key for the chat
       const chatContent = `${this.currentContent}-${message}`;
 
+      // Add user question to response history
+      this.addResponseToHistory(
+        "chat-question",
+        `**${this.translations.chat.question}:** ${message}`
+      );
+
       // Check cache first
       const cachedResponse = this.cacheManager.get("chat", chatContent);
       if (cachedResponse) {
-        this.addChatMessage("assistant", cachedResponse);
+        this.addResponseToHistory("chat-response", cachedResponse);
         return;
       }
 
-      // If not in cache, call API
+      // Show typing indicator in preview
+      const tempResponse = {
+        id: Date.now(),
+        action: "chat-response",
+        content: '<span class="typing">|</span>',
+        timestamp: new Date(),
+      };
+      this.responseHistory.push(tempResponse);
+      this.renderResponseHistory();
+
       const response = await this.apiClient.chatResponse(
         this.currentContent,
         message
       );
 
+      // Remove typing indicator and add final response
+      this.responseHistory = this.responseHistory.filter(
+        (r) => r.id !== tempResponse.id
+      );
+
       // Cache the response
       this.cacheManager.set("chat", chatContent, response);
-
-      this.addChatMessage("assistant", response);
+      this.addResponseToHistory("chat-response", response);
     } catch (error) {
       console.error("Error:", error);
-      this.addChatMessage("assistant", `Error: ${error.message}`);
+      this.addResponseToHistory("chat-error", `Error: ${error.message}`);
     }
   }
 
