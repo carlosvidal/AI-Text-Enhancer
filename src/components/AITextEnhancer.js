@@ -1,13 +1,13 @@
 // ai-text-enhancer.js
+import { TRANSLATIONS } from "../constants/translations.js";
 import { ImageUploader } from "./ImageUploader.js";
 import { ToolBar } from "./ToolBar.js";
+import { Chat } from "./Chat.js";
 import { MarkdownHandler } from "../services/markdown-handler.js";
 import { createAPIClient } from "../services/api-client.js";
 import { createCacheManager } from "../services/cache-manager.js";
 import { ModelManager } from "../services/model-manager.js";
-import { TRANSLATIONS } from "../constants/translations.js";
 import { EditorAdapter } from "../services/editor-adapter.js";
-import { Chat } from "./Chat.js";
 import { getToolIcon } from "../services/icon-service.js";
 
 // 1. Imports base
@@ -506,7 +506,6 @@ class AITextEnhancer extends HTMLElement {
         .preview {
           flex: 1;
           overflow-y: auto;
-          padding: 1rem;
           background: var(--ai-background);
           border-radius: var(--ai-radius);
         }

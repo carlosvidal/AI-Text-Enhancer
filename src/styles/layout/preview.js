@@ -3,7 +3,6 @@ export const previewStyles = `
   .preview {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem;
     background: var(--ai-background);
     border-radius: var(--ai-radius);
   }
