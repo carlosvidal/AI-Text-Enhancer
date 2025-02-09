@@ -1,4 +1,12 @@
 // ai-text-enhancer.js
+// Imports
+import { ResponseHistory } from "./ResponseHistory.js";
+import {
+  createTemplate,
+  attachShadowTemplate,
+  createStyleSheet,
+} from "../utils/dom-utils.js";
+import { createEventEmitter } from "../utils/event-utils.js";
 import { TRANSLATIONS } from "../constants/translations.js";
 import { ImageUploader } from "./ImageUploader.js";
 import { ToolBar } from "./ToolBar.js";
@@ -10,45 +18,49 @@ import { ModelManager } from "../services/model-manager.js";
 import { EditorAdapter } from "../services/editor-adapter.js";
 import { getToolIcon } from "../services/icon-service.js";
 
-// 1. Imports base
+// Imports de estilos
 import { variables } from "../styles/base/variables.js";
 import { animations } from "../styles/base/animations.js";
-
-// 2. Imports componentes
 import { modalTriggerStyles } from "../styles/components/modal-trigger.js";
 import { chatStyles } from "../styles/components/chat.js";
 import { imageUploaderStyles } from "../styles/components/image-uploader.js";
 import { imagePreviewStyles } from "../styles/components/image-preview.js";
 import { toolbarStyles } from "../styles/components/toolbar.js";
 import { modelSelectorStyles } from "../styles/components/model-selector.js";
-
-// 3. Imports layout
 import { modalStyles } from "../styles/layout/modal.js";
 import { previewStyles } from "../styles/layout/preview.js";
+
+if (!customElements.get("response-history")) {
+  customElements.define("response-history", ResponseHistory);
+}
 
 class AITextEnhancer extends HTMLElement {
   constructor() {
     super();
-    this.responseHistory = [];
-    this.attachShadow({ mode: "open" });
+    // Registrar todos los componentes necesarios si no existen
+    if (!customElements.get("ai-toolbar")) {
+      customElements.define("ai-toolbar", ToolBar);
+    }
+    if (!customElements.get("ai-chat")) {
+      customElements.define("ai-chat", Chat);
+    }
+
+    // Inicializar el event emitter
+    this.eventEmitter = createEventEmitter(this);
+
+    // Referencias a componentes
+    this.responseHistory = null;
     this.editorAdapter = null;
     this.currentAction = "improve";
 
-    // Initialize cache manager
+    // Inicializar cache manager
     this.cacheManager = createCacheManager({
       prefix: "ai-text-enhancer",
       maxItems: 20,
-      ttl: 30 * 60 * 1000, // 30 minutes
+      ttl: 30 * 60 * 1000, // 30 minutos
     });
 
-    // Initialize cache manager
-    this.cacheManager = createCacheManager({
-      prefix: "ai-text-enhancer",
-      maxItems: 20,
-      ttl: 30 * 60 * 1000, // 30 minutes
-    });
-
-    // Initialize components
+    // Inicializar componentes core
     this.modelManager = new ModelManager();
     this.markdownHandler = new MarkdownHandler();
     this.enhancedText = "";
@@ -56,8 +68,16 @@ class AITextEnhancer extends HTMLElement {
     this.isInitialized = false;
     this.productImage = null;
 
-    // El control de uso ahora es opcional
+    // Control de uso opcional
     this.usageControl = null;
+
+    // Bind de métodos
+    this.handleResponseCopy = this.handleResponseCopy.bind(this);
+    this.handleResponseUse = this.handleResponseUse.bind(this);
+    this.handleResponseRetry = this.handleResponseRetry.bind(this);
+    this.handleResponseEdit = this.handleResponseEdit.bind(this);
+    this.handleToolAction = this.handleToolAction.bind(this);
+    this.handleChatMessage = this.handleChatMessage.bind(this);
   }
 
   addResponseToHistory(action, content) {
@@ -67,151 +87,8 @@ class AITextEnhancer extends HTMLElement {
       content,
       timestamp: new Date(),
     };
-    this.responseHistory.push(response);
-    this.renderResponseHistory();
-  }
 
-  renderResponseHistory() {
-    const preview = this.shadowRoot.querySelector(".preview");
-    if (!preview) return;
-
-    // Mostrar la imagen inicial del parámetro si existe y no ha sido reemplazada
-    let content = "";
-    if (this.productImageUrl && !this.productImage) {
-      content = this.renderImagePreview(this.productImageUrl, true);
-    }
-
-    // Agregar el resto del historial
-    content += this.responseHistory
-      .map(
-        (response) => `
-        <div class="response-entry" data-id="${response.id}">
-          <div class="response-header">
-            <div class="response-tool">
-              ${getToolIcon(response.action)}
-              ${this.translations.tools[response.action] || response.action}
-            </div>
-            <div class="response-timestamp">
-              ${this.formatTimestamp(response.timestamp)}
-            </div>
-          </div>
-          <div class="response-content">
-            ${
-              response.action === "image-upload"
-                ? response.content
-                : this.markdownHandler.convertToHTML(response.content)
-            }
-          </div>
-          ${
-            response.action !== "image-upload"
-              ? this.renderResponseActions(response)
-              : ""
-          }
-        </div>
-      `
-      )
-      .join("");
-
-    preview.innerHTML = content;
-    this.addResponseEventListeners();
-  }
-
-  renderResponseActions(response) {
-    const t = this.translations;
-
-    if (response.action === "chat-question") {
-      return `
-        <div class="response-actions">
-          <button class="response-action edit-button" data-response-id="${
-            response.id
-          }">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-            ${t.actions.edit || "Edit"}
-          </button>
-        </div>
-      `;
-    }
-
-    if (response.action === "chat-error") {
-      return "";
-    }
-
-    return `
-      <div class="response-actions">
-        <button class="response-action retry-button" data-response-id="${
-          response.id
-        }" data-action="${response.action}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14"/>
-            <path d="M11 10v4h4"/>
-          </svg>
-          ${t.actions.retry || "Retry"}
-        </button>
-        <button class="response-action copy-button" data-response-id="${
-          response.id
-        }">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-          ${t.actions.copy || "Copy"}
-        </button>
-        <button class="response-action primary use-button" data-response-id="${
-          response.id
-        }">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m5 12 5 5L20 7"></path>
-          </svg>
-          ${t.actions.use || "Use This"}
-        </button>
-      </div>
-    `;
-  }
-
-  // Nuevo método para agregar event listeners
-  addResponseEventListeners() {
-    // Event listeners para botones de copiar
-    this.shadowRoot.querySelectorAll(".copy-button").forEach((button) => {
-      button.addEventListener("click", (e) => {
-        const responseId = e.target.closest("button").dataset.responseId;
-        this.copyToClipboard(responseId);
-      });
-    });
-
-    // Event listeners para botones de usar
-    this.shadowRoot.querySelectorAll(".use-button").forEach((button) => {
-      button.addEventListener("click", (e) => {
-        const responseId = e.target.closest("button").dataset.responseId;
-        this.useResponse(responseId);
-      });
-    });
-
-    // Event listeners para botones de retry
-    this.shadowRoot.querySelectorAll(".retry-button").forEach((button) => {
-      button.addEventListener("click", (e) => {
-        const responseBtn = e.target.closest("button");
-        const action = responseBtn.dataset.action;
-        this.handleToolAction(action);
-      });
-    });
-
-    // Event listeners para botones de edición
-    this.shadowRoot.querySelectorAll(".edit-button").forEach((button) => {
-      button.addEventListener("click", (e) => {
-        const responseId = e.target.closest("button").dataset.responseId;
-        this.editChatQuestion(responseId);
-      });
-    });
-  }
-
-  formatTimestamp(date) {
-    return new Intl.DateTimeFormat("default", {
-      hour: "numeric",
-      minute: "numeric",
-    }).format(date);
+    this.responseHistory.addResponse(response);
   }
 
   static get observedAttributes() {
@@ -368,12 +245,6 @@ class AITextEnhancer extends HTMLElement {
         action.textContent = t.actions[actionKey];
       });
 
-    // Placeholder del preview
-    const preview = this.shadowRoot.querySelector(".preview");
-    if (preview.textContent === TRANSLATIONS.en.preview.placeholder) {
-      preview.textContent = t.preview.placeholder;
-    }
-
     // Chat
     const chatInput = this.shadowRoot.querySelector(".chat-input");
     chatInput.placeholder = t.chat.placeholder;
@@ -395,11 +266,6 @@ class AITextEnhancer extends HTMLElement {
       modalTrigger.onclick = () => {
         modal.classList.add("open");
         this.updateVisibleTools();
-        if (this.responseHistory.length > 0) {
-          this.renderResponseHistory();
-        } else {
-          this.updatePreview(this.translations.preview.placeholder);
-        }
       };
     }
 
@@ -435,10 +301,23 @@ class AITextEnhancer extends HTMLElement {
       });
     }
 
+    // Tool buttons
+    const toolbar = this.shadowRoot.querySelector("ai-toolbar");
+    if (toolbar) {
+      toolbar.addEventListener("toolaction", this.handleToolAction);
+    }
+
     // Chat form
     const chatForm = this.shadowRoot.querySelector(".chat-form");
     if (chatForm) {
-      chatForm.onsubmit = (e) => this.handleChatSubmit(e);
+      chatForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const input = chatForm.querySelector(".chat-input");
+        if (input && input.value.trim()) {
+          this.handleChatMessage({ detail: { message: input.value.trim() } });
+          input.value = "";
+        }
+      });
     }
 
     // Manejar el botón de upload
@@ -479,6 +358,7 @@ class AITextEnhancer extends HTMLElement {
         ${modalStyles}
         ${previewStyles}
         ${imagePreviewStyles}
+        ${chatStyles}
         
         :host {
           display: inline-block;
@@ -490,47 +370,111 @@ class AITextEnhancer extends HTMLElement {
           flex: 1;
           display: flex;
           flex-direction: column;
+          height: 100%;
           min-height: 0;
+          overflow: hidden;
         }
   
         .chat-section {
           border-top: 1px solid var(--ai-border);
-          margin-top: 1rem;
+          margin-top: auto;
           padding-top: 1rem;
+          flex-shrink: 0;
         }
   
         .tools-container {
           margin-bottom: 1rem;
-        }
-  
-        .preview {
-          flex: 1;
-          overflow-y: auto;
-          background: var(--ai-background);
-          border-radius: var(--ai-radius);
+          flex-shrink: 0;
         }
 
-         .initial-image {
+        response-history {
+          flex: 1;
+          min-height: 0;
+          overflow: auto;
+        }
+
+        .initial-image {
           border-color: var(--ai-primary);
           background: var(--ai-background-light);
           position: relative;
+          margin-bottom: 1rem;
         }
 
-        .initial-image::before {
-          content: 'Initial image';
-          position: absolute;
-          top: -0.75rem;
-          left: 1rem;
+        .image-preview-card {
           background: var(--ai-background);
-          padding: 0 0.5rem;
-          font-size: 0.75rem;
-          color: var(--ai-primary);
-          border-radius: var(--ai-radius-sm);
+          border: 1px solid var(--ai-border);
+          border-radius: var(--ai-radius);
+          padding: 1rem;
+          margin-bottom: 1rem;
         }
 
-        .initial-image .image-preview-label {
-          color: var(--ai-primary);
-          font-weight: 500;
+        .image-preview-content {
+          display: flex;
+          align-items: flex-start;
+          gap: 1rem;
+        }
+
+        .image-preview-thumbnail {
+          width: 96px;
+          height: 96px;
+          position: relative;
+          border-radius: var(--ai-radius);
+          overflow: hidden;
+          background: var(--ai-background-light);
+        }
+
+        .image-preview-thumbnail img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .image-preview-info {
+          flex: 1;
+        }
+
+        .image-preview-label {
+          font-size: 0.875rem;
+          color: var(--ai-text-light);
+          margin-bottom: 0.25rem;
+        }
+
+        .image-preview-filename {
+          font-size: 0.875rem;
+          color: var(--ai-text);
+        }
+
+        .image-preview-remove {
+          padding: 0.25rem;
+          border: none;
+          background: none;
+          color: var(--ai-text-light);
+          cursor: pointer;
+          opacity: 0.7;
+          transition: all 0.2s ease;
+        }
+
+        .image-preview-remove:hover {
+          opacity: 1;
+          color: var(--ai-text);
+        }
+
+        .modal-content {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
+        .modal-body {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          overflow: hidden;
+        }
+
+        .chat-container {
+          margin-top: 1rem;
         }
       </style>
   
@@ -551,8 +495,10 @@ class AITextEnhancer extends HTMLElement {
           
           <div class="modal-body">
             <div class="editor-section">
-              <div class="tools-container"></div>
-              <div class="preview">${t.preview.placeholder}</div>
+              <div class="tools-container">
+                <ai-toolbar language="${this.language}"></ai-toolbar>
+              </div>
+              <response-history language="${this.language}"></response-history>
   
               <div class="chat-section">
                 <div class="chat-actions">
@@ -623,7 +569,7 @@ class AITextEnhancer extends HTMLElement {
 
   isImageUsed(image) {
     const imageId = image instanceof File ? image.name : image;
-    return this.responseHistory.some(
+    return this.responseHistory.responses.some(
       (response) =>
         response.action !== "image-upload" && response.imageUsed === imageId
     );
@@ -631,43 +577,35 @@ class AITextEnhancer extends HTMLElement {
 
   async connectedCallback() {
     try {
-      // Crear y agregar el template
       const template = this.createTemplate();
-      this.shadowRoot.appendChild(template.content.cloneNode(true));
+      attachShadowTemplate(this, template);
 
-      // Esperar a que el DOM esté listo
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-
-      // Initialize components
-      const toolsContainer = this.shadowRoot.querySelector(".tools-container");
-      const chatComponent = this.shadowRoot.querySelector("ai-chat");
-
-      // Setup toolbar
-      const toolbar = document.createElement("ai-toolbar");
-      toolbar.setAttribute("language", this.language);
-      toolbar.setAttribute(
-        "has-content",
-        Boolean(this.currentContent.trim()).toString()
-      );
-      toolbar.addEventListener("toolaction", this.handleToolAction.bind(this));
-      toolsContainer.appendChild(toolbar);
-
-      // Setup chat event listener
-      chatComponent.addEventListener(
-        "chatMessage",
-        this.handleChatMessage.bind(this)
-      );
-
-      const modal = this.shadowRoot.querySelector(".modal");
-      if (!modal || !toolsContainer) {
-        throw new Error("Required elements not found in the DOM");
-      }
-
-      // Esperar a que los componentes hijos estén listos
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-
-      // Inicializar componentes y enlazar eventos
+      // Inicializar componentes
       await this.initializeComponents();
+
+      // Configurar el ResponseHistory
+      this.responseHistory = this.shadowRoot.querySelector("response-history");
+      this.responseHistory.markdownHandler = this.markdownHandler;
+
+      // Configurar event listeners para el ResponseHistory
+      this.responseHistory.addEventListener(
+        "responseCopy",
+        this.handleResponseCopy.bind(this)
+      );
+      this.responseHistory.addEventListener(
+        "responseUse",
+        this.handleResponseUse.bind(this)
+      );
+      this.responseHistory.addEventListener(
+        "responseRetry",
+        this.handleResponseRetry.bind(this)
+      );
+      this.responseHistory.addEventListener(
+        "responseEdit",
+        this.handleResponseEdit.bind(this)
+      );
+
+      // Enlazar otros eventos
       this.bindEvents();
 
       if (this.apiKey) {
@@ -677,6 +615,73 @@ class AITextEnhancer extends HTMLElement {
       this.editorAdapter = new EditorAdapter(this.editorId);
     } catch (error) {
       console.error("Error initializing component:", error);
+    }
+  }
+
+  handleResponseCopy(event) {
+    const { responseId } = event.detail;
+    const response = this.responseHistory.responses.find(
+      (r) => r.id === responseId
+    );
+    if (response) {
+      navigator.clipboard
+        .writeText(response.content)
+        .then(() => {
+          const button = this.shadowRoot.querySelector(
+            `.copy-button[data-response-id="${responseId}"]`
+          );
+          if (button) {
+            const originalText = button.innerHTML;
+            button.innerHTML = "✓ Copied!";
+            setTimeout(() => (button.innerHTML = originalText), 2000);
+          }
+        })
+        .catch((err) => console.error("Error copying to clipboard:", err));
+    }
+  }
+
+  handleResponseUse(event) {
+    const { responseId } = event.detail;
+    const response = this.responseHistory.responses.find(
+      (r) => r.id === responseId
+    );
+    if (response) {
+      this.setEditorContent(response.content, "replace");
+      this.shadowRoot.querySelector(".modal").classList.remove("open");
+    }
+  }
+
+  handleResponseRetry(event) {
+    const { responseId, action } = event.detail;
+    this.handleToolAction(action);
+  }
+
+  handleResponseEdit(event) {
+    const { responseId } = event.detail;
+    const response = this.responseHistory.responses.find(
+      (r) => r.id === responseId
+    );
+    if (response) {
+      const chatInput = this.shadowRoot.querySelector(".chat-input");
+      const chatForm = this.shadowRoot.querySelector(".chat-form");
+
+      if (chatInput && chatForm) {
+        chatForm.dataset.editingId = responseId;
+        const submitButton = chatForm.querySelector("button");
+        if (submitButton) {
+          submitButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/>
+              <path d="m2 6 10 7 10-7"/>
+            </svg>
+            Update
+          `;
+        }
+
+        const questionText = response.content.replace(/^\*\*.*:\*\*\s*/, "");
+        chatInput.value = questionText;
+        chatInput.focus();
+      }
     }
   }
 
@@ -698,20 +703,15 @@ class AITextEnhancer extends HTMLElement {
   }
 
   removeImage(imageId) {
-    // Solo permitir eliminar si la imagen no ha sido usada
-    const imageResponse = this.responseHistory.find(
+    const responses = this.responseHistory.responses;
+    const imageResponse = responses.find(
       (r) => r.action === "image-upload" && r.id === parseInt(imageId, 10)
     );
 
     if (imageResponse && !this.isImageUsed(this.productImage)) {
       this.productImage = null;
       this.productImageUrl = null;
-
-      // Eliminar la imagen del historial
-      this.responseHistory = this.responseHistory.filter(
-        (r) => r.id !== parseInt(imageId, 10)
-      );
-      this.renderResponseHistory();
+      this.responseHistory.removeResponse(parseInt(imageId, 10));
     }
   }
 
@@ -781,7 +781,10 @@ class AITextEnhancer extends HTMLElement {
       await this.waitForInitialization();
 
       if (!this.apiKey || !this.apiClient) {
-        this.updatePreview(this.translations.errors.apiKey);
+        this.addResponseToHistory(
+          "chat-error",
+          this.translations.errors.apiKey
+        );
         return;
       }
 
@@ -793,11 +796,7 @@ class AITextEnhancer extends HTMLElement {
         timestamp: new Date(),
       };
 
-      this.responseHistory.push(tempResponse);
-      this.renderResponseHistory();
-
-      const preview = this.shadowRoot.querySelector(".preview");
-      preview.scrollTop = preview.scrollHeight;
+      this.responseHistory.addResponse(tempResponse);
 
       let accumulatedText = "";
 
@@ -808,31 +807,20 @@ class AITextEnhancer extends HTMLElement {
         "",
         (newContent) => {
           accumulatedText += newContent;
-          const responseEntry = this.shadowRoot.querySelector(
-            `[data-id="${tempResponse.id}"] .response-content`
-          );
-          if (responseEntry) {
-            responseEntry.innerHTML =
-              this.markdownHandler.convertToHTML(accumulatedText);
-            preview.scrollTop = preview.scrollHeight;
-          }
+          // Actualizamos la respuesta con el texto acumulado
+          this.responseHistory.updateResponse(tempResponse.id, accumulatedText);
         }
       );
 
-      tempResponse.content = completeText;
-      this.renderResponseHistory();
-      preview.scrollTop = preview.scrollHeight;
-
+      // Actualizamos con el texto completo final
+      this.responseHistory.updateResponse(tempResponse.id, completeText);
       this.cacheManager.set(action, content, completeText);
     } catch (error) {
       console.error("Error in handleToolAction:", error);
       if (tempResponse) {
-        this.responseHistory = this.responseHistory.filter(
-          (r) => r.id !== tempResponse.id
-        );
+        this.responseHistory.removeResponse(tempResponse.id);
       }
-      this.renderResponseHistory();
-      this.updatePreview(`Error: ${error.message}`);
+      this.addResponseToHistory("chat-error", `Error: ${error.message}`);
     }
   }
 
@@ -842,18 +830,12 @@ class AITextEnhancer extends HTMLElement {
     );
     if (!response) return;
 
-    // Extraer el texto de la pregunta (eliminando el prefijo "Question:")
     const questionText = response.content.replace(/^\*\*.*:\*\*\s*/, "");
-
-    // Obtener el chat input y el form
     const chatInput = this.shadowRoot.querySelector(".chat-input");
     const chatForm = this.shadowRoot.querySelector(".chat-form");
 
     if (chatInput && chatForm) {
-      // Guardar la referencia al mensaje que estamos editando
       chatForm.dataset.editingId = responseId;
-
-      // Cambiar el texto del botón de envío
       const submitButton = chatForm.querySelector("button");
       if (submitButton) {
         submitButton.innerHTML = `
@@ -865,7 +847,6 @@ class AITextEnhancer extends HTMLElement {
         `;
       }
 
-      // Rellenar y enfocar el input
       chatInput.value = questionText;
       chatInput.focus();
     }
@@ -914,12 +895,19 @@ class AITextEnhancer extends HTMLElement {
     try {
       // Si estamos editando, eliminar la pregunta anterior y su respuesta
       if (editingId) {
-        const editingIndex = this.responseHistory.findIndex(
+        const editingIndex = this.responseHistory.responses.findIndex(
           (r) => r.id === parseInt(editingId, 10)
         );
 
         if (editingIndex !== -1) {
-          this.responseHistory.splice(editingIndex, 2);
+          // Eliminar la pregunta y su respuesta
+          this.responseHistory.removeResponse(parseInt(editingId, 10));
+          // También eliminar la siguiente respuesta si existe
+          if (this.responseHistory.responses[editingIndex]) {
+            this.responseHistory.removeResponse(
+              this.responseHistory.responses[editingIndex].id
+            );
+          }
         }
 
         delete chatForm.dataset.editingId;
@@ -948,14 +936,14 @@ class AITextEnhancer extends HTMLElement {
         return;
       }
 
+      // Crear y agregar respuesta temporal
       const tempResponse = {
         id: Date.now(),
         action: "chat-response",
         content: '<span class="typing">|</span>',
         timestamp: new Date(),
       };
-      this.responseHistory.push(tempResponse);
-      this.renderResponseHistory();
+      this.responseHistory.addResponse(tempResponse);
 
       // Pasar la imagen actual (si existe) al chatResponse
       const imageSource = this.productImage || this.productImageUrl;
@@ -970,32 +958,15 @@ class AITextEnhancer extends HTMLElement {
         response.imageUsed = imageId;
       }
 
-      this.responseHistory = this.responseHistory.filter(
-        (r) => r.id !== tempResponse.id
-      );
+      // Eliminar la respuesta temporal
+      this.responseHistory.removeResponse(tempResponse.id);
 
+      // Agregar la respuesta final
       this.cacheManager.set("chat", chatContent, response);
       this.addResponseToHistory("chat-response", response);
     } catch (error) {
       console.error("Error:", error);
       this.addResponseToHistory("chat-error", `Error: ${error.message}`);
-    }
-  }
-
-  updatePreview(text) {
-    const preview = this.shadowRoot.querySelector(".preview");
-    try {
-      if (this.responseHistory.length === 0) {
-        const html = this.markdownHandler.convertToHTML(text);
-        preview.innerHTML = html;
-      }
-      // Siempre actualizar enhancedText con el último contenido
-      this.enhancedText = text;
-      // Hacer scroll al final del contenido
-      preview.scrollTop = preview.scrollHeight;
-    } catch (error) {
-      console.error("Error updating preview:", error);
-      preview.textContent = text;
     }
   }
 
