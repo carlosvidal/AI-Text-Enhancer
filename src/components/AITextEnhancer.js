@@ -360,32 +360,38 @@ class AITextEnhancer extends HTMLElement {
         ${imagePreviewStyles}
         ${chatStyles}
         
-        :host {
-          display: inline-block;
-          font-family: var(--ai-font-sans);
-          position: relative;
-        }
-  
-        .editor-section {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          min-height: 0;
-          overflow: hidden;
-        }
-  
-        .chat-section {
-          border-top: 1px solid var(--ai-border);
-          margin-top: auto;
-          padding-top: 1rem;
-          flex-shrink: 0;
-        }
-  
-        .tools-container {
-          margin-bottom: 1rem;
-          flex-shrink: 0;
-        }
+      :host {
+        display: inline-block;
+        font-family: var(--ai-font-sans);
+        position: relative;
+      }
+
+      .editor-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .preview {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+      }
+
+      .chat-section {
+        border-top: 1px solid var(--ai-border);
+        margin-top: auto;
+        padding-top: 1rem;
+        flex-shrink: 0;
+      }
+
+      .tools-container {
+        margin-bottom: 1rem;
+        flex-shrink: 0;
+      }
 
         response-history {
           flex: 1;
@@ -393,71 +399,7 @@ class AITextEnhancer extends HTMLElement {
           overflow: auto;
         }
 
-        .initial-image {
-          border-color: var(--ai-primary);
-          background: var(--ai-background-light);
-          position: relative;
-          margin-bottom: 1rem;
-        }
-
-        .image-preview-card {
-          background: var(--ai-background);
-          border: 1px solid var(--ai-border);
-          border-radius: var(--ai-radius);
-          padding: 1rem;
-          margin-bottom: 1rem;
-        }
-
-        .image-preview-content {
-          display: flex;
-          align-items: flex-start;
-          gap: 1rem;
-        }
-
-        .image-preview-thumbnail {
-          width: 96px;
-          height: 96px;
-          position: relative;
-          border-radius: var(--ai-radius);
-          overflow: hidden;
-          background: var(--ai-background-light);
-        }
-
-        .image-preview-thumbnail img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .image-preview-info {
-          flex: 1;
-        }
-
-        .image-preview-label {
-          font-size: 0.875rem;
-          color: var(--ai-text-light);
-          margin-bottom: 0.25rem;
-        }
-
-        .image-preview-filename {
-          font-size: 0.875rem;
-          color: var(--ai-text);
-        }
-
-        .image-preview-remove {
-          padding: 0.25rem;
-          border: none;
-          background: none;
-          color: var(--ai-text-light);
-          cursor: pointer;
-          opacity: 0.7;
-          transition: all 0.2s ease;
-        }
-
-        .image-preview-remove:hover {
-          opacity: 1;
-          color: var(--ai-text);
-        }
+        
 
         .modal-content {
           display: flex;
@@ -475,6 +417,29 @@ class AITextEnhancer extends HTMLElement {
 
         .chat-container {
           margin-top: 1rem;
+        }
+
+        .initial-image {
+          border-color: var(--ai-primary);
+          background: var(--ai-background-light);
+          position: relative;
+        }
+
+        .initial-image::before {
+          content: 'Initial image';
+          position: absolute;
+          top: -0.75rem;
+          left: 1rem;
+          background: var(--ai-background);
+          padding: 0 0.5rem;
+          font-size: 0.75rem;
+          color: var(--ai-primary);
+          border-radius: var(--ai-radius-sm);
+        }
+
+        .initial-image .image-preview-label {
+          color: var(--ai-primary);
+          font-weight: 500;
         }
       </style>
   
@@ -494,28 +459,27 @@ class AITextEnhancer extends HTMLElement {
           </div>
           
           <div class="modal-body">
-            <div class="editor-section">
-              <div class="tools-container">
-                <ai-toolbar language="${this.language}"></ai-toolbar>
-              </div>
-              <response-history language="${this.language}"></response-history>
-  
-              <div class="chat-section">
-                <div class="chat-actions">
-                  <button class="chat-upload-button">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
-                      <circle cx="9" cy="9" r="2"/>
-                      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                    </svg>
-                    Upload image
-                  </button>
-                  <input type="file" id="image-upload" accept="image/*" class="hidden">
-                </div>
-                <ai-chat language="${this.language}"></ai-chat>
-              </div>
-            </div>
-          </div>
+  <div class="editor-section">
+    <div class="tools-container">
+      <ai-toolbar language="${this.language}"></ai-toolbar>
+    </div>
+    <response-history language="${this.language}"></response-history>
+    <div class="chat-section">
+      <div class="chat-actions">
+        <button class="chat-upload-button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
+            <circle cx="9" cy="9" r="2"/>
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+          </svg>
+          Upload image
+        </button>
+        <input type="file" id="image-upload" accept="image/*" class="hidden">
+      </div>
+      <ai-chat language="${this.language}"></ai-chat>
+    </div>
+  </div>
+</div>
         </div>
       </div>`;
 
@@ -583,8 +547,20 @@ class AITextEnhancer extends HTMLElement {
       // Inicializar componentes
       await this.initializeComponents();
 
+      // Esperar a que el DOM esté realmente listo
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
       // Configurar el ResponseHistory
       this.responseHistory = this.shadowRoot.querySelector("response-history");
+      if (!this.responseHistory) {
+        throw new Error("ResponseHistory component not found in the DOM");
+      }
+
+      // Esperar a que el markdownHandler esté inicializado
+      if (!this.markdownHandler) {
+        await this.markdownHandler.initialize();
+      }
+
       this.responseHistory.markdownHandler = this.markdownHandler;
 
       // Configurar event listeners para el ResponseHistory
@@ -615,6 +591,14 @@ class AITextEnhancer extends HTMLElement {
       this.editorAdapter = new EditorAdapter(this.editorId);
     } catch (error) {
       console.error("Error initializing component:", error);
+      // Log más detalles del error para debugging
+      console.error("Full error:", error.stack);
+      console.error("Component state:", {
+        responseHistory: this.responseHistory,
+        markdownHandler: this.markdownHandler,
+        apiClient: this.apiClient,
+        isInitialized: this.isInitialized,
+      });
     }
   }
 
