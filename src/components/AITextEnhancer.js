@@ -19,17 +19,21 @@ import { EditorAdapter } from "../services/editor-adapter.js";
 import { getToolIcon } from "../services/icon-service.js";
 
 // Imports de estilos
+// 1. Imports base
 import { variables } from "../styles/base/variables.js";
 import { animations } from "../styles/base/animations.js";
+
+// 2. Imports componentes
 import { modalTriggerStyles } from "../styles/components/modal-trigger.js";
 import { chatStyles } from "../styles/components/chat.js";
 import { imageUploaderStyles } from "../styles/components/image-uploader.js";
 import { imagePreviewStyles } from "../styles/components/image-preview.js";
 import { toolbarStyles } from "../styles/components/toolbar.js";
 import { modelSelectorStyles } from "../styles/components/model-selector.js";
+
+// 3. Imports layout
 import { modalStyles } from "../styles/layout/modal.js";
 import { previewStyles } from "../styles/layout/preview.js";
-
 if (!customElements.get("response-history")) {
   customElements.define("response-history", ResponseHistory);
 }
@@ -191,7 +195,10 @@ class AITextEnhancer extends HTMLElement {
         if (this.isInitialized) {
           const chatComponent = this.shadowRoot.querySelector("ai-chat");
           if (chatComponent) {
-            chatComponent.setAttribute("language", newValue);
+            chatComponent.addEventListener(
+              "chatMessage",
+              this.handleChatMessage.bind(this)
+            );
           }
           this.updateTranslations();
         }
@@ -304,7 +311,7 @@ class AITextEnhancer extends HTMLElement {
     // Tool buttons
     const toolbar = this.shadowRoot.querySelector("ai-toolbar");
     if (toolbar) {
-      toolbar.addEventListener("toolaction", this.handleToolAction);
+      toolbar.addEventListener("toolaction", this.handleToolAction.bind(this));
     }
 
     // Chat form
@@ -352,95 +359,56 @@ class AITextEnhancer extends HTMLElement {
     const template = document.createElement("template");
     template.innerHTML = `
       <style>
-        ${variables}
-        ${animations}
-        ${modalTriggerStyles}
-        ${modalStyles}
-        ${previewStyles}
-        ${imagePreviewStyles}
-        ${chatStyles}
-        
-      :host {
-        display: inline-block;
-        font-family: var(--ai-font-sans);
-        position: relative;
-      }
+      ${variables}
+      ${animations}
+      ${modalTriggerStyles}
+      ${modalStyles}
+      ${previewStyles}
+      ${imagePreviewStyles}
+      ${chatStyles}
+      ${toolbarStyles}
+      ${modelSelectorStyles}
+        :host {
+  display: inline-block;
+  font-family: var(--ai-font-sans);
+  position: relative;
+}
 
-      .editor-section {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        min-height: 0;
-        overflow: hidden;
-      }
+.modal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
 
-      .preview {
-        flex: 1;
-        min-height: 0;
-        overflow: auto;
-      }
+.editor-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
 
-      .chat-section {
-        border-top: 1px solid var(--ai-border);
-        margin-top: auto;
-        padding-top: 1rem;
-        flex-shrink: 0;
-      }
+.tools-container {
+  flex-shrink: 0;
+  margin-bottom: 1rem;
+}
 
-      .tools-container {
-        margin-bottom: 1rem;
-        flex-shrink: 0;
-      }
+response-history {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
 
-        response-history {
-          flex: 1;
-          min-height: 0;
-          overflow: auto;
-        }
-
-        
-
-        .modal-content {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-        }
-
-        .modal-body {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          min-height: 0;
-          overflow: hidden;
-        }
-
-        .chat-container {
-          margin-top: 1rem;
-        }
-
-        .initial-image {
-          border-color: var(--ai-primary);
-          background: var(--ai-background-light);
-          position: relative;
-        }
-
-        .initial-image::before {
-          content: 'Initial image';
-          position: absolute;
-          top: -0.75rem;
-          left: 1rem;
-          background: var(--ai-background);
-          padding: 0 0.5rem;
-          font-size: 0.75rem;
-          color: var(--ai-primary);
-          border-radius: var(--ai-radius-sm);
-        }
-
-        .initial-image .image-preview-label {
-          color: var(--ai-primary);
-          font-weight: 500;
-        }
+.chat-section {
+  flex-shrink: 0;
+  border-top: 1px solid var(--ai-border);
+  margin-top: auto;
+  padding-top: 1rem;
+}
+     
       </style>
   
       <button class="modal-trigger">
@@ -867,11 +835,13 @@ class AITextEnhancer extends HTMLElement {
   }
 
   async handleChatMessage(event) {
+    console.log("Chat message received:", event.detail);
     const message = event.detail.message;
     const chatForm = this.shadowRoot.querySelector(".chat-form");
     const editingId = chatForm?.dataset.editingId;
 
     if (!this.apiKey) {
+      console.log("No API key provided");
       this.addResponseToHistory("chat-error", this.translations.errors.apiKey);
       return;
     }
