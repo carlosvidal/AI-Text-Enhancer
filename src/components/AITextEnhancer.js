@@ -48,6 +48,12 @@ class AITextEnhancer extends HTMLElement {
     if (!customElements.get("ai-chat")) {
       customElements.define("ai-chat", Chat);
     }
+    if (!customElements.get("ai-image-uploader")) {
+      customElements.define("ai-image-uploader", ImageUploader);
+    }
+    if (!customElements.get("response-history")) {
+      customElements.define("response-history", ResponseHistory);
+    }
 
     // Inicializar el event emitter
     this.eventEmitter = createEventEmitter(this);
@@ -328,13 +334,13 @@ class AITextEnhancer extends HTMLElement {
     }
 
     // Manejar el botón de upload
-    const uploadButton = this.shadowRoot.querySelector(".chat-upload-button");
-    const imageInput = this.shadowRoot.querySelector("#image-upload");
+    // const uploadButton = this.shadowRoot.querySelector(".chat-upload-button");
+    // const imageInput = this.shadowRoot.querySelector("#image-upload");
 
-    if (uploadButton && imageInput) {
-      uploadButton.onclick = () => imageInput.click();
-      imageInput.onchange = (e) => this.handleImageChange(e);
-    }
+    // if (uploadButton && imageInput) {
+    //   uploadButton.onclick = () => imageInput.click();
+    //   imageInput.onchange = (e) => this.handleImageChange(e);
+    // }
 
     // Manejar el botón de eliminar imagen usando delegación de eventos
     this.shadowRoot.addEventListener("click", (e) => {
@@ -359,56 +365,46 @@ class AITextEnhancer extends HTMLElement {
     const template = document.createElement("template");
     template.innerHTML = `
       <style>
-      ${variables}
-      ${animations}
-      ${modalTriggerStyles}
-      ${modalStyles}
-      ${previewStyles}
-      ${imagePreviewStyles}
-      ${chatStyles}
-      ${toolbarStyles}
-      ${modelSelectorStyles}
+        ${variables}
+        ${animations}
+        ${modalTriggerStyles}
+        ${modalStyles}
+        ${previewStyles}
+        ${imagePreviewStyles}
+        
         :host {
-  display: inline-block;
-  font-family: var(--ai-font-sans);
-  position: relative;
-}
+          display: inline-block;
+          font-family: var(--ai-font-sans);
+          position: relative;
+        }
+  
+        .editor-section {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+        }
+  
+        .chat-section {
+          border-top: 1px solid var(--ai-border);
+          margin-top: 1rem;
+          padding-top: 1rem;
+        }
+  
+        .tools-container {
+          margin-bottom: 1rem;
+        }
 
-.modal-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.editor-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.tools-container {
-  flex-shrink: 0;
-  margin-bottom: 1rem;
-}
-
-response-history {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
-
-.chat-section {
-  flex-shrink: 0;
-  border-top: 1px solid var(--ai-border);
-  margin-top: auto;
-  padding-top: 1rem;
-}
-     
+        /* Agregar estos estilos para el response-history */
+        response-history {
+          flex: 1;
+          min-height: 0;
+          background: var(--ai-background);
+          border-radius: var(--ai-radius);
+          margin-bottom: 1rem;
+          overflow: auto;
+          display: block;
+        }
       </style>
   
       <button class="modal-trigger">
@@ -427,27 +423,20 @@ response-history {
           </div>
           
           <div class="modal-body">
-  <div class="editor-section">
-    <div class="tools-container">
-      <ai-toolbar language="${this.language}"></ai-toolbar>
-    </div>
-    <response-history language="${this.language}"></response-history>
-    <div class="chat-section">
-      <div class="chat-actions">
-        <button class="chat-upload-button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
-            <circle cx="9" cy="9" r="2"/>
-            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-          </svg>
-          Upload image
-        </button>
-        <input type="file" id="image-upload" accept="image/*" class="hidden">
-      </div>
-      <ai-chat language="${this.language}"></ai-chat>
-    </div>
-  </div>
-</div>
+            <div class="editor-section">
+              <div class="tools-container">
+                <ai-toolbar language="${this.language}"></ai-toolbar>
+              </div>
+              <response-history></response-history>
+              <div class="chat-section">
+                <ai-chat language="${this.language}"></ai-chat>
+                <ai-image-uploader
+                  language="${this.language}"
+                  image-url="${this.imageUrl || ""}">
+                </ai-image-uploader>
+              </div>
+            </div>
+          </div>
         </div>
       </div>`;
 
@@ -514,6 +503,14 @@ response-history {
 
       // Inicializar componentes
       await this.initializeComponents();
+
+      const imageUploader = this.shadowRoot.querySelector("ai-image-uploader");
+      if (imageUploader) {
+        imageUploader.addEventListener("imagechange", (e) => {
+          const { file } = e.detail;
+          this.handleImageChange(file);
+        });
+      }
 
       // Esperar a que el DOM esté realmente listo
       await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -637,8 +634,7 @@ response-history {
     }
   }
 
-  handleImageChange(event) {
-    const file = event.target.files?.[0];
+  handleImageChange(file) {
     if (file) {
       // La nueva imagen reemplaza cualquier imagen existente
       this.productImage = file;
@@ -646,10 +642,18 @@ response-history {
 
       // Agregar la imagen como un mensaje al historial
       this.addResponseToHistory("image-upload", this.renderImagePreview(file));
+    } else {
+      // Si file es null, significa que se está eliminando la imagen
+      this.productImage = null;
+      this.productImageUrl = null;
 
-      // Limpiar el input file
-      if (this.shadowRoot.querySelector("#image-upload")) {
-        this.shadowRoot.querySelector("#image-upload").value = "";
+      // Eliminar la última imagen del historial si existe
+      const lastImageUpload = [...this.responseHistory.responses]
+        .reverse()
+        .find((r) => r.action === "image-upload");
+
+      if (lastImageUpload) {
+        this.responseHistory.removeResponse(lastImageUpload.id);
       }
     }
   }

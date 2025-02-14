@@ -42,8 +42,10 @@ export class ImageUploader extends HTMLElement {
       ${animations}
       ${imageUploaderStyles}
     `;
-    this.shadowRoot.appendChild(style);
-    this.shadowRoot.innerHTML = `
+
+    // Crear el contenido del componente
+    const content = document.createElement("div");
+    content.innerHTML = `
       <div class="image-upload">
         <div class="image-preview" id="imagePreview">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -65,6 +67,13 @@ export class ImageUploader extends HTMLElement {
         <input type="file" id="imageInput" accept="image/*" class="hidden">
       </div>
     `;
+
+    // Limpiar el shadowRoot antes de agregar nuevo contenido
+    this.shadowRoot.innerHTML = "";
+
+    // Agregar el estilo y el contenido
+    this.shadowRoot.appendChild(style);
+    this.shadowRoot.appendChild(content);
   }
 
   setupElements() {
@@ -100,6 +109,12 @@ export class ImageUploader extends HTMLElement {
   }
 
   async handleImageUrlChange(url) {
+    // Asegurarse de que los elementos están inicializados
+    if (!this.imagePreview) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      this.setupElements();
+    }
+
     if (!url) {
       this.removeImage();
       return;
