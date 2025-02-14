@@ -369,6 +369,7 @@ class AITextEnhancer extends HTMLElement {
   
         .chat-section {
           border-top: 1px solid var(--ai-border);
+          padding-top: 1rem;
         }
   
         .tools-container {

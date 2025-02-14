@@ -1,8 +1,5 @@
 // styles/components/chat.js
 export const chatStyles = `
-  .chat-container {
-    padding: 1rem 0;
-  }
 
   .chat-form {
     display: flex;
