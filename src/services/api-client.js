@@ -363,16 +363,20 @@ class APIClient {
   async chatResponse(content, userMessage, imageSource = null) {
     const contextPrompt = `Contexto - Descripción actual del producto: ${content}\n\nPregunta del usuario: ${userMessage}`;
 
-    if (imageSource) {
-      // Si hay una imagen, usamos el método que maneja imágenes
-      return this.makeRequestWithImage(
-        this.config.systemPrompt,
-        contextPrompt,
-        imageSource
-      );
-    } else {
-      // Si no hay imagen, usamos el método normal
-      return this.makeRequest(this.config.systemPrompt, contextPrompt);
+    try {
+      if (imageSource) {
+        // Si hay una imagen, usamos el método que maneja imágenes
+        return await this.makeRequestWithImage(
+          this.config.systemPrompt,
+          contextPrompt,
+          imageSource
+        );
+      } else {
+        // Si no hay imagen, usamos el método normal
+        return await this.makeRequest(this.config.systemPrompt, contextPrompt);
+      }
+    } catch (error) {
+      throw new Error(`Chat response failed: ${error.message}`);
     }
   }
 }

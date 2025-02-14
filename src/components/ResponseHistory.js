@@ -68,27 +68,27 @@ export class ResponseHistory extends HTMLElement {
     return this.responses
       .map(
         (response) => `
-      <div class="response-entry" data-id="${response.id}">
-        <div class="response-header">
-          <div class="response-tool">
-            ${getToolIcon(response.action)}
-            ${this.translations.tools[response.action] || response.action}
+        <div class="response-entry" data-id="${response.id}">
+          <div class="response-header">
+            <div class="response-tool">
+              ${getToolIcon(response.action)}
+              ${this.translations.tools[response.action] || response.action}
+            </div>
+            <div class="response-timestamp">
+              ${this.formatTimestamp(response.timestamp)}
+            </div>
           </div>
-          <div class="response-timestamp">
-            ${this.formatTimestamp(response.timestamp)}
+          <div class="response-content">
+            ${
+              response.action === "image-upload"
+                ? response.content // No convertir a markdown si es una imagen
+                : this.markdownHandler?.convertToHTML(response.content) ||
+                  response.content
+            }
           </div>
+          ${this.renderResponseActions(response)}
         </div>
-        <div class="response-content">
-          ${
-            response.action === "image-upload"
-              ? response.content
-              : this.markdownHandler?.convertToHTML(response.content) ||
-                response.content
-          }
-        </div>
-        ${this.renderResponseActions(response)}
-      </div>
-    `
+      `
       )
       .join("");
   }
@@ -208,7 +208,17 @@ export class ResponseHistory extends HTMLElement {
     const response = this.responses.find((r) => r.id === id);
     if (response) {
       response.content = content;
-      this.render();
+      // En lugar de re-renderizar todo, solo actualizar el contenido específico
+      const responseElement = this.shadowRoot.querySelector(
+        `[data-id="${id}"] .response-content`
+      );
+      if (responseElement) {
+        responseElement.innerHTML =
+          response.action === "image-upload"
+            ? response.content
+            : this.markdownHandler?.convertToHTML(response.content) ||
+              response.content;
+      }
     }
   }
 

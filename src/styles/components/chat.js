@@ -1,10 +1,7 @@
 // styles/components/chat.js
 export const chatStyles = `
   .chat-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
+    padding: 1rem 0;
   }
 
   .chat-form {
@@ -41,21 +38,5 @@ export const chatStyles = `
 
   .chat-submit:hover {
     background: var(--ai-primary-hover);
-  }
-
-  .chat-message {
-    padding: 1rem;
-    border-radius: var(--ai-radius);
-    animation: fadeIn 0.3s ease forwards;
-  }
-
-  .chat-message.user {
-    background: #dbeafe;
-    margin-left: 2rem;
-  }
-
-  .chat-message.assistant {
-    background: var(--ai-secondary);
-    margin-right: 2rem;
   }
 `;

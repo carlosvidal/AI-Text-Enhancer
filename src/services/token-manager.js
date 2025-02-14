@@ -1,5 +1,5 @@
 // token-manager.js
-import { MODEL_CONFIGS } from "./model-config.js";
+import { MODEL_CONFIGS } from "../constants/model-config.js";
 
 export class TokenManager {
   constructor() {

@@ -1,8 +1,5 @@
 // src/components/Chat.js
 import { TRANSLATIONS } from "../constants/translations.js";
-import { createAPIClient } from "../services/api-client.js";
-import { createCacheManager } from "../services/cache-manager.js";
-import { MarkdownHandler } from "../services/markdown-handler.js";
 import { variables } from "../styles/base/variables.js";
 import { animations } from "../styles/base/animations.js";
 import { chatStyles } from "../styles/components/chat.js";
@@ -11,8 +8,6 @@ export class Chat extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this.messages = [];
-    this.markdownHandler = new MarkdownHandler();
   }
 
   static get observedAttributes() {
@@ -27,8 +22,7 @@ export class Chat extends HTMLElement {
     return TRANSLATIONS[this.language] || TRANSLATIONS.en;
   }
 
-  async connectedCallback() {
-    await this.markdownHandler.initialize();
+  connectedCallback() {
     this.render();
     this.setupEventListeners();
   }
@@ -42,25 +36,28 @@ export class Chat extends HTMLElement {
   render() {
     const style = document.createElement("style");
     style.textContent = `
-      ${variables}
-      ${animations}
-      ${chatStyles}
-    `;
-    this.shadowRoot.appendChild(style);
-
-    this.shadowRoot.innerHTML = `
-      <form class="chat-form">
-        <input type="text" class="chat-input" placeholder="${this.translations.chat.placeholder}">
-        <button type="submit" class="chat-submit">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14"/>
-            <path d="m12 5 7 7-7 7"/>
-          </svg>
-        </button>
-      </form>
+        ${variables}
+        ${animations}
+        ${chatStyles}
     `;
 
+    const content = document.createElement("div");
+    content.className = "chat-container";
+    content.innerHTML = `
+        <form class="chat-form">
+            <input type="text" class="chat-input" placeholder="${this.translations.chat.placeholder}">
+            <button type="submit" class="chat-submit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14"/>
+                    <path d="m12 5 7 7-7 7"/>
+                </svg>
+            </button>
+        </form>
+    `;
+
+    this.shadowRoot.innerHTML = "";
     this.shadowRoot.appendChild(style);
+    this.shadowRoot.appendChild(content);
   }
 
   setupEventListeners() {

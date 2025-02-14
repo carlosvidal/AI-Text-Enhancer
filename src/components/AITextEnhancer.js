@@ -8,9 +8,9 @@ import {
 } from "../utils/dom-utils.js";
 import { createEventEmitter } from "../utils/event-utils.js";
 import { TRANSLATIONS } from "../constants/translations.js";
-import { ImageUploader } from "./ImageUploader.js";
+import { ChatWithImage } from "./ChatWithImage.js";
 import { ToolBar } from "./ToolBar.js";
-import { Chat } from "./Chat.js";
+import { TokenManager } from "../services/token-manager.js";
 import { MarkdownHandler } from "../services/markdown-handler.js";
 import { createAPIClient } from "../services/api-client.js";
 import { createCacheManager } from "../services/cache-manager.js";
@@ -26,7 +26,6 @@ import { animations } from "../styles/base/animations.js";
 // 2. Imports componentes
 import { modalTriggerStyles } from "../styles/components/modal-trigger.js";
 import { chatStyles } from "../styles/components/chat.js";
-import { imageUploaderStyles } from "../styles/components/image-uploader.js";
 import { imagePreviewStyles } from "../styles/components/image-preview.js";
 import { toolbarStyles } from "../styles/components/toolbar.js";
 import { modelSelectorStyles } from "../styles/components/model-selector.js";
@@ -45,11 +44,8 @@ class AITextEnhancer extends HTMLElement {
     if (!customElements.get("ai-toolbar")) {
       customElements.define("ai-toolbar", ToolBar);
     }
-    if (!customElements.get("ai-chat")) {
-      customElements.define("ai-chat", Chat);
-    }
-    if (!customElements.get("ai-image-uploader")) {
-      customElements.define("ai-image-uploader", ImageUploader);
+    if (!customElements.get("chat-with-image")) {
+      customElements.define("chat-with-image", ChatWithImage);
     }
     if (!customElements.get("response-history")) {
       customElements.define("response-history", ResponseHistory);
@@ -78,7 +74,10 @@ class AITextEnhancer extends HTMLElement {
     this.isInitialized = false;
     this.productImage = null;
 
-    // Control de uso opcional
+    // Inicializar TokenManager
+    this.tokenManager = new TokenManager();
+
+    // El control de uso es opcional
     this.usageControl = null;
 
     // Bind de métodos
@@ -199,23 +198,13 @@ class AITextEnhancer extends HTMLElement {
         break;
       case "language":
         if (this.isInitialized) {
-          const chatComponent = this.shadowRoot.querySelector("ai-chat");
+          const chatComponent =
+            this.shadowRoot.querySelector("chat-with-image");
+
           if (chatComponent) {
-            chatComponent.addEventListener(
-              "chatMessage",
-              this.handleChatMessage.bind(this)
-            );
+            chatComponent.setAttribute("language", newValue);
           }
           this.updateTranslations();
-        }
-        break;
-      case "image-url":
-        if (this.isInitialized) {
-          const imageUploader =
-            this.shadowRoot.querySelector("ai-image-uploader");
-          if (imageUploader) {
-            imageUploader.setAttribute("image-url", newValue || "");
-          }
         }
         break;
     }
@@ -227,7 +216,6 @@ class AITextEnhancer extends HTMLElement {
   }
 
   updateTranslations() {
-    // Actualizar textos en el modal
     const t = this.translations;
 
     // Botón principal
@@ -257,12 +245,6 @@ class AITextEnhancer extends HTMLElement {
         const actionKey = action.dataset.action;
         action.textContent = t.actions[actionKey];
       });
-
-    // Chat
-    const chatInput = this.shadowRoot.querySelector(".chat-input");
-    chatInput.placeholder = t.chat.placeholder;
-    this.shadowRoot.querySelector(".chat-form button").textContent =
-      t.chat.send;
   }
 
   bindEvents() {
@@ -321,17 +303,17 @@ class AITextEnhancer extends HTMLElement {
     }
 
     // Chat form
-    const chatForm = this.shadowRoot.querySelector(".chat-form");
-    if (chatForm) {
-      chatForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const input = chatForm.querySelector(".chat-input");
-        if (input && input.value.trim()) {
-          this.handleChatMessage({ detail: { message: input.value.trim() } });
-          input.value = "";
-        }
-      });
-    }
+    // const chatForm = this.shadowRoot.querySelector(".chat-form");
+    // if (chatForm) {
+    //   chatForm.addEventListener("submit", (e) => {
+    //     e.preventDefault();
+    //     const input = chatForm.querySelector(".chat-input");
+    //     if (input && input.value.trim()) {
+    //       this.handleChatMessage({ detail: { message: input.value.trim() } });
+    //       input.value = "";
+    //     }
+    //   });
+    // }
 
     // Manejar el botón de upload
     // const uploadButton = this.shadowRoot.querySelector(".chat-upload-button");
@@ -387,8 +369,6 @@ class AITextEnhancer extends HTMLElement {
   
         .chat-section {
           border-top: 1px solid var(--ai-border);
-          margin-top: 1rem;
-          padding-top: 1rem;
         }
   
         .tools-container {
@@ -429,11 +409,11 @@ class AITextEnhancer extends HTMLElement {
               </div>
               <response-history></response-history>
               <div class="chat-section">
-                <ai-chat language="${this.language}"></ai-chat>
-                <ai-image-uploader
+                <chat-with-image
                   language="${this.language}"
-                  image-url="${this.imageUrl || ""}">
-                </ai-image-uploader>
+                  image-url="${this.imageUrl || ""}"
+                  api-provider="${this.apiProvider}">
+                </chat-with-image>
               </div>
             </div>
           </div>
@@ -503,6 +483,14 @@ class AITextEnhancer extends HTMLElement {
 
       // Inicializar componentes
       await this.initializeComponents();
+
+      const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+      if (chatComponent) {
+        chatComponent.addEventListener(
+          "chatMessage",
+          this.handleChatMessage.bind(this)
+        );
+      }
 
       const imageUploader = this.shadowRoot.querySelector("ai-image-uploader");
       if (imageUploader) {
@@ -744,8 +732,28 @@ class AITextEnhancer extends HTMLElement {
         return;
       }
 
+      // Verificar cuota solo si existe el control y los atributos necesarios
+      if (this.usageControl) {
+        const tenantId = this.getAttribute("tenant-id");
+        const userId = this.getAttribute("user-id");
+
+        if (tenantId && userId) {
+          try {
+            const quota = await this.usageControl.checkQuota(tenantId, userId);
+            if (!quota.hasAvailableQuota) {
+              throw new Error(
+                "Quota exceeded. Please contact your administrator."
+              );
+            }
+          } catch (error) {
+            console.warn("Error checking quota:", error);
+            // Continuar con la ejecución si hay error al verificar cuota
+          }
+        }
+      }
+
       const content = this.currentContent;
-      tempResponse = {
+      let tempResponse = {
         id: Date.now(),
         action,
         content: '<span class="typing">|</span>',
@@ -759,16 +767,34 @@ class AITextEnhancer extends HTMLElement {
       const completeText = await this.apiClient.enhanceText(
         content,
         action,
-        this.productImage || this.productImageUrl,
+        this.productImage,
         "",
         (newContent) => {
           accumulatedText += newContent;
-          // Actualizamos la respuesta con el texto acumulado
           this.responseHistory.updateResponse(tempResponse.id, accumulatedText);
         }
       );
 
-      // Actualizamos con el texto completo final
+      // Registrar uso solo si existe el control y los atributos necesarios
+      if (this.usageControl) {
+        const tenantId = this.getAttribute("tenant-id");
+        const userId = this.getAttribute("user-id");
+
+        if (tenantId && userId) {
+          try {
+            const estimatedTokens = this.tokenManager.estimateTokens(content);
+            await this.usageControl.trackUsage(
+              tenantId,
+              userId,
+              action,
+              estimatedTokens
+            );
+          } catch (error) {
+            console.warn("Error tracking usage:", error);
+          }
+        }
+      }
+
       this.responseHistory.updateResponse(tempResponse.id, completeText);
       this.cacheManager.set(action, content, completeText);
     } catch (error) {
@@ -840,9 +866,7 @@ class AITextEnhancer extends HTMLElement {
 
   async handleChatMessage(event) {
     console.log("Chat message received:", event.detail);
-    const message = event.detail.message;
-    const chatForm = this.shadowRoot.querySelector(".chat-form");
-    const editingId = chatForm?.dataset.editingId;
+    const { message, image } = event.detail;
 
     if (!this.apiKey) {
       console.log("No API key provided");
@@ -851,50 +875,34 @@ class AITextEnhancer extends HTMLElement {
     }
 
     try {
-      // Si estamos editando, eliminar la pregunta anterior y su respuesta
-      if (editingId) {
-        const editingIndex = this.responseHistory.responses.findIndex(
-          (r) => r.id === parseInt(editingId, 10)
-        );
-
-        if (editingIndex !== -1) {
-          // Eliminar la pregunta y su respuesta
-          this.responseHistory.removeResponse(parseInt(editingId, 10));
-          // También eliminar la siguiente respuesta si existe
-          if (this.responseHistory.responses[editingIndex]) {
-            this.responseHistory.removeResponse(
-              this.responseHistory.responses[editingIndex].id
-            );
-          }
-        }
-
-        delete chatForm.dataset.editingId;
-        const submitButton = chatForm.querySelector("button");
-        if (submitButton) {
-          submitButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M5 12h14"/>
-              <path d="m12 5 7 7-7 7"/>
-            </svg>
-            Send
-          `;
-        }
-      }
-
       const chatContent = `${this.currentContent}-${message}`;
 
+      // Si hay imagen, primero agregar la vista previa
+      if (image) {
+        this.addResponseToHistory(
+          "image-upload",
+          `
+          <div class="image-preview-card">
+            <div class="image-preview-content">
+              <div class="image-preview-thumbnail">
+                <img src="${URL.createObjectURL(image)}" alt="Preview">
+              </div>
+              <div class="image-preview-info">
+                <div class="image-preview-label">Attached image</div>
+                <div class="image-preview-filename">${image.name}</div>
+              </div>
+            </div>
+          </div>
+        `
+        );
+      }
+
+      // Agregar la pregunta al historial
       this.addResponseToHistory(
         "chat-question",
         `**${this.translations.chat.question}:** ${message}`
       );
 
-      const cachedResponse = this.cacheManager.get("chat", chatContent);
-      if (cachedResponse) {
-        this.addResponseToHistory("chat-response", cachedResponse);
-        return;
-      }
-
-      // Crear y agregar respuesta temporal
       const tempResponse = {
         id: Date.now(),
         action: "chat-response",
@@ -903,25 +911,28 @@ class AITextEnhancer extends HTMLElement {
       };
       this.responseHistory.addResponse(tempResponse);
 
-      // Pasar la imagen actual (si existe) al chatResponse
-      const imageSource = this.productImage || this.productImageUrl;
+      // Obtener la respuesta
       const response = await this.apiClient.chatResponse(
         this.currentContent,
         message,
-        imageSource
+        image
       );
 
-      if (imageSource) {
-        const imageId = this.productImage?.name || this.productImageUrl;
-        response.imageUsed = imageId;
+      // Preparar el contenido final
+      let finalContent = response;
+      if (image) {
+        finalContent = {
+          content: response,
+          imageUsed: image.name,
+        };
       }
 
-      // Eliminar la respuesta temporal
       this.responseHistory.removeResponse(tempResponse.id);
-
-      // Agregar la respuesta final
-      this.cacheManager.set("chat", chatContent, response);
-      this.addResponseToHistory("chat-response", response);
+      this.cacheManager.set("chat", chatContent, finalContent);
+      this.addResponseToHistory(
+        "chat-response",
+        finalContent.content || finalContent
+      );
     } catch (error) {
       console.error("Error:", error);
       this.addResponseToHistory("chat-error", `Error: ${error.message}`);
@@ -935,7 +946,11 @@ class AITextEnhancer extends HTMLElement {
   }
 
   addChatMessage(role, content) {
-    const container = this.shadowRoot.querySelector(".chat-container");
+    const container = this.shadowRoot
+      .querySelector("ai-chat")
+      ?.shadowRoot?.querySelector(".chat-messages");
+    if (!container) return;
+
     const message = document.createElement("div");
     message.className = `chat-message ${role}`;
 

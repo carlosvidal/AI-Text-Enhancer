@@ -69,9 +69,6 @@ export const modalStyles = `
   }
 
   .chat-section {
-    border-top: 1px solid var(--ai-border);
-    margin-top: auto;
-    padding-top: 1rem;
     flex-shrink: 0;
   }
 
