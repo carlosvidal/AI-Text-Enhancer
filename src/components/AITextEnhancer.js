@@ -364,7 +364,8 @@ class AITextEnhancer extends HTMLElement {
           flex: 1;
           display: flex;
           flex-direction: column;
-          min-height: 0;
+          height: calc(100vh - 200px); /* Ajuste de altura */
+          min-height: 400px;
         }
   
         .chat-section {
@@ -376,40 +377,58 @@ class AITextEnhancer extends HTMLElement {
           margin-bottom: 1rem;
         }
 
-        /* Agregar estos estilos para el response-history */
+        /* Estilos actualizados para response-history */
         response-history {
           flex: 1;
-          min-height: 0;
+          display: flex;
+          flex-direction: column;
           background: var(--ai-background);
           border-radius: var(--ai-radius);
           margin-bottom: 1rem;
           overflow: auto;
-          display: block;
+          min-height: 200px;
+          max-height: calc(100% - 150px); /* Ajuste para mantener proporción */
+        }
+
+        .modal-content {
+          display: flex;
+          flex-direction: column;
+          max-height: 90vh;
+          height: 90vh;
+        }
+
+        .modal-body {
+          flex: 1;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
         }
       </style>
   
-      <button class="modal-trigger">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button class="modal-trigger" aria-label="${
+        t.modalTrigger
+      }" aria-haspopup="dialog">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/>
           <path d="m14 7 3 3"/>
         </svg>
         <span>${t.modalTrigger}</span>
       </button>
       
-      <div class="modal">
-        <div class="modal-content">
-          <button class="close-button">×</button>
+      <div class="modal" role="dialog" aria-labelledby="modal-title" aria-modal="true">
+        <div class="modal-content" role="document">
+          <button class="close-button" aria-label="Close dialog">×</button>
           <div class="modal-header">
-            <h2>${t.modalTitle}</h2>
+            <h2 id="modal-title">${t.modalTitle}</h2>
           </div>
           
-          <div class="modal-body">
+          <div class="modal-body" role="main">
             <div class="editor-section">
-              <div class="tools-container">
+              <div class="tools-container" role="toolbar" aria-label="Text enhancement tools">
                 <ai-toolbar language="${this.language}"></ai-toolbar>
               </div>
-              <response-history></response-history>
-              <div class="chat-section">
+              <response-history role="log" aria-label="Enhancement history"></response-history>
+              <div class="chat-section" role="complementary" aria-label="Chat assistance">
                 <chat-with-image
                   language="${this.language}"
                   image-url="${this.imageUrl || ""}"
@@ -439,15 +458,18 @@ class AITextEnhancer extends HTMLElement {
         : new URL(imageToRender).pathname.split("/").pop() || "From URL";
 
     return `
-      <div class="image-preview-card ${
-        isInitial ? "initial-image" : ""
-      }" data-image-id="${Date.now()}">
+      <div class="image-preview-card ${isInitial ? "initial-image" : ""}" 
+           data-image-id="${Date.now()}"
+           role="figure"
+           aria-label="${
+             isInitial ? "Initial product image" : "Uploaded product image"
+           }">
         <div class="image-preview-content">
           <div class="image-preview-thumbnail">
-            <img src="${imageUrl}" alt="Preview">
+            <img src="${imageUrl}" alt="Product preview - ${filename}">
           </div>
           <div class="image-preview-info">
-            <div class="image-preview-label">${
+            <div class="image-preview-label" aria-hidden="true">${
               isInitial ? "Initial image" : "Uploaded image"
             }</div>
             <div class="image-preview-filename">${filename}</div>
@@ -455,8 +477,10 @@ class AITextEnhancer extends HTMLElement {
           ${
             !isInitial && !this.isImageUsed(imageToRender)
               ? `
-            <button class="image-preview-remove" title="Remove image">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button class="image-preview-remove" 
+                    aria-label="Remove image ${filename}"
+                    title="Remove image">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
@@ -477,6 +501,604 @@ class AITextEnhancer extends HTMLElement {
     );
   }
 
+  async connectedCallback() {
+    try {
+      const template = this.createTemplate();
+      attachShadowTemplate(this, template);
+
+      // Inicializar componentes
+      await this.initializeComponents();
+
+      const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+      if (chatComponent) {
+        chatComponent.addEventListener(
+          "chatMessage",
+          this.handleChatMessage.bind(this)
+        );
+      }
+
+      const imageUploader = this.shadowRoot.querySelector("ai-image-uploader");
+      if (imageUploader) {
+        imageUploader.addEventListener("imagechange", (e) => {
+          const { file } = e.detail;
+          this.handleImageChange(file);
+        });
+      }
+
+      // Esperar a que el DOM esté realmente listo
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      // Configurar el ResponseHistory
+      this.responseHistory = this.shadowRoot.querySelector("response-history");
+      if (!this.responseHistory) {
+        throw new Error("ResponseHistory component not found in the DOM");
+      }
+
+      // Esperar a que el markdownHandler esté inicializado
+      if (!this.markdownHandler) {
+        await this.markdownHandler.initialize();
+      }
+
+      this.responseHistory.markdownHandler = this.markdownHandler;
+
+      // Configurar event listeners para el ResponseHistory
+      this.responseHistory.addEventListener(
+        "responseCopy",
+        this.handleResponseCopy.bind(this)
+      );
+      this.responseHistory.addEventListener(
+        "responseUse",
+        this.handleResponseUse.bind(this)
+      );
+      this.responseHistory.addEventListener(
+        "responseRetry",
+        this.handleResponseRetry.bind(this)
+      );
+      this.responseHistory.addEventListener(
+        "responseEdit",
+        this.handleResponseEdit.bind(this)
+      );
+
+      // Enlazar otros eventos
+      this.bindEvents();
+
+      if (this.apiKey) {
+        this.apiClient?.setApiKey(this.apiKey);
+      }
+
+      this.editorAdapter = new EditorAdapter(this.editorId);
+    } catch (error) {
+      console.error("Error initializing component:", error);
+      // Log más detalles del error para debugging
+      console.error("Full error:", error.stack);
+      console.error("Component state:", {
+        responseHistory: this.responseHistory,
+        markdownHandler: this.markdownHandler,
+        apiClient: this.apiClient,
+        isInitialized: this.isInitialized,
+      });
+    }
+  }
+
+  handleResponseCopy(event) {
+    const { responseId } = event.detail;
+    const response = this.responseHistory.responses.find(
+      (r) => r.id === responseId
+    );
+    if (response) {
+      navigator.clipboard
+        .writeText(response.content)
+        .then(() => {
+          const button = this.shadowRoot.querySelector(
+            `.copy-button[data-response-id="${responseId}"]`
+          );
+          if (button) {
+            const originalText = button.innerHTML;
+            button.innerHTML = "✓ Copied!";
+            setTimeout(() => (button.innerHTML = originalText), 2000);
+          }
+        })
+        .catch((err) => console.error("Error copying to clipboard:", err));
+    }
+  }
+
+  handleResponseUse(event) {
+    const { responseId } = event.detail;
+    const response = this.responseHistory.responses.find(
+      (r) => r.id === responseId
+    );
+    if (response) {
+      this.setEditorContent(response.content, "replace");
+      this.shadowRoot.querySelector(".modal").classList.remove("open");
+    }
+  }
+
+  handleResponseRetry(event) {
+    const { responseId, action } = event.detail;
+    this.handleToolAction(action);
+  }
+
+  handleResponseEdit(event) {
+    const { responseId } = event.detail;
+    const response = this.responseHistory.responses.find(
+      (r) => r.id === responseId
+    );
+    if (response) {
+      const chatInput = this.shadowRoot.querySelector(".chat-input");
+      const chatForm = this.shadowRoot.querySelector(".chat-form");
+
+      if (chatInput && chatForm) {
+        chatForm.dataset.editingId = responseId;
+        const submitButton = chatForm.querySelector("button");
+        if (submitButton) {
+          submitButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/>
+              <path d="m2 6 10 7 10-7"/>
+            </svg>
+            Update
+          `;
+        }
+
+        const questionText = response.content.replace(/^\*\*.*:\*\*\s*/, "");
+        chatInput.value = questionText;
+        chatInput.focus();
+      }
+    }
+  }
+
+  handleImageChange(file) {
+    if (file) {
+      // La nueva imagen reemplaza cualquier imagen existente
+      this.productImage = file;
+      this.productImageUrl = null; // Limpiar la URL inicial
+
+      // Agregar la imagen como un mensaje al historial
+      this.addResponseToHistory("image-upload", this.renderImagePreview(file));
+    } else {
+      // Si file es null, significa que se está eliminando la imagen
+      this.productImage = null;
+      this.productImageUrl = null;
+
+      // Eliminar la última imagen del historial si existe
+      const lastImageUpload = [...this.responseHistory.responses]
+        .reverse()
+        .find((r) => r.action === "image-upload");
+
+      if (lastImageUpload) {
+        this.responseHistory.removeResponse(lastImageUpload.id);
+      }
+    }
+  }
+
+  removeImage(imageId) {
+    const responses = this.responseHistory.responses;
+    const imageResponse = responses.find(
+      (r) => r.action === "image-upload" && r.id === parseInt(imageId, 10)
+    );
+
+    if (imageResponse && !this.isImageUsed(this.productImage)) {
+      this.productImage = null;
+      this.productImageUrl = null;
+      this.responseHistory.removeResponse(parseInt(imageId, 10));
+    }
+  }
+
+  async initializeComponents() {
+    try {
+      await this.markdownHandler.initialize();
+
+      this.modelManager.setProvider(this.apiProvider);
+
+      this.apiClient = createAPIClient({
+        provider: this.apiProvider,
+        model: this.apiModel,
+        systemPrompt:
+          this.getAttribute("prompt") ||
+          "Actúa como un experto en redacción de descripciones de productos para tiendas en línea.\n\n" +
+            "Tu tarea es generar o mejorar la descripción de un producto con un enfoque atractivo y persuasivo, destacando sus características principales, beneficios y posibles usos.\n\n" +
+            "Si el usuario ya ha escrito una descripción: Mejórala manteniendo su esencia, pero haciéndola más clara, persuasiva y optimizada para ventas.\n\n" +
+            "Si la descripción está vacía: Genera una nueva descripción atractiva, destacando características y beneficios. Usa un tono profesional y cercano, adaptado a una tienda en línea.\n\n" +
+            "Si hay una imagen del producto, aprovecha los detalles visuales para enriquecer la descripción.\n\n" +
+            "Si aplica, menciona información relevante del comercio para reforzar la confianza del comprador (envíos, garantía, atención al cliente, etc.).\n\n" +
+            "Mantén el texto claro, sin repeticiones innecesarias, y optimizado para SEO si es posible.",
+      });
+
+      // Set API key if available
+      if (this.apiKey) {
+        this.apiClient.setApiKey(this.apiKey);
+      }
+
+      // Inicializar UsageControl solo si se proporciona quota-endpoint
+      const quotaEndpoint = this.getAttribute("quota-endpoint");
+      if (quotaEndpoint) {
+        this.usageControl = createUsageControl({
+          apiEndpoint: "/api/ai-enhancer/usage",
+          quotaCheckEndpoint: quotaEndpoint,
+          checkQuotaBeforeRequest: true,
+        });
+      }
+
+      this.isInitialized = true;
+    } catch (error) {
+      console.error("Error initializing components:", error);
+      throw error;
+    }
+  }
+
+  async waitForInitialization() {
+    if (this.isInitialized) return;
+
+    const maxAttempts = 10;
+    let attempts = 0;
+
+    while (!this.isInitialized && attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      attempts++;
+    }
+
+    if (!this.isInitialized) {
+      throw new Error("Component initialization timeout");
+    }
+  }
+
+  async handleToolAction(event) {
+    const action = event.detail?.action || event;
+    let tempResponse = null;
+
+    try {
+      await this.waitForInitialization();
+
+      if (!this.apiKey || !this.apiClient) {
+        this.addResponseToHistory(
+          "chat-error",
+          this.translations.errors.apiKey
+        );
+        return;
+      }
+
+      // Verificar cuota solo si existe el control y los atributos necesarios
+      if (this.usageControl) {
+        const tenantId = this.getAttribute("tenant-id");
+        const userId = this.getAttribute("user-id");
+
+        if (tenantId && userId) {
+          try {
+            const quota = await this.usageControl.checkQuota(tenantId, userId);
+            if (!quota.hasAvailableQuota) {
+              throw new Error(
+                "Quota exceeded. Please contact your administrator."
+              );
+            }
+          } catch (error) {
+            console.warn("Error checking quota:", error);
+            // Continuar con la ejecución si hay error al verificar cuota
+          }
+        }
+      }
+
+      const content = this.currentContent;
+      let tempResponse = {
+        id: Date.now(),
+        action,
+        content: '<span class="typing">|</span>',
+        timestamp: new Date(),
+      };
+
+      this.responseHistory.addResponse(tempResponse);
+
+      let accumulatedText = "";
+
+      const completeText = await this.apiClient.enhanceText(
+        content,
+        action,
+        this.productImage,
+        "",
+        (newContent) => {
+          accumulatedText += newContent;
+          this.responseHistory.updateResponse(tempResponse.id, accumulatedText);
+        }
+      );
+
+      // Registrar uso solo si existe el control y los atributos necesarios
+      if (this.usageControl) {
+        const tenantId = this.getAttribute("tenant-id");
+        const userId = this.getAttribute("user-id");
+
+        if (tenantId && userId) {
+          try {
+            const estimatedTokens = this.tokenManager.estimateTokens(content);
+            await this.usageControl.trackUsage(
+              tenantId,
+              userId,
+              action,
+              estimatedTokens
+            );
+          } catch (error) {
+            console.warn("Error tracking usage:", error);
+          }
+        }
+      }
+
+      this.responseHistory.updateResponse(tempResponse.id, completeText);
+      this.cacheManager.set(action, content, completeText);
+    } catch (error) {
+      console.error("Error in handleToolAction:", error);
+      if (tempResponse) {
+        this.responseHistory.removeResponse(tempResponse.id);
+      }
+      this.addResponseToHistory("chat-error", `Error: ${error.message}`);
+    }
+  }
+
+  editChatQuestion(responseId) {
+    const response = this.responseHistory.find(
+      (r) => r.id === parseInt(responseId, 10)
+    );
+    if (!response) return;
+
+    const questionText = response.content.replace(/^\*\*.*:\*\*\s*/, "");
+    const chatInput = this.shadowRoot.querySelector(".chat-input");
+    const chatForm = this.shadowRoot.querySelector(".chat-form");
+
+    if (chatInput && chatForm) {
+      chatForm.dataset.editingId = responseId;
+      const submitButton = chatForm.querySelector("button");
+      if (submitButton) {
+        submitButton.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/>
+            <path d="m2 6 10 7 10-7"/>
+          </svg>
+          Update
+        `;
+      }
+
+      chatInput.value = questionText;
+      chatInput.focus();
+    }
+  }
+
+  copyToClipboard(responseId) {
+    const response = this.responseHistory.find(
+      (r) => r.id === parseInt(responseId, 10)
+    );
+    if (response) {
+      navigator.clipboard
+        .writeText(response.content)
+        .then(() => {
+          // Mostrar feedback visual de copiado exitoso
+          const button = this.shadowRoot.querySelector(
+            `.copy-button[data-response-id="${responseId}"]`
+          );
+          const originalText = button.innerHTML;
+          button.innerHTML = "✓ Copied!";
+          setTimeout(() => (button.innerHTML = originalText), 2000);
+        })
+        .catch((err) => console.error("Error al copiar:", err));
+    }
+  }
+
+  useResponse(responseId) {
+    const response = this.responseHistory.find(
+      (r) => r.id === parseInt(responseId, 10)
+    );
+    if (response) {
+      this.setEditorContent(response.content, "replace");
+      this.shadowRoot.querySelector(".modal").classList.remove("open");
+    }
+  }
+
+  async handleChatMessage(event) {
+    console.log("Chat message received:", event.detail);
+    const { message, image } = event.detail;
+
+    if (!this.apiKey) {
+      console.log("No API key provided");
+      this.addResponseToHistory("chat-error", this.translations.errors.apiKey);
+      return;
+    }
+
+    try {
+      const chatContent = `${this.currentContent}-${message}`;
+
+      // Si hay imagen, primero agregar la vista previa
+      if (image) {
+        this.addResponseToHistory(
+          "image-upload",
+          `
+          <div class="image-preview-card">
+            <div class="image-preview-content">
+              <div class="image-preview-thumbnail">
+                <img src="${URL.createObjectURL(image)}" alt="Preview">
+              </div>
+              <div class="image-preview-info">
+                <div class="image-preview-label">Attached image</div>
+                <div class="image-preview-filename">${image.name}</div>
+              </div>
+            </div>
+          </div>
+        `
+        );
+      }
+
+      // Agregar la pregunta al historial
+      this.addResponseToHistory(
+        "chat-question",
+        `**${this.translations.chat.question}:** ${message}`
+      );
+
+      const tempResponse = {
+        id: Date.now(),
+        action: "chat-response",
+        content: '<span class="typing">|</span>',
+        timestamp: new Date(),
+      };
+      this.responseHistory.addResponse(tempResponse);
+
+      // Obtener la respuesta
+      const response = await this.apiClient.chatResponse(
+        this.currentContent,
+        message,
+        image
+      );
+
+      // Preparar el contenido final
+      let finalContent = response;
+      if (image) {
+        finalContent = {
+          content: response,
+          imageUsed: image.name,
+        };
+      }
+
+      this.responseHistory.removeResponse(tempResponse.id);
+      this.cacheManager.set("chat", chatContent, finalContent);
+      this.addResponseToHistory(
+        "chat-response",
+        finalContent.content || finalContent
+      );
+    } catch (error) {
+      console.error("Error:", error);
+      this.addResponseToHistory("chat-error", `Error: ${error.message}`);
+    }
+  }
+
+  setEditorContent(content, mode = "replace") {
+    if (this.editorAdapter) {
+      this.editorAdapter.setContent(content, mode);
+    }
+  }
+
+  addChatMessage(role, content) {
+    const container = this.shadowRoot
+      .querySelector("ai-chat")
+      ?.shadowRoot?.querySelector(".chat-messages");
+    if (!container) return;
+
+    const message = document.createElement("div");
+    message.className = `chat-message ${role}`;
+
+    try {
+      message.innerHTML = this.markdownHandler.convertForChat(content);
+    } catch (error) {
+      console.error("Error formatting chat message:", error);
+      message.textContent = content;
+    }
+
+    container.appendChild(message);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // Add keyboard navigation methods:
+  // ...
+  // Add after bindEvents method
+  setupKeyboardNavigation() {
+    // Global keyboard shortcuts
+    document.addEventListener("keydown", this.handleKeyboard);
+
+    // Modal specific keyboard navigation
+    const modal = this.shadowRoot.querySelector(".modal");
+    if (modal) {
+      modal.addEventListener("keydown", this.handleModalKeyboard);
+    }
+  }
+
+  handleKeyboard(event) {
+    // Global shortcuts
+    if (event.ctrlKey || event.metaKey) {
+      switch (event.key.toLowerCase()) {
+        case "e":
+          // Ctrl/Cmd + E to open enhancer
+          event.preventDefault();
+          this.shadowRoot.querySelector(".modal-trigger").click();
+          break;
+        case "i":
+          // Ctrl/Cmd + I to trigger improve
+          event.preventDefault();
+          if (this.isModalOpen()) {
+            this.handleToolAction("improve");
+          }
+          break;
+        case "s":
+          // Ctrl/Cmd + S to trigger summarize
+          event.preventDefault();
+          if (this.isModalOpen()) {
+            this.handleToolAction("summarize");
+          }
+          break;
+      }
+    }
+  }
+
+  handleModalKeyboard(event) {
+    if (!this.isModalOpen()) return;
+
+    switch (event.key) {
+      case "Escape":
+        // Close modal with Escape
+        this.shadowRoot.querySelector(".close-button").click();
+        break;
+      case "Tab":
+        // Trap focus within modal
+        this.handleTabNavigation(event);
+        break;
+      case "ArrowRight":
+      case "ArrowLeft":
+        // Tool navigation with arrow keys
+        if (event.target.closest(".tools-container")) {
+          this.handleToolNavigation(event);
+        }
+        break;
+    }
+  }
+
+  handleTabNavigation(event) {
+    const modal = this.shadowRoot.querySelector(".modal");
+    const focusableElements = modal.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstFocusable = focusableElements[0];
+    const lastFocusable = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey) {
+      if (document.activeElement === firstFocusable) {
+        event.preventDefault();
+        lastFocusable.focus();
+      }
+    } else {
+      if (document.activeElement === lastFocusable) {
+        event.preventDefault();
+        firstFocusable.focus();
+      }
+    }
+  }
+
+  handleToolNavigation(event) {
+    const toolbar = this.shadowRoot.querySelector("ai-toolbar");
+    const tools = toolbar.shadowRoot.querySelectorAll(".tool-button");
+    const currentTool = toolbar.shadowRoot.querySelector(".tool-button:focus");
+
+    if (!currentTool) return;
+
+    const currentIndex = Array.from(tools).indexOf(currentTool);
+    let nextIndex;
+
+    if (event.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % tools.length;
+    } else {
+      nextIndex = (currentIndex - 1 + tools.length) % tools.length;
+    }
+
+    tools[nextIndex].focus();
+    event.preventDefault();
+  }
+
+  isModalOpen() {
+    return this.shadowRoot.querySelector(".modal").classList.contains("open");
+  }
+
+  // Update connectedCallback to include keyboard navigation setup
   async connectedCallback() {
     try {
       const template = this.createTemplate();

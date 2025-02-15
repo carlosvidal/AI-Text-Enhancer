@@ -78,6 +78,109 @@ export class ToolBar extends HTMLElement {
       }
     `;
 
+    const toolbar = document.createElement("div");
+    toolbar.className = "tools";
+    toolbar.setAttribute("role", "toolbar");
+    toolbar.setAttribute("aria-label", "Enhancement tools");
+
+    const tools = [
+      { action: "improve", icon: "wand" },
+      { action: "summarize", icon: "list" },
+      { action: "expand", icon: "maximize" },
+      { action: "paraphrase", icon: "repeat" },
+      { action: "formal", icon: "briefcase" },
+      { action: "casual", icon: "coffee" },
+    ];
+
+    tools.forEach(tool => {
+      const button = document.createElement("button");
+      button.className = "tool-button";
+      button.dataset.action = tool.action;
+      button.setAttribute("role", "button");
+      button.setAttribute("aria-pressed", tool.action === this.currentAction ? "true" : "false");
+      button.setAttribute("aria-label", this.translations?.tools[tool.action] || tool.action);
+      
+      // Add icon and text
+      button.innerHTML = `
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          ${getToolIcon(tool.icon)}
+        </svg>
+        <span>${this.translations?.tools[tool.action] || tool.action}</span>
+      `;
+      
+      toolbar.appendChild(button);
+    });
+
+    this.shadowRoot.appendChild(style);
+    this.shadowRoot.appendChild(toolbar);
+}
+  static get observedAttributes() {
+    return ["has-content", "language"];
+  }
+
+  get hasContent() {
+    return this.getAttribute("has-content") === "true";
+  }
+
+  get language() {
+    return this.getAttribute("language") || "en";
+  }
+
+  connectedCallback() {
+    this.render();
+    this.bindEvents();
+  }
+
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (oldValue === newValue) return;
+
+    // Solo actualizar si el componente ya está renderizado
+    if (this.shadowRoot.querySelector(".tools")) {
+      this.updateVisibleTools();
+    }
+  }
+
+  render() {
+    const style = document.createElement("style");
+    style.textContent = `
+      :host {
+        display: block;
+      }
+
+      .tools {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+
+      .tool-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        background: #e5e7eb;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .tool-button:hover {
+        background: #d1d5db;
+      }
+
+      .tool-button.active {
+        background: #3b82f6;
+        color: white;
+      }
+
+      .tool-button svg {
+        width: 16px;
+        height: 16px;
+      }
+    `;
+
     this.shadowRoot.appendChild(style);
     this.shadowRoot.appendChild(this.createToolbar());
     requestAnimationFrame(() => {
