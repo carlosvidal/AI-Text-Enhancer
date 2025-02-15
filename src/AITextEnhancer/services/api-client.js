@@ -384,25 +384,70 @@ class APIClient {
   }
 
   async chatResponse(content, userMessage, imageSource = null) {
-    const contextPrompt = `Contexto - Descripción actual del producto: ${content}\n\nPregunta del usuario: ${userMessage}`;
-
     try {
-      if (imageSource) {
-        // Si hay una imagen, usamos el método que maneja imágenes
-        return await this.makeRequestWithImage(
-          this.config.systemPrompt,
-          contextPrompt,
-          imageSource
+      const messages = [
+        {
+          role: "system",
+          content: this.config.systemPrompt || "You are a helpful assistant.",
+        },
+        {
+          role: "user",
+          content: imageSource
+            ? [
+                {
+                  type: "text",
+                  text: `${content}\n\nUser: ${userMessage}`,
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url:
+                      typeof imageSource === "string"
+                        ? imageSource
+                        : `data:image/jpeg;base64,${await this.imageToBase64(
+                            imageSource
+                          )}`,
+                    detail: "high",
+                  },
+                },
+              ]
+            : `${content}\n\nUser: ${userMessage}`,
+        },
+      ];
+
+      const response = await fetch(
+        this.config.endpoints[this.config.provider],
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.config.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: imageSource
+              ? this.config.visionModels[this.config.provider]
+              : this.config.models[this.config.provider],
+            messages: messages,
+            temperature: this.config.temperature,
+            stream: true,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error?.message ||
+            `API Error: ${response.status} ${response.statusText}`
         );
-      } else {
-        // Si no hay imagen, usamos el método normal
-        return await this.makeRequest(this.config.systemPrompt, contextPrompt);
       }
+
+      return await this.processStream(response, () => {});
     } catch (error) {
       throw new Error(`Chat response failed: ${error.message}`);
     }
   }
-}
+} // Remove the extra closing brace here
 
 class APIError extends Error {
   constructor(message, originalError = null) {

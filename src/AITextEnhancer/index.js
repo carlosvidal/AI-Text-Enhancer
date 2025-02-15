@@ -1,28 +1,33 @@
-import { ResponseHistory } from "../ResponseHistory.js";
-import { ChatWithImage } from "../ChatWithImage.js";
-import { ToolBar } from "../ToolBar.js";
-import { TokenManager } from "../../services/token-manager.js";
-import { MarkdownHandler } from "../../services/markdown-handler.js";
-import { createAPIClient } from "../../services/api-client.js";
-import { createCacheManager } from "../../services/cache-manager.js";
-import { ModelManager } from "../../services/model-manager.js";
-import { EditorAdapter } from "../../services/editor-adapter.js";
-import { createEventEmitter } from "../../utils/event-utils.js";
-import { attachShadowTemplate } from "../../utils/dom-utils.js";
-import { TRANSLATIONS } from "../../constants/translations.js";
+import { ResponseHistory } from "./components/ResponseHistory.js";
+import { ChatWithImage } from "./components/ChatWithImage.js";
+import { ToolBar } from "./components/ToolBar.js";
+import { TokenManager } from "./services/token-manager.js";
+import { MarkdownHandler } from "./services/markdown-handler.js";
+import { createAPIClient } from "./services/api-client.js";
+import { createCacheManager } from "./services/cache-manager.js";
+import { ModelManager } from "./services/model-manager.js";
+import { EditorAdapter } from "./services/editor-adapter.js";
+// Update this import line
+import { createEventEmitter } from "./utils/event-utils.js";
+import { attachShadowTemplate } from "./utils/dom-utils.js";
+import { TRANSLATIONS } from "./constants/translations.js";
 
 // Feature imports
-import { setupKeyboardNavigation, keyboardNavigationMixin } from './features/keyboard-navigation.js';
-import { responseHandlerMixin } from './features/response-handlers.js';
-import { imageHandlerMixin } from './features/image-handlers.js';
-import { createTemplate } from './template.js';
+import {
+  setupKeyboardNavigation,
+  keyboardNavigationMixin,
+} from "./features/keyboard-navigation.js";
+import { responseHandlerMixin } from "./features/response-handlers.js";
+import { imageHandlerMixin } from "./features/image-handlers.js";
+import { createTemplate } from "./template.js";
 
 class AITextEnhancer extends HTMLElement {
   constructor() {
     super();
 
     // Apply mixins first
-    Object.assign(this, 
+    Object.assign(
+      this,
       keyboardNavigationMixin,
       responseHandlerMixin,
       imageHandlerMixin
@@ -47,7 +52,7 @@ class AITextEnhancer extends HTMLElement {
     this.modelManager = new ModelManager();
     this.markdownHandler = new MarkdownHandler();
     this.tokenManager = new TokenManager();
-    
+
     // Initialize cache
     this.cacheManager = createCacheManager({
       prefix: "ai-text-enhancer",
@@ -90,7 +95,7 @@ class AITextEnhancer extends HTMLElement {
       "api-provider",
       "api-model",
       "language",
-      "prompt",
+      "prompt", // Make sure this is included
       "context",
       "image-url",
       "tenant-id",
@@ -113,6 +118,13 @@ class AITextEnhancer extends HTMLElement {
 
   get apiKey() {
     return this.getAttribute("api-key");
+  }
+
+  get prompt() {
+    return (
+      this.getAttribute("prompt") ||
+      "You are a professional content enhancer. Improve the text while maintaining its core message and intent."
+    );
   }
 
   get currentContent() {
@@ -154,10 +166,10 @@ class AITextEnhancer extends HTMLElement {
   }
 
   disconnectedCallback() {
-    document.removeEventListener('keydown', this.handleKeyboard);
-    const modal = this.shadowRoot.querySelector('.modal');
+    document.removeEventListener("keydown", this.handleKeyboard);
+    const modal = this.shadowRoot.querySelector(".modal");
     if (modal) {
-      modal.removeEventListener('keydown', this.handleModalKeyboard);
+      modal.removeEventListener("keydown", this.handleModalKeyboard);
     }
   }
 
@@ -175,10 +187,22 @@ class AITextEnhancer extends HTMLElement {
 
     this.responseHistory = this.shadowRoot.querySelector("response-history");
     if (this.responseHistory) {
-      this.responseHistory.addEventListener("responseCopy", this.handleResponseCopy);
-      this.responseHistory.addEventListener("responseUse", this.handleResponseUse);
-      this.responseHistory.addEventListener("responseRetry", this.handleResponseRetry);
-      this.responseHistory.addEventListener("responseEdit", this.handleResponseEdit);
+      this.responseHistory.addEventListener(
+        "responseCopy",
+        this.handleResponseCopy
+      );
+      this.responseHistory.addEventListener(
+        "responseUse",
+        this.handleResponseUse
+      );
+      this.responseHistory.addEventListener(
+        "responseRetry",
+        this.handleResponseRetry
+      );
+      this.responseHistory.addEventListener(
+        "responseEdit",
+        this.handleResponseEdit
+      );
     }
 
     this.bindEvents();
@@ -188,22 +212,26 @@ class AITextEnhancer extends HTMLElement {
     if (this.isInitialized) return;
 
     try {
-      // Initialize API client with explicit API key check
       const apiKey = this.apiKey;
       if (!apiKey) {
         throw new Error("API key is required");
       }
 
+      // Initialize API client with proper configuration
       this.apiClient = createAPIClient({
         apiKey,
         provider: this.apiProvider,
         model: this.apiModel,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+        mode: "cors",
+        credentials: "same-origin",
       });
-
-      // Verify API client initialization
-      if (!this.apiClient) {
-        throw new Error("Failed to initialize API client");
-      }
 
       // Initialize editor adapter if editor ID is provided
       if (this.editorId) {
@@ -220,11 +248,110 @@ class AITextEnhancer extends HTMLElement {
 
       // Update visible tools based on content
       this.updateVisibleTools();
-
     } catch (error) {
       console.error("Error in initializeComponents:", error);
+      this.addResponseToHistory(
+        "error",
+        `Initialization error: ${error.message}`
+      );
       throw error;
     }
+  }
+
+  async handleChatMessage(event) {
+    const { message, image } = event.detail;
+
+    if (!this.apiKey) {
+      this.addResponseToHistory("chat-error", this.translations.errors.apiKey);
+      return;
+    }
+
+    try {
+      // Asegurar que tenemos un mensaje válido
+      if (!message?.trim()) {
+        throw new Error("Message cannot be empty");
+      }
+
+      // Preparar el contenido del chat
+      const currentContent =
+        this.currentContent?.trim() || "No content available";
+
+      if (image) {
+        if (!this.validateImage(image)) {
+          throw new Error("Invalid image format or size");
+        }
+        this.addResponseToHistory(
+          "image-upload",
+          this.renderImagePreview(image)
+        );
+      }
+
+      // Agregar la pregunta al historial
+      this.addResponseToHistory(
+        "chat-question",
+        `**${this.translations.chat.question}:** ${message}`
+      );
+
+      // Mostrar indicador de carga
+      const tempResponse = {
+        id: Date.now(),
+        action: "chat-response",
+        content: '<span class="typing">|</span>',
+        timestamp: new Date(),
+      };
+      this.responseHistory.addResponse(tempResponse);
+
+      // Hacer la solicitud a la API
+      const response = await this.apiClient.chatResponse(
+        currentContent,
+        message.trim(),
+        image
+      );
+
+      if (tempResponse) {
+        this.responseHistory.removeResponse(tempResponse.id);
+      }
+
+      // Procesar y mostrar la respuesta
+      if (!response) {
+        throw new Error("Empty response from API");
+      }
+
+      const finalContent = image
+        ? { content: response, imageUsed: image.name }
+        : response;
+
+      const chatContent = `${currentContent}-${message}`;
+      this.cacheManager.set("chat", chatContent, finalContent);
+      this.addResponseToHistory(
+        "chat-response",
+        finalContent.content || finalContent
+      );
+    } catch (error) {
+      console.error("Chat Error:", error);
+      if (tempResponse) {
+        this.responseHistory.removeResponse(tempResponse.id);
+      }
+      const errorMessage = this.formatErrorMessage(error);
+      this.addResponseToHistory("chat-error", errorMessage);
+    }
+  }
+
+  validateImage(image) {
+    const maxSize = 4 * 1024 * 1024; // 4MB
+    const validTypes = ["image/jpeg", "image/png", "image/gif"];
+
+    return image.size <= maxSize && validTypes.includes(image.type);
+  }
+
+  formatErrorMessage(error) {
+    if (error.message.includes("CORS")) {
+      return "Error: Unable to connect to AI service. Please check your API key and try again.";
+    }
+    if (error.message.includes("Failed to fetch")) {
+      return "Error: Network connection failed. Please check your internet connection.";
+    }
+    return `Error: ${error.message}`;
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -240,7 +367,8 @@ class AITextEnhancer extends HTMLElement {
         break;
       case "language":
         if (this.isInitialized) {
-          const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+          const chatComponent =
+            this.shadowRoot.querySelector("chat-with-image");
           if (chatComponent) {
             chatComponent.setAttribute("language", newValue);
           }
@@ -255,7 +383,8 @@ class AITextEnhancer extends HTMLElement {
         break;
       case "image-url":
         if (this.isInitialized) {
-          const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+          const chatComponent =
+            this.shadowRoot.querySelector("chat-with-image");
           if (chatComponent) {
             chatComponent.setAttribute("image-url", newValue || "");
           }
@@ -273,10 +402,22 @@ class AITextEnhancer extends HTMLElement {
 
     this.responseHistory = this.shadowRoot.querySelector("response-history");
     if (this.responseHistory) {
-      this.responseHistory.addEventListener("responseCopy", this.handleResponseCopy);
-      this.responseHistory.addEventListener("responseUse", this.handleResponseUse);
-      this.responseHistory.addEventListener("responseRetry", this.handleResponseRetry);
-      this.responseHistory.addEventListener("responseEdit", this.handleResponseEdit);
+      this.responseHistory.addEventListener(
+        "responseCopy",
+        this.handleResponseCopy
+      );
+      this.responseHistory.addEventListener(
+        "responseUse",
+        this.handleResponseUse
+      );
+      this.responseHistory.addEventListener(
+        "responseRetry",
+        this.handleResponseRetry
+      );
+      this.responseHistory.addEventListener(
+        "responseEdit",
+        this.handleResponseEdit
+      );
     }
 
     this.bindEvents();
@@ -291,6 +432,7 @@ class AITextEnhancer extends HTMLElement {
         apiKey: this.apiKey,
         provider: this.apiProvider,
         model: this.apiModel,
+        systemPrompt: this.prompt, // Add system prompt here
       });
 
       // Initialize editor adapter if editor ID is provided
@@ -308,7 +450,6 @@ class AITextEnhancer extends HTMLElement {
 
       // Update visible tools based on content
       this.updateVisibleTools();
-
     } catch (error) {
       console.error("Error in initializeComponents:", error);
       throw error;
@@ -364,7 +505,7 @@ class AITextEnhancer extends HTMLElement {
   }
 
   isModalOpen() {
-    return this.shadowRoot.querySelector('.modal').classList.contains('open');
+    return this.shadowRoot.querySelector(".modal").classList.contains("open");
   }
 
   async handleToolAction(event) {
@@ -378,7 +519,7 @@ class AITextEnhancer extends HTMLElement {
     try {
       const content = this.currentContent;
       const cachedResponse = this.cacheManager.get(action, content);
-      
+
       if (cachedResponse) {
         this.addResponseToHistory(action, cachedResponse);
         return;
@@ -393,7 +534,7 @@ class AITextEnhancer extends HTMLElement {
       this.responseHistory.addResponse(tempResponse);
 
       const completeText = await this.apiClient.enhance(content, action);
-      
+
       if (tempResponse) {
         this.responseHistory.removeResponse(tempResponse.id);
       }
@@ -411,7 +552,7 @@ class AITextEnhancer extends HTMLElement {
 
   async handleChatMessage(event) {
     const { message, image } = event.detail;
-    
+
     if (!this.apiKey) {
       this.addResponseToHistory("chat-error", this.translations.errors.apiKey);
       return;
