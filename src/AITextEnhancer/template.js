@@ -6,6 +6,9 @@ import { previewStyles } from "./styles/layout/preview.js";
 import { imagePreviewStyles } from "./styles/components/image-preview.js";
 
 export function createTemplate(component) {
+  const t = component.translations;
+  const language = component.language;
+
   return `
     <style>
       ${variables}
@@ -27,9 +30,19 @@ export function createTemplate(component) {
         <div class="modal-content">
           <button class="close-button">×</button>
           <div class="modal-body">
-            <ai-toolbar></ai-toolbar>
-            <chat-with-image></chat-with-image>
-            <response-history></response-history>
+            <div class="editor-section">
+              <div class="tools-container">
+                <ai-toolbar language="${language}"></ai-toolbar>
+              </div>
+              <response-history language="${language}"></response-history>
+              <div class="chat-section">
+                <chat-with-image
+                  language="${language}"
+                  image-url="${component.imageUrl || ""}"
+                  api-provider="${component.apiProvider}">
+                </chat-with-image>
+              </div>
+            </div>
           </div>
         </div>
       </div>

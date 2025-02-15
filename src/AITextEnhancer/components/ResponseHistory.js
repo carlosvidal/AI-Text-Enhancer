@@ -4,6 +4,7 @@ import { getToolIcon } from "../services/icon-service.js";
 import { variables } from "../styles/base/variables.js";
 import { animations } from "../styles/base/animations.js";
 import { previewStyles } from "../styles/layout/preview.js";
+import { responseHistoryStyles } from "../styles/components/response-history.js";
 
 export class ResponseHistory extends HTMLElement {
   constructor() {
@@ -49,285 +50,128 @@ export class ResponseHistory extends HTMLElement {
       ${variables}
       ${animations}
       ${previewStyles}
-
-      .response-entry.with-image {
-        display: grid;
-        grid-template-columns: 100px 1fr;
-        gap: 1rem;
-        align-items: start;
-      }
-
-      .image-preview {
-        width: 100%;
-        aspect-ratio: 1;
-        border-radius: var(--ai-radius);
-        overflow: hidden;
-        background: var(--ai-background-light);
-      }
-
-      .image-preview img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      .response-content-wrapper {
-        flex: 1;
-      }
-
-      @media (max-width: 640px) {
-        .response-entry.with-image {
-          grid-template-columns: 1fr;
-        }
-
-        .image-preview {
-          max-width: 200px;
-        }
-      }
+      ${responseHistoryStyles}
     `;
 
-    this.shadowRoot.innerHTML = `
-      <div class="preview">
-        ${
-          this.responses.length === 0
-            ? this.translations.preview.placeholder
-            : this.renderResponses()
-        }
-      </div>
-    `;
+    const container = document.createElement("div");
+    container.className = "response-container";
+    
+    this.responses.forEach(response => {
+      container.appendChild(this.createResponseEntry(response));
+    });
 
-    this.shadowRoot.prepend(style);
+    this.shadowRoot.innerHTML = "";
+    this.shadowRoot.appendChild(style);
+    this.shadowRoot.appendChild(container);
   }
 
-  renderResponses() {
-    let currentQuestionId = null;
-    let currentImageData = null;
+  createResponseEntry(response) {
+    const entry = document.createElement("div");
+    entry.className = `response-entry ${response.imageUrl ? 'with-image' : ''}`;
+    entry.dataset.id = response.id;
 
-    return this.responses
-      .map((response, index) => {
-        // Si es una imagen, guardarla para la siguiente pregunta
-        if (response.action === "image-upload") {
-          currentImageData = response.content;
-          return ""; // No renderizar la entrada de imagen
-        }
-
-        // Si es una pregunta, actualizar el ID actual
-        if (response.action === "chat-question") {
-          currentQuestionId = response.id;
-        }
-
-        // Si es una respuesta y hay una imagen pendiente, limpiar la imagen
-        if (response.action === "chat-response") {
-          currentImageData = null;
-        }
-
-        let html = `
-        <div class="response-entry ${
-          currentImageData ? "with-image" : ""
-        }" data-id="${response.id}">
-      `;
-
-        // Si hay una imagen y es una pregunta, mostrarla
-        if (currentImageData && response.action === "chat-question") {
-          html += `
-          <div class="image-preview">
-            ${currentImageData}
-          </div>
-        `;
-        }
-
-        html += `
-          <div class="response-content-wrapper">
-            <div class="response-header">
-              <div class="response-tool">
-                ${getToolIcon(response.action)}
-                ${this.translations.tools[response.action] || response.action}
-              </div>
-              <div class="response-timestamp">
-                ${this.formatTimestamp(response.timestamp)}
-              </div>
-            </div>
-            <div class="response-content">
-              ${this.formatContent(response)}
-            </div>
-            ${this.renderResponseActions(response)}
-          </div>
+    if (response.imageUrl) {
+      entry.innerHTML = `
+        <div class="image-preview">
+          <img src="${response.imageUrl}" alt="Response image" />
         </div>
       `;
-
-        return html;
-      })
-      .join("");
-  }
-
-  formatContent(response) {
-    if (response.action === "image-upload") {
-      return response.content;
-    }
-    return (
-      this.markdownHandler?.convertToHTML(response.content) || response.content
-    );
-  }
-
-  renderResponseActions(response) {
-    if (response.action === "chat-question") {
-      return this.renderChatActions(response);
     }
 
-    if (
-      response.action === "chat-error" ||
-      response.action === "image-upload"
-    ) {
-      return "";
-    }
+    const contentWrapper = document.createElement("div");
+    contentWrapper.className = "response-content-wrapper";
 
-    return this.renderStandardActions(response);
-  }
-
-  renderChatActions(response) {
-    return `
+    contentWrapper.innerHTML = `
+      <div class="response-header">
+        <div class="response-tool">
+          ${getToolIcon(response.action)}
+          <span>${this.translations.tools[response.action] || response.action}</span>
+        </div>
+        <div class="response-timestamp">${this.formatTimestamp(response.timestamp)}</div>
+      </div>
+      <div class="response-content">
+        ${this.markdownHandler ? this.markdownHandler.convert(response.content) : response.content}
+      </div>
       <div class="response-actions">
-        <button class="response-action edit-button" data-response-id="${
-          response.id
-        }">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        <button class="response-action copy" data-action="copy">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
           </svg>
-          ${this.translations.actions.edit || "Edit"}
+          ${this.translations.actions.copy}
+        </button>
+        <button class="response-action use" data-action="use">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          ${this.translations.actions.use}
+        </button>
+        <button class="response-action edit" data-action="edit">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+          </svg>
+          ${this.translations.actions.edit}
         </button>
       </div>
     `;
-  }
 
-  renderStandardActions(response) {
-    return `
-      <div class="response-actions">
-        <button class="response-action retry-button" data-response-id="${
-          response.id
-        }" data-action="${response.action}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14"/>
-            <path d="M11 10v4h4"/>
-          </svg>
-          ${this.translations.actions.retry || "Retry"}
-        </button>
-        <button class="response-action copy-button" data-response-id="${
-          response.id
-        }">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-          ${this.translations.actions.copy || "Copy"}
-        </button>
-        <button class="response-action primary use-button" data-response-id="${
-          response.id
-        }">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m5 12 5 5L20 7"></path>
-          </svg>
-          ${this.translations.actions.use || "Use This"}
-        </button>
-      </div>
-    `;
+    if (response.imageUrl) {
+      entry.appendChild(contentWrapper);
+    } else {
+      entry.innerHTML = contentWrapper.innerHTML;
+    }
+
+    return entry;
   }
 
   setupEventListeners() {
-    this.shadowRoot.addEventListener("click", (e) => {
-      const button = e.target.closest("button");
+    this.shadowRoot.addEventListener("click", (event) => {
+      const button = event.target.closest(".response-action");
       if (!button) return;
 
-      const responseId = parseInt(button.dataset.responseId, 10);
-      const action = button.dataset.action;
+      const entry = button.closest(".response-entry");
+      const responseId = entry?.dataset.id;
+      if (!responseId) return;
 
-      if (button.classList.contains("copy-button")) {
-        this.dispatchEvent(
-          new CustomEvent("responseCopy", {
-            detail: { responseId },
-            bubbles: true,
-            composed: true,
-          })
-        );
-      } else if (button.classList.contains("use-button")) {
-        this.dispatchEvent(
-          new CustomEvent("responseUse", {
-            detail: { responseId },
-            bubbles: true,
-            composed: true,
-          })
-        );
-      } else if (button.classList.contains("retry-button")) {
-        this.dispatchEvent(
-          new CustomEvent("responseRetry", {
-            detail: { responseId, action },
-            bubbles: true,
-            composed: true,
-          })
-        );
-      } else if (button.classList.contains("edit-button")) {
-        this.dispatchEvent(
-          new CustomEvent("responseEdit", {
-            detail: { responseId },
-            bubbles: true,
-            composed: true,
-          })
-        );
-      }
+      const action = button.dataset.action;
+      this.dispatchEvent(
+        new CustomEvent(`response${action}`, {
+          detail: { responseId },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    });
+  }
+
+  formatTimestamp(timestamp) {
+    return new Date(timestamp).toLocaleTimeString(this.language, {
+      hour: "2-digit",
+      minute: "2-digit"
     });
   }
 
   addResponse(response) {
     this.responses.push(response);
     this.render();
-    this.scrollToBottom();
   }
 
-  updateResponse(id, content, streaming = true) {
-    const response = this.responses.find((r) => r.id === id);
+  updateResponse(id, content) {
+    const response = this.responses.find(r => r.id === id);
     if (response) {
-      response.content = streaming ? response.content + content : content;
-      const responseElement = this.shadowRoot.querySelector(
-        `[data-id="${id}"] .response-content`
-      );
-      if (responseElement) {
-        if (streaming) {
-          // Añadir solo el nuevo contenido con el cursor
-          const newContent =
-            this.markdownHandler?.convertToHTML(content) || content;
-          responseElement.innerHTML =
-            this.markdownHandler?.convertToHTML(response.content) ||
-            response.content;
-          responseElement.innerHTML += '<span class="typing">|</span>';
-        } else {
-          responseElement.innerHTML = this.formatContent(response);
-        }
-      }
+      response.content = content;
+      this.render();
     }
   }
 
   removeResponse(id) {
-    this.responses = this.responses.filter((r) => r.id !== id);
+    this.responses = this.responses.filter(r => r.id !== id);
     this.render();
   }
 
-  clearResponses() {
+  clear() {
     this.responses = [];
     this.render();
-  }
-
-  scrollToBottom() {
-    const preview = this.shadowRoot.querySelector(".preview");
-    if (preview) {
-      preview.scrollTop = preview.scrollHeight;
-    }
-  }
-
-  formatTimestamp(date) {
-    return new Intl.DateTimeFormat("default", {
-      hour: "numeric",
-      minute: "numeric",
-    }).format(date);
   }
 }
 

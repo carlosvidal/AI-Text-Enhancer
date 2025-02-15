@@ -70,169 +70,117 @@ export class ChatWithImage extends HTMLElement {
       ${animations}
       ${chatStyles}
       ${imagePreviewStyles}
-      
-      .chat-input-container {
-        position: relative;
-        flex: 1;
-        display: flex;
-        align-items: center;
-      }
-      
-      .chat-upload-button {
-        position: absolute;
-        right: 12px;
-        display: inline-flex;
-        align-items: center;
-        padding: 6px;
-        background: none;
-        border: none;
-        cursor: pointer;
-        color: var(--ai-text-light);
-      }
-      
-      .chat-upload-button:hover {
-        color: var(--ai-text);
-      }
-      
-      .hidden {
-        display: none !important;
-      }
     `;
 
-    const content = document.createElement("div");
-    content.className = "chat-container";
-    content.innerHTML = `
-      <div id="imagePreviewContainer"></div>
-      <form class="chat-form">
-        <div class="chat-input-container">
-          <input type="text" class="chat-input" placeholder="${
-            this.translations.chat.placeholder
-          }">
-          ${
-            this.supportsImages
-              ? `
-            <label class="chat-upload-button" title="Upload image">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
-                <circle cx="9" cy="9" r="2"/>
-                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-              </svg>
-              <input type="file" accept="image/*" class="hidden" id="imageInput">
-            </label>
-          `
-              : ""
-          }
-        </div>
-        <button type="submit" class="chat-submit">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 12h14"/>
-            <path d="m12 5 7 7-7 7"/>
-          </svg>
-        </button>
-      </form>
+    const template = `
+      <div class="chat-container">
+        <form class="chat-form">
+          <div class="chat-input-container">
+            <input type="text" class="chat-input" placeholder="${this.translations.chat.placeholder}" />
+            ${this.supportsImages ? `
+              <button type="button" class="chat-upload-button" aria-label="${this.translations.chat.uploadImage}">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+                  <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+                  <path d="M12 12v9"/>
+                  <path d="m8 17 4-4 4 4"/>
+                </svg>
+              </button>
+              <input type="file" class="file-input" accept="image/*" hidden />
+            ` : ''}
+          </div>
+          <button type="submit" class="chat-submit">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+              <path d="m22 2-7 20-4-9-9-4Z"/>
+              <path d="M22 2 11 13"/>
+            </svg>
+            ${this.translations.chat.send}
+          </button>
+        </form>
+      </div>
     `;
 
-    this.shadowRoot.innerHTML = "";
-    this.shadowRoot.appendChild(style);
-    this.shadowRoot.appendChild(content);
+    this.shadowRoot.innerHTML = `${style.outerHTML}${template}`;
   }
 
   setupEventListeners() {
     const form = this.shadowRoot.querySelector(".chat-form");
-    const imageInput = this.shadowRoot.querySelector("#imageInput");
+    const input = this.shadowRoot.querySelector(".chat-input");
+    const uploadButton = this.shadowRoot.querySelector(".chat-upload-button");
+    const fileInput = this.shadowRoot.querySelector(".file-input");
 
     form.addEventListener("submit", this.handleSubmit.bind(this));
-
-    if (imageInput) {
-      imageInput.addEventListener("change", this.handleFileSelect.bind(this));
-    }
-
-    // Delegación de eventos para el botón de eliminar imagen
-    this.shadowRoot.addEventListener("click", (e) => {
-      if (e.target.closest(".image-preview-remove")) {
-        this.removeImage();
-      }
-    });
-  }
-
-  async handleImageUrl(url) {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to load image");
-
-      const blob = await response.blob();
-      const file = new File([blob], "product-image.jpg", {
-        type: "image/jpeg",
-      });
-      this.setTempImage(file, url);
-    } catch (error) {
-      console.error("Error loading image URL:", error);
+    
+    if (this.supportsImages && uploadButton && fileInput) {
+      uploadButton.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", this.handleFileSelect.bind(this));
     }
   }
 
-  handleFileSelect(e) {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      this.setTempImage(file, URL.createObjectURL(file));
-    }
-  }
-
-  handleSubmit(e) {
-    e.preventDefault();
+  handleSubmit(event) {
+    event.preventDefault();
     const input = this.shadowRoot.querySelector(".chat-input");
     const message = input.value.trim();
 
-    if (!message && !this.tempImage) return;
-
-    this.dispatchEvent(
-      new CustomEvent("chatMessage", {
-        detail: {
-          message,
-          image: this.tempImage,
-        },
-        bubbles: true,
-        composed: true,
-      })
-    );
-
-    // Limpiar
-    input.value = "";
-    this.tempImage = null;
-    this.updateImagePreview();
+    if (message) {
+      this.dispatchEvent(
+        new CustomEvent("chatMessage", {
+          detail: { message, image: this.tempImage },
+          bubbles: true,
+          composed: true,
+        })
+      );
+      input.value = "";
+      this.tempImage = null;
+      this.updateImagePreview();
+    }
   }
 
-  setTempImage(file, previewUrl) {
-    this.tempImage = file;
-    this.updateImagePreview(previewUrl);
+  handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith("image/")) {
+      this.tempImage = file;
+      this.updateImagePreview();
+    }
   }
 
-  updateImagePreview(previewUrl = null) {
-    const container = this.shadowRoot.querySelector("#imagePreviewContainer");
-
-    if (!this.tempImage) {
-      container.innerHTML = "";
-      return;
+  updateImagePreview() {
+    const container = this.shadowRoot.querySelector(".chat-input-container");
+    const existingPreview = this.shadowRoot.querySelector(".image-preview-container");
+    
+    if (existingPreview) {
+      existingPreview.remove();
     }
 
-    container.innerHTML = `
-      <div class="image-preview-card">
-        <div class="image-preview-content">
-          <div class="image-preview-thumbnail">
-            <img src="${previewUrl}" alt="Preview">
-          </div>
-          <div class="image-preview-info">
-            <div class="image-preview-label">Selected image</div>
-            <div class="image-preview-filename">${this.tempImage.name}</div>
-          </div>
-          <button class="image-preview-remove" title="Remove image">×</button>
-        </div>
-      </div>
-    `;
+    if (this.tempImage) {
+      const preview = document.createElement("div");
+      preview.className = "image-preview-container";
+      preview.innerHTML = `
+        <img src="${URL.createObjectURL(this.tempImage)}" alt="Preview" class="image-preview" />
+        <button class="remove-image" aria-label="${this.translations.chat.removeImage}">×</button>
+      `;
+
+      container.appendChild(preview);
+      preview.querySelector(".remove-image").addEventListener("click", () => {
+        this.tempImage = null;
+        this.updateImagePreview();
+      });
+    }
   }
 
-  removeImage() {
-    this.tempImage = null;
-    this.updateImagePreview();
+  updateTranslations() {
+    const input = this.shadowRoot.querySelector(".chat-input");
+    const submitButton = this.shadowRoot.querySelector(".chat-submit");
+    
+    if (input && submitButton) {
+      input.placeholder = this.translations.chat.placeholder;
+      submitButton.innerHTML = `
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+          <path d="m22 2-7 20-4-9-9-4Z"/>
+          <path d="M22 2 11 13"/>
+        </svg>
+        ${this.translations.chat.send}
+      `;
+    }
   }
 
   updateUploadVisibility() {
@@ -242,10 +190,15 @@ export class ChatWithImage extends HTMLElement {
     }
   }
 
-  updateTranslations() {
-    const input = this.shadowRoot.querySelector(".chat-input");
-    if (input) {
-      input.placeholder = this.translations.chat.placeholder;
+  async handleImageUrl(url) {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const file = new File([blob], "image.jpg", { type: blob.type });
+      this.tempImage = file;
+      this.updateImagePreview();
+    } catch (error) {
+      console.error("Error loading image:", error);
     }
   }
 }

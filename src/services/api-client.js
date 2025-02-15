@@ -341,95 +341,68 @@ class APIClient {
     });
   }
 
-  async enhance(content, action = "improve", context = "") {
-    try {
-      if (!content?.trim()) {
-        throw new Error("Content cannot be empty");
+  async enhanceText(
+    content,
+    action = "improve",
+    imageFile = null,
+    context = "",
+    onProgress = () => {}
+  ) {
+    const prompts = {
+      improve: `Mejora esta descripción considerando estos detalles del producto:\n${context}\n\nDescripción actual:`,
+      summarize: `Teniendo en cuenta estos detalles del producto:\n${context}\n\nCrea un resumen conciso y efectivo de la siguiente descripción:`,
+      expand: `Basándote en estos detalles del producto:\n${context}\n\nExpande esta descripción añadiendo más detalles, beneficios y casos de uso:`,
+      paraphrase: `Considerando estos detalles del producto:\n${context}\n\nReescribe esta descripción manteniendo el mensaje principal pero con un enfoque fresco:`,
+      formal: `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más formal, profesional y técnico, manteniendo la información clave pero usando un lenguaje más sofisticado y corporativo:`,
+      casual: `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más casual y cercano, como si estuvieras explicándolo a un amigo, manteniendo un lenguaje accesible y conversacional pero sin perder profesionalismo:`,
+      empty: `Usando estos detalles del producto:\n${context}\n\nCrea una descripción profesional y atractiva que destaque sus características principales:`,
+    };
+
+    const prompt = prompts[action] || prompts.improve;
+
+    if (imageFile && this.config.visionModels[this.config.provider]) {
+      try {
+        return await this.makeRequestWithImage(
+          prompt,
+          content,
+          imageFile,
+          onProgress
+        );
+      } catch (error) {
+        // Si falla el análisis de imagen, degradamos elegantemente al análisis de solo texto
+        console.warn(
+          "Image analysis failed, falling back to text-only analysis:",
+          error
+        );
+        return await this.makeRequest(prompt, content, onProgress);
       }
-  
-      const prompts = {
-        improve: `Mejora esta descripción considerando estos detalles del producto:\n${context}\n\nDescripción actual:`,
-        summarize: `Teniendo en cuenta estos detalles del producto:\n${context}\n\nCrea un resumen conciso y efectivo de la siguiente descripción:`,
-        expand: `Basándote en estos detalles del producto:\n${context}\n\nExpande esta descripción añadiendo más detalles, beneficios y casos de uso:`,
-        paraphrase: `Considerando estos detalles del producto:\n${context}\n\nReescribe esta descripción manteniendo el mensaje principal pero con un enfoque fresco:`,
-        formal: `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más formal, profesional y técnico:`,
-        casual: `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más casual y cercano:`,
-        empty: `Usando estos detalles del producto:\n${context}\n\nCrea una descripción profesional y atractiva que destaque sus características principales:`
-      };
-  
-      const prompt = prompts[action] || prompts.improve;
-      
-      return await this.makeRequest(prompt, content);
-    } catch (error) {
-      throw new Error(`Enhancement failed: ${error.message}`);
+    } else {
+      // Si no hay imagen o el proveedor no soporta análisis de imágenes,
+      // procedemos directamente con el análisis de texto
+      return await this.makeRequest(prompt, content, onProgress);
     }
   }
 
   async chatResponse(content, userMessage, imageSource = null) {
+    const contextPrompt = `Contexto - Descripción actual del producto: ${content}\n\nPregunta del usuario: ${userMessage}`;
+
     try {
-      const messages = [
-        {
-          role: "system",
-          content: this.config.systemPrompt || "You are a helpful assistant.",
-        },
-        {
-          role: "user",
-          content: imageSource
-            ? [
-                {
-                  type: "text",
-                  text: `${content}\n\nUser: ${userMessage}`,
-                },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url:
-                      typeof imageSource === "string"
-                        ? imageSource
-                        : `data:image/jpeg;base64,${await this.imageToBase64(
-                            imageSource
-                          )}`,
-                    detail: "high",
-                  },
-                },
-              ]
-            : `${content}\n\nUser: ${userMessage}`,
-        },
-      ];
-
-      const response = await fetch(
-        this.config.endpoints[this.config.provider],
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.config.apiKey}`,
-          },
-          body: JSON.stringify({
-            model: imageSource
-              ? this.config.visionModels[this.config.provider]
-              : this.config.models[this.config.provider],
-            messages: messages,
-            temperature: this.config.temperature,
-            stream: true,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error?.message ||
-            `API Error: ${response.status} ${response.statusText}`
+      if (imageSource) {
+        // Si hay una imagen, usamos el método que maneja imágenes
+        return await this.makeRequestWithImage(
+          this.config.systemPrompt,
+          contextPrompt,
+          imageSource
         );
+      } else {
+        // Si no hay imagen, usamos el método normal
+        return await this.makeRequest(this.config.systemPrompt, contextPrompt);
       }
-
-      return await this.processStream(response, () => {});
     } catch (error) {
       throw new Error(`Chat response failed: ${error.message}`);
     }
   }
-} // Remove the extra closing brace here
+}
 
 class APIError extends Error {
   constructor(message, originalError = null) {

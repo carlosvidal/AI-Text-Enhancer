@@ -155,8 +155,13 @@ class AITextEnhancer extends HTMLElement {
   // Lifecycle methods
   async connectedCallback() {
     try {
+      // Asegurarnos de que las traducciones estén disponibles desde el inicio
       const template = createTemplate(this);
       attachShadowTemplate(this, template);
+      
+      // Propagar el idioma a los componentes hijos antes de inicializar
+      this.updateLanguageForChildren(this.language);
+      
       await this.initializeComponents();
       this.setupEventListeners();
       setupKeyboardNavigation(this);
@@ -165,17 +170,59 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
-  disconnectedCallback() {
-    document.removeEventListener("keydown", this.handleKeyboard);
-    const modal = this.shadowRoot.querySelector(".modal");
-    if (modal) {
-      modal.removeEventListener("keydown", this.handleModalKeyboard);
-    }
+  updateLanguageForChildren(language) {
+    const components = this.shadowRoot.querySelectorAll('[language]');
+    components.forEach(component => {
+      component.setAttribute('language', language);
+    });
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue) return;
-    // ... existing attribute change handling ...
+
+    switch (name) {
+      case "api-key":
+        if (this.apiClient) {
+          this.apiClient.setApiKey(newValue);
+        } else if (!this.isInitialized) {
+          this.initializeComponents();
+        }
+        break;
+      case "language":
+        if (this.isInitialized) {
+          const toolbar = this.shadowRoot.querySelector("ai-toolbar");
+          const chatComponent =
+            this.shadowRoot.querySelector("chat-with-image");
+          const responseHistory =
+            this.shadowRoot.querySelector("response-history");
+
+          if (toolbar) {
+            toolbar.setAttribute("language", newValue);
+          }
+          if (chatComponent) {
+            chatComponent.setAttribute("language", newValue);
+          }
+          if (responseHistory) {
+            responseHistory.setAttribute("language", newValue);
+          }
+        }
+        break;
+      case "api-provider":
+      case "api-model":
+        if (this.isInitialized) {
+          this.initializeComponents();
+        }
+        break;
+      case "image-url":
+        if (this.isInitialized) {
+          const chatComponent =
+            this.shadowRoot.querySelector("chat-with-image");
+          if (chatComponent) {
+            chatComponent.setAttribute("image-url", newValue || "");
+          }
+        }
+        break;
+    }
   }
 
   // Core functionality
@@ -367,12 +414,21 @@ class AITextEnhancer extends HTMLElement {
         break;
       case "language":
         if (this.isInitialized) {
+          const toolbar = this.shadowRoot.querySelector("ai-toolbar");
           const chatComponent =
             this.shadowRoot.querySelector("chat-with-image");
+          const responseHistory =
+            this.shadowRoot.querySelector("response-history");
+
+          if (toolbar) {
+            toolbar.setAttribute("language", newValue);
+          }
           if (chatComponent) {
             chatComponent.setAttribute("language", newValue);
           }
-          this.updateTranslations();
+          if (responseHistory) {
+            responseHistory.setAttribute("language", newValue);
+          }
         }
         break;
       case "api-provider":

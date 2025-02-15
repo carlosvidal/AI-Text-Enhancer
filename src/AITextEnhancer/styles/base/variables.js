@@ -1,20 +1,35 @@
+// styles/base/variables.js
 export const variables = `
   :host {
-    --primary-color: #2563eb;
-    --secondary-color: #3b82f6;
-    --background-color: #ffffff;
-    --text-color: #1f2937;
-    --border-color: #e5e7eb;
-    --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --ai-primary: #3b82f6;
+    --ai-primary-hover: #2563eb;
+    --ai-secondary: #e5e7eb;
+    --ai-secondary-hover: #d1d5db;
+    --ai-text: #1f2937;
+    --ai-text-light: #6b7280;
+    --ai-border: #e5e7eb;
+    --ai-success: #10b981;
+    --ai-warning: #f59e0b;
+    --ai-error: #dc2626;
+    --ai-background: #ffffff;
+    --ai-background-light: #f9fafb;
     
-    --z-index-trigger: 999999;
-    --z-index-modal: 1000000;
+    --ai-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --ai-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --ai-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     
-    all: initial;
-    display: contents;
-  }
+    --ai-radius-sm: 0.375rem;
+    --ai-radius: 0.5rem;
+    --ai-radius-md: 0.75rem;
+    --ai-radius-lg: 1rem;
+    
+    --ai-font-sans: system-ui, -apple-system, sans-serif;
+    --ai-z-modal: 99999;
+    --ai-z-content: 100000;
 
-  *, *::before, *::after {
-    box-sizing: border-box;
+    /* Gradient colors */
+    --ai-gradient-start: #da22ff;
+    --ai-gradient-middle: #9733ee;
+    --ai-gradient-end: #da22ff;
   }
 `;

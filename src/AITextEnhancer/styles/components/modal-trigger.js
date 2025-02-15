@@ -1,59 +1,61 @@
 export const modalTriggerStyles = `
-  :host {
-    --z-index-trigger: 999;
-  }
-
-  .ai-text-enhancer {
-    position: relative;
-  }
-
   .modal-trigger {
-    position: fixed !important;
-    bottom: 20px !important;
-    right: 20px !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    padding: 12px 24px !important;
-    background: var(--primary-color) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 50px !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    cursor: pointer !important;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
-    transition: all 0.3s ease !important;
-    z-index: var(--z-index-trigger) !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    font-family: var(--font-family) !important;
-    line-height: normal !important;
-    margin: 0 !important;
-    min-width: auto !important;
-    max-width: none !important;
-    outline: none !important;
-    pointer-events: auto !important;
-    text-decoration: none !important;
-    transform: none !important;
-    white-space: nowrap !important;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(to right, var(--ai-gradient-start) 0%, var(--ai-gradient-middle) 51%, var(--ai-gradient-end) 100%);
+    background-size: 200% auto;
+    border: 0;
+    border-radius: 2em;
+    color: white;
+    font-family: var(--ai-font-sans);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+    box-shadow: var(--ai-shadow);
+  }
+
+  .modal-trigger::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: linear-gradient(45deg, #fb0094, #0000ff, #00ff00, #ffff00, #ff0000);
+    background-size: 400%;
+    border-radius: 2em;
+    z-index: -1;
+    transition: opacity 0.3s ease;
+    animation: glow 5s linear infinite;
   }
 
   .modal-trigger:hover {
-    background: var(--secondary-color) !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15) !important;
+    background-position: right center;
+    box-shadow: var(--ai-shadow-md);
+    transform: translateY(-1px);
+  }
+
+  .modal-trigger:hover::before {
+    opacity: 0.7;
+    filter: blur(8px);
   }
 
   .modal-trigger svg {
-    width: 20px !important;
-    height: 20px !important;
-    fill: currentColor !important;
-    stroke: currentColor !important;
+    width: 1.25em;
+    height: 1.25em;
+    margin-right: 0.5em;
+    transition: transform 0.3s ease;
+  }
+
+  .modal-trigger:hover svg {
+    animation: shake 0.5s ease-in-out;
   }
 
   .modal-trigger span {
-    display: inline-block !important;
-    vertical-align: middle !important;
+    font-size: 0.9375rem;
+    letter-spacing: 0.025em;
   }
 `;
