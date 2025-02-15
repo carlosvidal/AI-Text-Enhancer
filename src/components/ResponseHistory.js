@@ -49,6 +49,41 @@ export class ResponseHistory extends HTMLElement {
       ${variables}
       ${animations}
       ${previewStyles}
+
+      .response-entry.with-image {
+        display: grid;
+        grid-template-columns: 100px 1fr;
+        gap: 1rem;
+        align-items: start;
+      }
+
+      .image-preview {
+        width: 100%;
+        aspect-ratio: 1;
+        border-radius: var(--ai-radius);
+        overflow: hidden;
+        background: var(--ai-background-light);
+      }
+
+      .image-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .response-content-wrapper {
+        flex: 1;
+      }
+
+      @media (max-width: 640px) {
+        .response-entry.with-image {
+          grid-template-columns: 1fr;
+        }
+
+        .image-preview {
+          max-width: 200px;
+        }
+      }
     `;
 
     this.shadowRoot.innerHTML = `
@@ -65,32 +100,73 @@ export class ResponseHistory extends HTMLElement {
   }
 
   renderResponses() {
+    let currentQuestionId = null;
+    let currentImageData = null;
+
     return this.responses
-      .map(
-        (response) => `
-        <div class="response-entry" data-id="${response.id}">
-          <div class="response-header">
-            <div class="response-tool">
-              ${getToolIcon(response.action)}
-              ${this.translations.tools[response.action] || response.action}
-            </div>
-            <div class="response-timestamp">
-              ${this.formatTimestamp(response.timestamp)}
-            </div>
+      .map((response, index) => {
+        // Si es una imagen, guardarla para la siguiente pregunta
+        if (response.action === "image-upload") {
+          currentImageData = response.content;
+          return ""; // No renderizar la entrada de imagen
+        }
+
+        // Si es una pregunta, actualizar el ID actual
+        if (response.action === "chat-question") {
+          currentQuestionId = response.id;
+        }
+
+        // Si es una respuesta y hay una imagen pendiente, limpiar la imagen
+        if (response.action === "chat-response") {
+          currentImageData = null;
+        }
+
+        let html = `
+        <div class="response-entry ${
+          currentImageData ? "with-image" : ""
+        }" data-id="${response.id}">
+      `;
+
+        // Si hay una imagen y es una pregunta, mostrarla
+        if (currentImageData && response.action === "chat-question") {
+          html += `
+          <div class="image-preview">
+            ${currentImageData}
           </div>
-          <div class="response-content">
-            ${
-              response.action === "image-upload"
-                ? response.content // No convertir a markdown si es una imagen
-                : this.markdownHandler?.convertToHTML(response.content) ||
-                  response.content
-            }
+        `;
+        }
+
+        html += `
+          <div class="response-content-wrapper">
+            <div class="response-header">
+              <div class="response-tool">
+                ${getToolIcon(response.action)}
+                ${this.translations.tools[response.action] || response.action}
+              </div>
+              <div class="response-timestamp">
+                ${this.formatTimestamp(response.timestamp)}
+              </div>
+            </div>
+            <div class="response-content">
+              ${this.formatContent(response)}
+            </div>
+            ${this.renderResponseActions(response)}
           </div>
-          ${this.renderResponseActions(response)}
         </div>
-      `
-      )
+      `;
+
+        return html;
+      })
       .join("");
+  }
+
+  formatContent(response) {
+    if (response.action === "image-upload") {
+      return response.content;
+    }
+    return (
+      this.markdownHandler?.convertToHTML(response.content) || response.content
+    );
   }
 
   renderResponseActions(response) {
@@ -98,7 +174,10 @@ export class ResponseHistory extends HTMLElement {
       return this.renderChatActions(response);
     }
 
-    if (response.action === "chat-error") {
+    if (
+      response.action === "chat-error" ||
+      response.action === "image-upload"
+    ) {
       return "";
     }
 
@@ -204,20 +283,25 @@ export class ResponseHistory extends HTMLElement {
     this.scrollToBottom();
   }
 
-  updateResponse(id, content) {
+  updateResponse(id, content, streaming = true) {
     const response = this.responses.find((r) => r.id === id);
     if (response) {
-      response.content = content;
-      // En lugar de re-renderizar todo, solo actualizar el contenido específico
+      response.content = streaming ? response.content + content : content;
       const responseElement = this.shadowRoot.querySelector(
         `[data-id="${id}"] .response-content`
       );
       if (responseElement) {
-        responseElement.innerHTML =
-          response.action === "image-upload"
-            ? response.content
-            : this.markdownHandler?.convertToHTML(response.content) ||
-              response.content;
+        if (streaming) {
+          // Añadir solo el nuevo contenido con el cursor
+          const newContent =
+            this.markdownHandler?.convertToHTML(content) || content;
+          responseElement.innerHTML =
+            this.markdownHandler?.convertToHTML(response.content) ||
+            response.content;
+          responseElement.innerHTML += '<span class="typing">|</span>';
+        } else {
+          responseElement.innerHTML = this.formatContent(response);
+        }
       }
     }
   }

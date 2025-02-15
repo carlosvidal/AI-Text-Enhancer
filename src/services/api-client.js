@@ -68,37 +68,60 @@ class APIClient {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
-    let completeText = ""; // Para acumular todo el texto
+    let completeText = "";
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    const processChunk = (chunk) => {
+      try {
+        const data = JSON.parse(chunk);
+        if (
+          data.choices &&
+          data.choices[0].delta &&
+          data.choices[0].delta.content
+        ) {
+          const newContent = data.choices[0].delta.content;
+          completeText += newContent;
+          onProgress(newContent); // Enviamos solo el nuevo fragmento
+          return true;
+        }
+      } catch (error) {
+        return false;
+      }
+      return false;
+    };
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      for (const line of lines) {
-        if (line.startsWith("data: ") && line !== "data: [DONE]") {
-          try {
-            const data = JSON.parse(line.slice(5));
-            if (
-              data.choices &&
-              data.choices[0].delta &&
-              data.choices[0].delta.content
-            ) {
-              const newContent = data.choices[0].delta.content;
-              completeText += newContent; // Acumulamos el texto completo
-              onProgress(newContent); // Enviamos solo el nuevo fragmento
-            }
-          } catch (error) {
-            continue;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const chunk = line.slice(5);
+            if (chunk === "[DONE]") continue;
+            processChunk(chunk);
           }
         }
       }
-    }
 
-    return completeText; // Devolvemos el texto completo para la caché
+      // Procesar cualquier contenido restante en el buffer
+      if (buffer) {
+        const lines = buffer.split("\n");
+        for (const line of lines) {
+          if (line.startsWith("data: ") && line !== "data: [DONE]") {
+            processChunk(line.slice(5));
+          }
+        }
+      }
+
+      return completeText;
+    } catch (error) {
+      console.error("Error processing stream:", error);
+      throw error;
+    }
   }
 
   prepareMessagesWithImage(prompt, content, imageUrl, imageData) {
