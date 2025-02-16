@@ -70,50 +70,92 @@ export class ChatWithImage extends HTMLElement {
       ${animations}
       ${chatStyles}
       ${imagePreviewStyles}
+
+      .chat-input-container {
+        position: relative;
+        flex: 1;
+        display: flex;
+        align-items: center;
+      }
+      
+      .chat-upload-button {
+        position: absolute;
+        right: 12px;
+        display: inline-flex;
+        align-items: center;
+        padding: 6px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--ai-text-light);
+      }
+      
+      .chat-upload-button:hover {
+        color: var(--ai-text);
+      }
+      
+      .hidden {
+        display: none !important;
+      }
     `;
 
     const template = `
       <div class="chat-container">
+        <div id="imagePreviewContainer"></div>
         <form class="chat-form">
           <div class="chat-input-container">
-            <input type="text" class="chat-input" placeholder="${this.translations.chat.placeholder}" />
+            <input type="text" class="chat-input" placeholder="${this.translations.chat.placeholder}">
             ${this.supportsImages ? `
-              <button type="button" class="chat-upload-button" aria-label="${this.translations.chat.uploadImage}">
-                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
-                  <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
-                  <path d="M12 12v9"/>
-                  <path d="m8 17 4-4 4 4"/>
+              <label class="chat-upload-button" title="Upload image">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
+                  <circle cx="9" cy="9" r="2"/>
+                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
                 </svg>
-              </button>
-              <input type="file" class="file-input" accept="image/*" hidden />
+                <input type="file" accept="image/*" class="hidden" id="imageInput">
+              </label>
             ` : ''}
           </div>
           <button type="submit" class="chat-submit">
-            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
-              <path d="m22 2-7 20-4-9-9-4Z"/>
-              <path d="M22 2 11 13"/>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14"/>
+              <path d="m12 5 7 7-7 7"/>
             </svg>
-            ${this.translations.chat.send}
           </button>
         </form>
       </div>
     `;
 
-    this.shadowRoot.innerHTML = `${style.outerHTML}${template}`;
-  }
+    this.shadowRoot.innerHTML = "";
+    this.shadowRoot.appendChild(style);
+    this.shadowRoot.appendChild(document.createRange().createContextualFragment(template));
+}
 
   setupEventListeners() {
-    const form = this.shadowRoot.querySelector(".chat-form");
-    const input = this.shadowRoot.querySelector(".chat-input");
-    const uploadButton = this.shadowRoot.querySelector(".chat-upload-button");
-    const fileInput = this.shadowRoot.querySelector(".file-input");
+    const form = this.shadowRoot.querySelector('.chat-form');
+    const input = this.shadowRoot.querySelector('.chat-input');
+    const uploadButton = this.shadowRoot.querySelector('.chat-upload-button');
+    const imageInput = this.shadowRoot.querySelector('#image-upload');
 
-    form.addEventListener("submit", this.handleSubmit.bind(this));
-    
-    if (this.supportsImages && uploadButton && fileInput) {
-      uploadButton.addEventListener("click", () => fileInput.click());
-      fileInput.addEventListener("change", this.handleFileSelect.bind(this));
-    }
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (input.value.trim()) {
+        this.dispatchEvent(new CustomEvent('chatMessage', {
+          detail: { 
+            message: input.value.trim(),
+            image: imageInput.files[0]
+          },
+          bubbles: true,
+          composed: true
+        }));
+        input.value = '';
+        imageInput.value = '';
+      }
+    });
+
+    uploadButton.addEventListener('click', () => {
+      imageInput.click();
+    });
   }
 
   handleSubmit(event) {

@@ -7,7 +7,6 @@ import { imagePreviewStyles } from "./styles/components/image-preview.js";
 
 export function createTemplate(component) {
   const t = component.translations;
-  const language = component.language;
 
   return `
     <style>
@@ -17,35 +16,70 @@ export function createTemplate(component) {
       ${modalStyles}
       ${previewStyles}
       ${imagePreviewStyles}
-    </style>
-    <div class="ai-text-enhancer">
-      <button class="modal-trigger">
-        <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
-          <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
-        </svg>
-        <span>AI Text Enhancer</span>
-      </button>
       
-      <div class="modal">
-        <div class="modal-content">
-          <button class="close-button">×</button>
-          <div class="modal-body">
-            <div class="editor-section">
-              <div class="tools-container">
-                <ai-toolbar language="${language}"></ai-toolbar>
-              </div>
-              <response-history language="${language}"></response-history>
-              <div class="chat-section">
-                <chat-with-image
-                  language="${language}"
-                  image-url="${component.imageUrl || ""}"
-                  api-provider="${component.apiProvider}">
-                </chat-with-image>
-              </div>
+      :host {
+        display: inline-block;
+        font-family: var(--ai-font-sans);
+        position: relative;
+      }
+
+      .editor-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .chat-section {
+        border-top: 1px solid var(--ai-border);
+        padding-top: 1rem;
+      }
+
+      .tools-container {
+        margin-bottom: 1rem;
+      }
+
+      response-history {
+        flex: 1;
+        min-height: 0;
+        background: var(--ai-background);
+        border-radius: var(--ai-radius);
+        margin-bottom: 1rem;
+        overflow: auto;
+        display: block;
+      }
+    </style>
+
+    <button class="modal-trigger">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/>
+        <path d="m14 7 3 3"/>
+      </svg>
+      <span>${t.modalTrigger}</span>
+    </button>
+    
+    <div class="modal">
+      <div class="modal-content">
+        <button class="close-button">×</button>
+        <div class="modal-header">
+          <h2>${t.modalTitle}</h2>
+        </div>
+        
+        <div class="modal-body">
+          <div class="editor-section">
+            <div class="tools-container">
+              <ai-toolbar language="${component.language}"></ai-toolbar>
             </div>
+            <response-history language="${component.language}"></response-history>
+          </div>
+          <div class="chat-section">
+            <chat-with-image
+              language="${component.language}"
+              image-url="${component.imageUrl || ""}"
+              api-provider="${component.apiProvider}">
+            </chat-with-image>
           </div>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 }

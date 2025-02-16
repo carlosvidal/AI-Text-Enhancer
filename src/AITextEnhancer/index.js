@@ -155,46 +155,86 @@ class AITextEnhancer extends HTMLElement {
   // Lifecycle methods
   async connectedCallback() {
     try {
-      // Asegurarnos de que las traducciones estén disponibles desde el inicio
       const template = createTemplate(this);
       attachShadowTemplate(this, template);
-      
-      // Propagar el idioma a los componentes hijos antes de inicializar
+
+      // Setup basic functionality first
       this.updateLanguageForChildren(this.language);
-      
-      await this.initializeComponents();
       this.setupEventListeners();
       setupKeyboardNavigation(this);
+
+      // Skip initialization if no API key
+      if (!this.apiKey) {
+        this.addResponseToHistory(
+          "info",
+          "Please enter your API key to start using the enhancer."
+        );
+        return;
+      }
+
+      await this.initializeComponents();
     } catch (error) {
       console.error("Error initializing component:", error);
     }
   }
 
   updateLanguageForChildren(language) {
+    console.log('[AITextEnhancer] Updating language for children:', language);
+    console.log('[AITextEnhancer] Current shadow root:', this.shadowRoot);
+    
     const components = this.shadowRoot.querySelectorAll('[language]');
+    console.log('[AITextEnhancer] Components before update:', Array.from(components).map(c => ({
+      tag: c.tagName,
+      hasAttribute: c.hasAttribute('language'),
+      currentLang: c.getAttribute('language')
+    })));
+    
+    // Also try to get response-history specifically
+    const responseHistory = this.shadowRoot.querySelector('response-history');
+    console.log('[AITextEnhancer] Response history component:', responseHistory);
+    
     components.forEach(component => {
+      console.log('[AITextEnhancer] Setting language for component:', {
+        tag: component.tagName,
+        oldLang: component.getAttribute('language'),
+        newLang: language
+      });
       component.setAttribute('language', language);
     });
+    
+    // Ensure response-history gets the language even if not found in initial query
+    if (responseHistory && !responseHistory.hasAttribute('language')) {
+      console.log('[AITextEnhancer] Setting language directly on response-history');
+      responseHistory.setAttribute('language', language);
+    }
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
+    console.log('[AITextEnhancer] Attribute changed:', name, 'from', oldValue, 'to', newValue);
     if (oldValue === newValue) return;
 
     switch (name) {
       case "api-key":
-        if (this.apiClient) {
+        if (newValue && !this.isInitialized) {
+          this.initializeComponents().catch((error) => {
+            console.error("Error initializing with new API key:", error);
+          });
+        } else if (this.apiClient) {
           this.apiClient.setApiKey(newValue);
-        } else if (!this.isInitialized) {
-          this.initializeComponents();
         }
         break;
       case "language":
+        console.log('[AITextEnhancer] Language changed, initialized:', this.isInitialized);
         if (this.isInitialized) {
           const toolbar = this.shadowRoot.querySelector("ai-toolbar");
-          const chatComponent =
-            this.shadowRoot.querySelector("chat-with-image");
-          const responseHistory =
-            this.shadowRoot.querySelector("response-history");
+          const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+          const responseHistory = this.shadowRoot.querySelector("response-history");
+
+          console.log('[AITextEnhancer] Found components:', {
+            toolbar: !!toolbar,
+            chatComponent: !!chatComponent,
+            responseHistory: !!responseHistory
+          });
 
           if (toolbar) {
             toolbar.setAttribute("language", newValue);
@@ -234,22 +274,11 @@ class AITextEnhancer extends HTMLElement {
 
     this.responseHistory = this.shadowRoot.querySelector("response-history");
     if (this.responseHistory) {
-      this.responseHistory.addEventListener(
-        "responseCopy",
-        this.handleResponseCopy
-      );
-      this.responseHistory.addEventListener(
-        "responseUse",
-        this.handleResponseUse
-      );
-      this.responseHistory.addEventListener(
-        "responseRetry",
-        this.handleResponseRetry
-      );
-      this.responseHistory.addEventListener(
-        "responseEdit",
-        this.handleResponseEdit
-      );
+      // Corregir los nombres de los eventos para que coincidan con los originales
+      this.responseHistory.addEventListener("responseCopy", this.handleResponseCopy);
+      this.responseHistory.addEventListener("responseUse", this.handleResponseUse);
+      this.responseHistory.addEventListener("responseRetry", this.handleResponseRetry);
+      this.responseHistory.addEventListener("responseEdit", this.handleResponseEdit);
     }
 
     this.bindEvents();
@@ -264,20 +293,17 @@ class AITextEnhancer extends HTMLElement {
         throw new Error("API key is required");
       }
 
-      // Initialize API client with proper configuration
+      // Initialize markdown handler first
+      await this.markdownHandler.initialize();
+      console.log('[AITextEnhancer] Markdown handler initialized');
+
+      // Initialize API client
       this.apiClient = createAPIClient({
-        apiKey,
+        apiKey: this.apiKey,
         provider: this.apiProvider,
         model: this.apiModel,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        },
-        mode: "cors",
-        credentials: "same-origin",
+        systemPrompt: this.prompt,
+        temperature: 0.7,
       });
 
       // Initialize editor adapter if editor ID is provided
@@ -285,9 +311,11 @@ class AITextEnhancer extends HTMLElement {
         this.editorAdapter = new EditorAdapter(this.editorId);
       }
 
-      // Initialize markdown handler
-      if (this.markdownHandler) {
-        await this.markdownHandler.initialize();
+      // Pass markdown handler to response history
+      const responseHistory = this.shadowRoot.querySelector('response-history');
+      if (responseHistory) {
+        responseHistory.markdownHandler = this.markdownHandler;
+        console.log('[AITextEnhancer] Markdown handler passed to response history');
       }
 
       // Set initial state
@@ -483,12 +511,18 @@ class AITextEnhancer extends HTMLElement {
     if (this.isInitialized) return;
 
     try {
+      const apiKey = this.apiKey;
+      if (!apiKey) {
+        throw new Error("API key is required");
+      }
+
       // Initialize API client
       this.apiClient = createAPIClient({
         apiKey: this.apiKey,
         provider: this.apiProvider,
         model: this.apiModel,
-        systemPrompt: this.prompt, // Add system prompt here
+        systemPrompt: this.prompt,
+        temperature: 0.7,
       });
 
       // Initialize editor adapter if editor ID is provided
@@ -496,9 +530,13 @@ class AITextEnhancer extends HTMLElement {
         this.editorAdapter = new EditorAdapter(this.editorId);
       }
 
-      // Initialize markdown handler
+      // Initialize markdown handler and pass it to response history
       if (this.markdownHandler) {
         await this.markdownHandler.initialize();
+        const responseHistory = this.shadowRoot.querySelector('response-history');
+        if (responseHistory) {
+          responseHistory.markdownHandler = this.markdownHandler;
+        }
       }
 
       // Set initial state
@@ -572,6 +610,8 @@ class AITextEnhancer extends HTMLElement {
       return;
     }
 
+    let tempResponse = null;
+
     try {
       const content = this.currentContent;
       const cachedResponse = this.cacheManager.get(action, content);
@@ -581,7 +621,7 @@ class AITextEnhancer extends HTMLElement {
         return;
       }
 
-      const tempResponse = {
+      tempResponse = {
         id: Date.now(),
         action,
         content: '<span class="typing">|</span>',
@@ -589,12 +629,19 @@ class AITextEnhancer extends HTMLElement {
       };
       this.responseHistory.addResponse(tempResponse);
 
-      const completeText = await this.apiClient.enhance(content, action);
-
-      if (tempResponse) {
-        this.responseHistory.removeResponse(tempResponse.id);
+      // Reinicializar el cliente API si es necesario
+      if (!this.apiClient || !this.isInitialized) {
+        await this.initializeComponents();
       }
 
+      const completeText = await this.apiClient.enhanceText(
+        content,
+        action,
+        null,
+        this.context
+      );
+
+      this.responseHistory.removeResponse(tempResponse.id);
       this.addResponseToHistory(action, completeText);
       this.cacheManager.set(action, content, completeText);
     } catch (error) {
@@ -602,7 +649,7 @@ class AITextEnhancer extends HTMLElement {
       if (tempResponse) {
         this.responseHistory.removeResponse(tempResponse.id);
       }
-      this.addResponseToHistory("error", `Error: ${error.message}`);
+      this.addResponseToHistory("error", error.message || "An error occurred");
     }
   }
 

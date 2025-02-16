@@ -4,7 +4,7 @@ import { ModelManager } from "./model-manager.js";
 class APIClient {
   constructor(config = {}) {
     this.modelManager = new ModelManager(config.provider || "openai");
-
+  
     this.config = {
       provider: config.provider || "openai",
       endpoints: {
@@ -17,7 +17,7 @@ class APIClient {
         mistral: "https://api.mistral.ai/v1/chat/completions",
       },
       models: {
-        openai: config.model || this.modelManager.getDefaultModel(),
+        openai: config.model || "gpt-4-turbo", // Set a specific default model instead of using ModelManager
         deepseek: "deepseek-chat",
         anthropic: "claude-3-opus-20240229",
         cohere: "command",
@@ -50,17 +50,8 @@ class APIClient {
   }
 
   setModel(model) {
-    try {
-      // Validate if the model exists for current provider
-      const modelConfig = this.modelManager.getModelConfig(model);
+    if (model) {
       this.config.models[this.config.provider] = model;
-    } catch (error) {
-      // If model doesn't exist, use provider's default
-      console.warn(
-        `Model ${model} not found for provider ${this.config.provider}, using default`
-      );
-      this.config.models[this.config.provider] =
-        this.modelManager.getDefaultModel();
     }
   }
 
@@ -197,8 +188,13 @@ class APIClient {
     if (!this.config.apiKey) {
       throw new Error("API key not configured");
     }
-
+  
     try {
+      const model = this.config.models[this.config.provider];
+      if (!model) {
+        throw new Error("Model not configured for provider");
+      }
+
       const response = await fetch(
         this.config.endpoints[this.config.provider],
         {
@@ -208,7 +204,7 @@ class APIClient {
             Authorization: `Bearer ${this.config.apiKey}`,
           },
           body: JSON.stringify({
-            model: this.config.models[this.config.provider],
+            model: model, // Use the model from config
             messages: [
               {
                 role: "system",
@@ -216,9 +212,7 @@ class APIClient {
               },
               {
                 role: "user",
-                content: `${prompt}\n\n${
-                  content || "Crea una nueva descripción."
-                }`,
+                content: `${prompt}\n\n${content || "Crea una nueva descripción."}`,
               },
             ],
             temperature: this.config.temperature,
@@ -226,7 +220,7 @@ class APIClient {
           }),
         }
       );
-
+  
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
@@ -234,7 +228,7 @@ class APIClient {
             `API Error: ${response.status} ${response.statusText}`
         );
       }
-
+  
       return await this.processStream(response, onProgress);
     } catch (error) {
       throw new APIError(error.message, error);
@@ -341,13 +335,7 @@ class APIClient {
     });
   }
 
-  async enhanceText(
-    content,
-    action = "improve",
-    imageFile = null,
-    context = "",
-    onProgress = () => {}
-  ) {
+  async enhanceText(content, action = "improve", imageFile = null, context = "", onProgress = () => {}) {
     const prompts = {
       improve: `Mejora esta descripción considerando estos detalles del producto:\n${context}\n\nDescripción actual:`,
       summarize: `Teniendo en cuenta estos detalles del producto:\n${context}\n\nCrea un resumen conciso y efectivo de la siguiente descripción:`,
@@ -362,92 +350,16 @@ class APIClient {
 
     if (imageFile && this.config.visionModels[this.config.provider]) {
       try {
-        return await this.makeRequestWithImage(
-          prompt,
-          content,
-          imageFile,
-          onProgress
-        );
+        return await this.makeRequestWithImage(prompt, content, imageFile, onProgress);
       } catch (error) {
-        // Si falla el análisis de imagen, degradamos elegantemente al análisis de solo texto
-        console.warn(
-          "Image analysis failed, falling back to text-only analysis:",
-          error
-        );
+        console.warn("Image analysis failed, falling back to text-only analysis:", error);
         return await this.makeRequest(prompt, content, onProgress);
       }
     } else {
-      // Si no hay imagen o el proveedor no soporta análisis de imágenes,
-      // procedemos directamente con el análisis de texto
       return await this.makeRequest(prompt, content, onProgress);
     }
   }
-
-  async chatResponse(content, userMessage, imageSource = null) {
-    try {
-      const messages = [
-        {
-          role: "system",
-          content: this.config.systemPrompt || "You are a helpful assistant.",
-        },
-        {
-          role: "user",
-          content: imageSource
-            ? [
-                {
-                  type: "text",
-                  text: `${content}\n\nUser: ${userMessage}`,
-                },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url:
-                      typeof imageSource === "string"
-                        ? imageSource
-                        : `data:image/jpeg;base64,${await this.imageToBase64(
-                            imageSource
-                          )}`,
-                    detail: "high",
-                  },
-                },
-              ]
-            : `${content}\n\nUser: ${userMessage}`,
-        },
-      ];
-
-      const response = await fetch(
-        this.config.endpoints[this.config.provider],
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.config.apiKey}`,
-          },
-          body: JSON.stringify({
-            model: imageSource
-              ? this.config.visionModels[this.config.provider]
-              : this.config.models[this.config.provider],
-            messages: messages,
-            temperature: this.config.temperature,
-            stream: true,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error?.message ||
-            `API Error: ${response.status} ${response.statusText}`
-        );
-      }
-
-      return await this.processStream(response, () => {});
-    } catch (error) {
-      throw new Error(`Chat response failed: ${error.message}`);
-    }
-  }
-} // Remove the extra closing brace here
+}
 
 class APIError extends Error {
   constructor(message, originalError = null) {
@@ -457,7 +369,6 @@ class APIError extends Error {
   }
 }
 
-// Factory function para crear instancias de APIClient
 export function createAPIClient(config = {}) {
   return new APIClient(config);
 }

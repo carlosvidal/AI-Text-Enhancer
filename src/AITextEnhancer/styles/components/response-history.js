@@ -51,37 +51,44 @@ export const responseHistoryStyles = `
     height: 16px;
   }
 
+  .typing-animation {
+    overflow: hidden;
+    border-right: 2px solid var(--ai-text);
+    white-space: pre-wrap;
+    animation: typing 1s steps(40, end) infinite;
+  }
+
+  @keyframes typing {
+    from { border-color: var(--ai-text); }
+    to { border-color: transparent; }
+  }
+
   .response-content {
     margin: 1rem 0;
     line-height: 1.5;
   }
 
-  .response-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-
-  .response-action {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border: none;
+  .response-content pre {
+    background: var(--ai-surface-dark);
+    padding: 1rem;
     border-radius: var(--ai-radius);
-    background: var(--ai-background);
-    color: var(--ai-text);
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 0.875rem;
+    overflow-x: auto;
   }
 
-  .response-action:hover {
-    background: var(--ai-background-hover);
+  .response-content code {
+    font-family: var(--ai-font-mono);
+    font-size: 0.9em;
+    padding: 0.2em 0.4em;
+    background: var(--ai-surface-dark);
+    border-radius: var(--ai-radius-sm);
   }
 
-  .response-action svg {
-    width: 16px;
-    height: 16px;
+  .response-content p {
+    margin: 0.5em 0;
+  }
+
+  .response-content ul, .response-content ol {
+    margin: 0.5em 0;
+    padding-left: 1.5em;
   }
 `;

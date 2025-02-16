@@ -78,7 +78,7 @@ It's made with quality materials and comes in different sizes. Features include 
         id="enhancer"
         editor-id="editor"
         api-provider="openai"
-        api-model="gpt-4"
+        api-model="gpt-4-turbo"
         language="es"
       >
       </ai-text-enhancer>
@@ -88,7 +88,9 @@ It's made with quality materials and comes in different sizes. Features include 
       window.updateApiKey = function () {
         const apiKey = document.getElementById("api-key").value;
         if (apiKey) {
-          document.getElementById("enhancer").setAttribute("api-key", apiKey);
+          const enhancer = document.getElementById("enhancer");
+          enhancer.setAttribute("api-key", apiKey);
+          console.log("API key updated");
         }
       };
     </script>

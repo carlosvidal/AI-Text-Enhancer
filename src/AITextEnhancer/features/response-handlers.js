@@ -1,68 +1,58 @@
 export const responseHandlerMixin = {
   handleResponseCopy(event) {
+    console.log('[ResponseHandlers] Copy event received:', event.detail);
     const { responseId } = event.detail;
-    const response = this.responseHistory.responses.find(
-      (r) => r.id === responseId
-    );
-    if (response) {
-      navigator.clipboard
-        .writeText(response.content)
-        .then(() => {
-          const button = this.shadowRoot.querySelector(
-            `.copy-button[data-response-id="${responseId}"]`
-          );
-          if (button) {
-            const originalText = button.innerHTML;
-            button.innerHTML = "✓ Copied!";
-            setTimeout(() => (button.innerHTML = originalText), 2000);
-          }
-        })
-        .catch((err) => console.error("Error copying to clipboard:", err));
+    const response = this.responseHistory?.getResponse(responseId);
+    if (!response) {
+      console.warn('[ResponseHandlers] No response found for ID:', responseId);
+      return;
     }
+
+    navigator.clipboard.writeText(response.content)
+      .then(() => console.log('[ResponseHandlers] Content copied to clipboard'))
+      .catch(err => console.error('[ResponseHandlers] Copy failed:', err));
   },
 
   handleResponseUse(event) {
+    console.log('[ResponseHandlers] Use event received:', event.detail);
     const { responseId } = event.detail;
-    const response = this.responseHistory.responses.find(
-      (r) => r.id === responseId
-    );
-    if (response) {
-      this.setEditorContent(response.content, "replace");
-      this.shadowRoot.querySelector(".modal").classList.remove("open");
+    
+    if (!this.responseHistory) {
+      console.error('[ResponseHandlers] No response history available');
+      return;
+    }
+    
+    if (!this.editorAdapter) {
+      console.error('[ResponseHandlers] No editor adapter available');
+      return;
+    }
+
+    const response = this.responseHistory.getResponse(responseId);
+    console.log('[ResponseHandlers] Found response:', response);
+    
+    if (!response) {
+      console.warn('[ResponseHandlers] No response found for ID:', responseId);
+      return;
+    }
+
+    try {
+      console.log('[ResponseHandlers] Setting content to editor:', response.content);
+      this.editorAdapter.setContent(response.content);
+    } catch (error) {
+      console.error('[ResponseHandlers] Error setting content:', error);
     }
   },
-
+  
   handleResponseRetry(event) {
-    const { responseId, action } = event.detail;
-    this.handleToolAction(action);
-  },
-
-  handleResponseEdit(event) {
+    console.log('[ResponseHandlers] Retry event received:', event.detail);
     const { responseId } = event.detail;
-    const response = this.responseHistory.responses.find(
-      (r) => r.id === responseId
-    );
-    if (response) {
-      const chatInput = this.shadowRoot.querySelector(".chat-input");
-      const chatForm = this.shadowRoot.querySelector(".chat-form");
-
-      if (chatInput && chatForm) {
-        chatForm.dataset.editingId = responseId;
-        const submitButton = chatForm.querySelector("button");
-        if (submitButton) {
-          submitButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/>
-              <path d="m2 6 10 7 10-7"/>
-            </svg>
-            Update
-          `;
-        }
-
-        const questionText = response.content.replace(/^\*\*.*:\*\*\s*/, "");
-        chatInput.value = questionText;
-        chatInput.focus();
-      }
+    const response = this.responseHistory?.getResponse(responseId);
+    if (!response) {
+      console.warn('[ResponseHandlers] No response found for ID:', responseId);
+      return;
     }
+
+    console.log('[ResponseHandlers] Retrying action:', response.action);
+    this.handleToolAction(response.action);
   }
 };
