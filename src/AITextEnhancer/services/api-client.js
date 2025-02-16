@@ -359,6 +359,73 @@ class APIClient {
       return await this.makeRequest(prompt, content, onProgress);
     }
   }
+
+  async chatResponse(content, message, image = null) {
+    try {
+      const messages = [
+        { role: "system", content: this.config.systemPrompt },
+        { role: "user", content }
+      ];
+
+      if (message) {
+        messages.push({ role: "user", content: message });
+      }
+
+      const payload = {
+        model: this.config.models[this.config.provider],
+        messages,
+        temperature: this.config.temperature,
+        stream: true
+      };
+
+      // Add image if provided and supported by the model
+      if (image && this.config.visionModels[this.config.provider]) {
+        const imageData = await this.imageToBase64(image);
+        messages[messages.length - 1].content = [
+          { type: "text", text: message || content },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${image.type};base64,${imageData}`,
+              detail: "auto"
+            }
+          }
+        ];
+      }
+
+      const response = await fetch(this.config.endpoints[this.config.provider], {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.config.apiKey}`,
+          ...(this.config.provider === "anthropic" ? { "anthropic-version": "2023-06-01" } : {})
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `API Error: ${response.status} ${response.statusText}`);
+      }
+
+      return await this.processStream(response, () => {});
+    } catch (error) {
+      throw new APIError(`Chat response failed: ${error.message}`, error);
+    }
+  }
+
+  async convertImageToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(`data:${file.type};base64,${reader.result.split(',')[1]}`);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  get supportsImages() {
+    return ["gpt-4-vision-preview"].includes(this.model);
+  }
 }
 
 class APIError extends Error {

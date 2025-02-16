@@ -135,28 +135,43 @@ export class ChatWithImage extends HTMLElement {
     const form = this.shadowRoot.querySelector('.chat-form');
     const input = this.shadowRoot.querySelector('.chat-input');
     const uploadButton = this.shadowRoot.querySelector('.chat-upload-button');
-    const imageInput = this.shadowRoot.querySelector('#image-upload');
+    const imageInput = this.shadowRoot.querySelector('#imageInput'); // Changed from #image-upload to #imageInput
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (input.value.trim()) {
+      const message = input.value.trim();
+      
+      if (message || this.tempImage) {  // Allow submission if there's a message or image
         this.dispatchEvent(new CustomEvent('chatMessage', {
           detail: { 
-            message: input.value.trim(),
-            image: imageInput.files[0]
+            message,
+            image: this.tempImage  // Use tempImage instead of imageInput.files[0]
           },
           bubbles: true,
           composed: true
         }));
         input.value = '';
-        imageInput.value = '';
+        if (imageInput) imageInput.value = '';
+        this.tempImage = null;
+        this.updateImagePreview();
       }
     });
 
-    uploadButton.addEventListener('click', () => {
-      imageInput.click();
+    if (uploadButton && imageInput) {  // Check both elements exist
+      uploadButton.addEventListener('click', () => {
+        imageInput.click();
+      });
+      
+      imageInput.addEventListener('change', this.handleFileSelect.bind(this));
+    }
+
+    // Event delegation for removing images
+    this.shadowRoot.addEventListener('click', (e) => {
+      if (e.target.closest('.image-preview-remove')) {
+        this.removeImage();
+      }
     });
-  }
+}
 
   handleSubmit(event) {
     event.preventDefault();
