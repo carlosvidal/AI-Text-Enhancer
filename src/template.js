@@ -67,9 +67,6 @@ export function createTemplate(component) {
         
         <div class="modal-body">
           <div class="editor-section">
-            <div class="tools-container">
-              <ai-toolbar language="${component.language}"></ai-toolbar>
-            </div>
             <response-history language="${
               component.language
             }"></response-history>

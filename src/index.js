@@ -548,6 +548,8 @@ class AITextEnhancer extends HTMLElement {
         "responseEdit",
         this.handleResponseEdit
       );
+      // Agregar el listener para toolaction
+      this.responseHistory.addEventListener("toolaction", this.handleToolAction);
     }
 
     this.bindEvents();
@@ -660,7 +662,7 @@ class AITextEnhancer extends HTMLElement {
   }
 
   async handleToolAction(event) {
-    const action = event.detail?.action || event;
+    const { action, responseId, content } = event.detail;
     if (!this.apiKey) {
       console.warn("No API key provided");
       this.addResponseToHistory("error", this.translations.errors.apiKey);
@@ -670,7 +672,6 @@ class AITextEnhancer extends HTMLElement {
     let tempResponse = null;
 
     try {
-      const content = this.currentContent;
       const cachedResponse = this.cacheManager.get(action, content);
 
       if (cachedResponse) {
@@ -686,7 +687,6 @@ class AITextEnhancer extends HTMLElement {
       };
       this.responseHistory.addResponse(tempResponse);
 
-      // Reinicializar el cliente API si es necesario
       if (!this.apiClient || !this.isInitialized) {
         await this.initializeComponents();
       }

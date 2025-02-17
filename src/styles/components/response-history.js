@@ -39,13 +39,66 @@ export const responseHistoryStyles = `
     color: var(--ai-text-secondary);
   }
 
-  .response-tool {
+  .response-footer {
     display: flex;
+    justify-content: space-between;
     align-items: center;
+    padding: 1rem 0 0;
+    gap: 1rem;
+    border-top: 1px solid var(--ai-border);
+  }
+
+  .response-actions {
+    display: flex;
     gap: 0.5rem;
   }
 
-  .response-tool svg {
+  .response-tools {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 0 0.25rem;
+  }
+
+  .response-tools::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .response-tools::-webkit-scrollbar-track {
+    background: var(--ai-surface-light);
+    border-radius: 2px;
+  }
+
+  .response-tools::-webkit-scrollbar-thumb {
+    background: var(--ai-surface-dark);
+    border-radius: 2px;
+  }
+
+  .response-action,
+  .tool-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: var(--ai-radius);
+    background: var(--ai-surface-dark);
+    color: var(--ai-text);
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .response-action:hover,
+  .tool-button:hover {
+    background: var(--ai-primary);
+    color: white;
+  }
+
+  .response-action svg,
+  .tool-button svg {
     width: 16px;
     height: 16px;
   }
