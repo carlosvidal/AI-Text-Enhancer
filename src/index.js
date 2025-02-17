@@ -404,7 +404,7 @@ class AITextEnhancer extends HTMLElement {
         action: "chat-question",
         content: `**${this.translations.chat.question}:** ${message}`,
         timestamp: new Date(),
-        image: image, // Asegurarse de que este campo esté presente
+        image: image,
       };
       this.responseHistory.addResponse(questionResponse);
 
@@ -697,65 +697,6 @@ class AITextEnhancer extends HTMLElement {
         this.responseHistory.removeResponse(tempResponse.id);
       }
       this.addResponseToHistory("error", error.message || "An error occurred");
-    }
-  }
-
-  async handleChatMessage(event) {
-    const { message, image } = event.detail;
-
-    if (!this.apiKey) {
-      this.addResponseToHistory("chat-error", this.translations.errors.apiKey);
-      return;
-    }
-
-    try {
-      const chatContent = `${this.currentContent}-${message}`;
-
-      if (image) {
-        this.addResponseToHistory(
-          "image-upload",
-          this.renderImagePreview(image)
-        );
-      }
-
-      // Add the question to history with image
-      this.addResponseToHistory(
-        "chat-question",
-        `**${this.translations.chat.question}:** ${message}`,
-        image // Pass the image to the response
-      );
-
-      const tempResponse = {
-        id: Date.now(),
-        action: "chat-response",
-        content: '<span class="typing">|</span>',
-        timestamp: new Date(),
-      };
-      this.responseHistory.addResponse(tempResponse);
-
-      const response = await this.apiClient.chatResponse(
-        this.currentContent,
-        message,
-        image
-      );
-
-      let finalContent = response;
-      if (image) {
-        finalContent = {
-          content: response,
-          imageUsed: image.name,
-        };
-      }
-
-      this.responseHistory.removeResponse(tempResponse.id);
-      this.cacheManager.set("chat", chatContent, finalContent);
-      this.addResponseToHistory(
-        "chat-response",
-        finalContent.content || finalContent
-      );
-    } catch (error) {
-      console.error("Error:", error);
-      this.addResponseToHistory("chat-error", `Error: ${error.message}`);
     }
   }
 
