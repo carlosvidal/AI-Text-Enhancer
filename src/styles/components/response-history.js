@@ -91,4 +91,16 @@ export const responseHistoryStyles = `
     margin: 0.5em 0;
     padding-left: 1.5em;
   }
+
+  .response-entry[data-action="error"],
+  .response-entry[data-action="info"],
+  .response-entry[data-action="chat-error"] {
+    background: var(--ai-surface-light);
+    border-left: 3px solid var(--ai-error);
+    padding-left: calc(1rem - 3px);
+  }
+
+  .response-entry[data-action="info"] {
+    border-left-color: var(--ai-info);
+  }
 `;

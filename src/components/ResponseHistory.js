@@ -79,7 +79,11 @@ export class ResponseHistory extends HTMLElement {
       : "response-content";
 
     const isQuestion = response.action === "chat-question";
-    const actionsHtml = isQuestion ? `
+    const isSystemMessage = response.action === "error" || 
+                           response.action === "info" || 
+                           response.action === "chat-error";
+    
+    const actionsHtml = isSystemMessage ? '' : (isQuestion ? `
       <div class="response-actions">
         <button class="response-action edit-button" data-response-id="${response.id}">
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
@@ -111,7 +115,7 @@ export class ResponseHistory extends HTMLElement {
           ${this.translations?.actions?.retry || "Retry"}
         </button>
       </div>
-    `;
+    `);
 
     contentWrapper.innerHTML = `
       <div class="response-header">

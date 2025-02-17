@@ -104,8 +104,12 @@ export class ChatWithImage extends HTMLElement {
         <div id="imagePreviewContainer"></div>
         <form class="chat-form">
           <div class="chat-input-container">
-            <input type="text" class="chat-input" placeholder="${this.translations.chat.placeholder}">
-            ${this.supportsImages ? `
+            <input type="text" class="chat-input" placeholder="${
+              this.translations.chat.placeholder
+            }">
+            ${
+              this.supportsImages
+                ? `
               <label class="chat-upload-button" title="Upload image">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
@@ -114,7 +118,9 @@ export class ChatWithImage extends HTMLElement {
                 </svg>
                 <input type="file" accept="image/*" class="hidden" id="imageInput">
               </label>
-            ` : ''}
+            `
+                : ""
+            }
           </div>
           <button type="submit" class="chat-submit">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -128,50 +134,56 @@ export class ChatWithImage extends HTMLElement {
 
     this.shadowRoot.innerHTML = "";
     this.shadowRoot.appendChild(style);
-    this.shadowRoot.appendChild(document.createRange().createContextualFragment(template));
-}
+    this.shadowRoot.appendChild(
+      document.createRange().createContextualFragment(template)
+    );
+  }
 
   setupEventListeners() {
-    const form = this.shadowRoot.querySelector('.chat-form');
-    const input = this.shadowRoot.querySelector('.chat-input');
-    const uploadButton = this.shadowRoot.querySelector('.chat-upload-button');
-    const imageInput = this.shadowRoot.querySelector('#imageInput'); // Changed from #image-upload to #imageInput
+    const form = this.shadowRoot.querySelector(".chat-form");
+    const input = this.shadowRoot.querySelector(".chat-input");
+    const uploadButton = this.shadowRoot.querySelector(".chat-upload-button");
+    const imageInput = this.shadowRoot.querySelector("#imageInput"); // Changed from #image-upload to #imageInput
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener("submit", (e) => {
       e.preventDefault();
       const message = input.value.trim();
-      
-      if (message || this.tempImage) {  // Allow submission if there's a message or image
-        this.dispatchEvent(new CustomEvent('chatMessage', {
-          detail: { 
-            message,
-            image: this.tempImage  // Use tempImage instead of imageInput.files[0]
-          },
-          bubbles: true,
-          composed: true
-        }));
-        input.value = '';
-        if (imageInput) imageInput.value = '';
+
+      if (message || this.tempImage) {
+        // Allow submission if there's a message or image
+        this.dispatchEvent(
+          new CustomEvent("chatMessage", {
+            detail: {
+              message,
+              image: this.tempImage, // Use tempImage instead of imageInput.files[0]
+            },
+            bubbles: true,
+            composed: true,
+          })
+        );
+        input.value = "";
+        if (imageInput) imageInput.value = "";
         this.tempImage = null;
         this.updateImagePreview();
       }
     });
 
-    if (uploadButton && imageInput) {  // Check both elements exist
-      uploadButton.addEventListener('click', () => {
+    if (uploadButton && imageInput) {
+      // Check both elements exist
+      uploadButton.addEventListener("click", () => {
         imageInput.click();
       });
-      
-      imageInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+      imageInput.addEventListener("change", this.handleFileSelect.bind(this));
     }
 
     // Event delegation for removing images
-    this.shadowRoot.addEventListener('click', (e) => {
-      if (e.target.closest('.image-preview-remove')) {
+    this.shadowRoot.addEventListener("click", (e) => {
+      if (e.target.closest(".image-preview-remove")) {
         this.removeImage();
       }
     });
-}
+  }
 
   handleSubmit(event) {
     event.preventDefault();
@@ -202,8 +214,10 @@ export class ChatWithImage extends HTMLElement {
 
   updateImagePreview() {
     const container = this.shadowRoot.querySelector(".chat-input-container");
-    const existingPreview = this.shadowRoot.querySelector(".image-preview-container");
-    
+    const existingPreview = this.shadowRoot.querySelector(
+      ".image-preview-container"
+    );
+
     if (existingPreview) {
       existingPreview.remove();
     }
@@ -212,8 +226,12 @@ export class ChatWithImage extends HTMLElement {
       const preview = document.createElement("div");
       preview.className = "image-preview-container";
       preview.innerHTML = `
-        <img src="${URL.createObjectURL(this.tempImage)}" alt="Preview" class="image-preview" />
-        <button class="remove-image" aria-label="${this.translations.chat.removeImage}">×</button>
+        <img src="${URL.createObjectURL(
+          this.tempImage
+        )}" alt="Preview" class="image-preview" />
+        <button class="remove-image" aria-label="${
+          this.translations.chat.removeImage
+        }">×</button>
       `;
 
       container.appendChild(preview);
@@ -227,15 +245,14 @@ export class ChatWithImage extends HTMLElement {
   updateTranslations() {
     const input = this.shadowRoot.querySelector(".chat-input");
     const submitButton = this.shadowRoot.querySelector(".chat-submit");
-    
+
     if (input && submitButton) {
       input.placeholder = this.translations.chat.placeholder;
       submitButton.innerHTML = `
-        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
-          <path d="m22 2-7 20-4-9-9-4Z"/>
-          <path d="M22 2 11 13"/>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14"/>
+          <path d="m12 5 7 7-7 7"/>
         </svg>
-        ${this.translations.chat.send}
       `;
     }
   }

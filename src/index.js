@@ -175,6 +175,7 @@ class AITextEnhancer extends HTMLElement {
       await this.initializeComponents();
     } catch (error) {
       console.error("Error initializing component:", error);
+      this.notificationManager.error(`Initialization error: ${error.message}`);
     }
   }
 
@@ -190,8 +191,19 @@ class AITextEnhancer extends HTMLElement {
     const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
     if (modalTrigger) {
       modalTrigger.textContent = this.translations.modalTitle || "Enhance Text";
+      console.log(
+        "[AITextEnhancer] Updated modal trigger text:",
+        modalTrigger.textContent
+      );
+
+      // Ensure event listener is still working
+      if (this.modalTriggerHandler) {
+        modalTrigger.removeEventListener("click", this.modalTriggerHandler);
+        modalTrigger.addEventListener("click", this.modalTriggerHandler);
+      }
     }
 
+    // Update components with language attribute
     const components = this.shadowRoot.querySelectorAll("[language]");
     console.log(
       "[AITextEnhancer] Found components to update:",
@@ -237,17 +249,14 @@ class AITextEnhancer extends HTMLElement {
 
     switch (name) {
       case "api-key":
-        if (newValue && !this.isInitialized) {
-          this.initializeComponents().catch((error) => {
-            console.error("Error initializing with new API key:", error);
-          });
-        } else if (this.apiClient) {
+        if (this.apiClient) {
           this.apiClient.setApiKey(newValue);
+        } else if (!this.isInitialized) {
+          this.initializeComponents();
         }
         break;
       case "language":
         this.updateLanguageForChildren(newValue);
-        this.bindModalEvents(); // Rebind modal events after language change
         break;
       case "api-provider":
       case "api-model":
@@ -268,46 +277,6 @@ class AITextEnhancer extends HTMLElement {
         }
         break;
     }
-  }
-
-  bindModalEvents() {
-    const modal = this.shadowRoot.querySelector(".modal");
-    const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
-    const closeButton = this.shadowRoot.querySelector(".close-button");
-
-    if (!modal || !modalTrigger) {
-      console.warn("[AITextEnhancer] Modal elements not found");
-      return;
-    }
-
-    // Remove existing event listeners if any
-    const newModalTrigger = modalTrigger.cloneNode(true);
-    modalTrigger.parentNode.replaceChild(newModalTrigger, modalTrigger);
-
-    // Add new event listener
-    newModalTrigger.onclick = () => {
-      console.log("[AITextEnhancer] Current attributes when modal opens:", {
-        apiKey: this.apiKey,
-        provider: this.apiProvider,
-        model: this.apiModel,
-        language: this.language,
-        prompt: this.prompt,
-        context: this.context,
-        imageUrl: this.imageUrl,
-      });
-      modal.classList.add("open");
-      this.updateVisibleTools();
-    };
-
-    if (closeButton) {
-      closeButton.onclick = () => modal.classList.remove("open");
-    }
-
-    modal.onclick = (e) => {
-      if (e.target === modal) {
-        modal.classList.remove("open");
-      }
-    };
   }
 
   // Core functionality
@@ -518,29 +487,14 @@ class AITextEnhancer extends HTMLElement {
         break;
       case "language":
         this.updateLanguageForChildren(newValue);
-        this.bindModalEvents();
-        if (this.isInitialized) {
-          const toolbar = this.shadowRoot.querySelector("ai-toolbar");
-          const chatComponent =
-            this.shadowRoot.querySelector("chat-with-image");
-          const responseHistory =
-            this.shadowRoot.querySelector("response-history");
-
-          if (toolbar) {
-            toolbar.setAttribute("language", newValue);
-          }
-          if (chatComponent) {
-            chatComponent.setAttribute("language", newValue);
-          }
-          if (responseHistory) {
-            responseHistory.setAttribute("language", newValue);
-          }
-        }
         break;
       case "api-provider":
       case "api-model":
-        if (this.isInitialized) {
-          this.initializeComponents();
+        if (this.isInitialized && this.apiClient) {
+          this.apiClient.updateConfig({
+            provider: this.apiProvider,
+            model: this.apiModel,
+          });
         }
         break;
       case "image-url":
@@ -641,35 +595,36 @@ class AITextEnhancer extends HTMLElement {
   bindEvents() {
     // Modal events
     const modal = this.shadowRoot.querySelector(".modal");
-    if (!modal) {
-      console.warn("Modal element not found");
+    const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
+
+    if (!modal || !modalTrigger) {
+      console.warn("[AITextEnhancer] Modal elements not found in bindEvents");
       return;
     }
 
-    // Modal trigger button
-    const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
-    if (modalTrigger) {
-      modalTrigger.onclick = () => {
-        console.log("[AITextEnhancer] Current attributes when modal opens:", {
-          apiKey: this.apiKey,
-          provider: this.apiProvider,
-          model: this.apiModel,
-          language: this.language,
-          prompt: this.prompt,
-          context: this.context,
-          imageUrl: this.imageUrl,
-        });
-        modal.classList.add("open");
-        this.updateVisibleTools();
-      };
-    }
+    // Store the event handler as a property so we can reuse it
+    this.modalTriggerHandler = () => {
+      console.log("[AITextEnhancer] Current attributes when modal opens:", {
+        apiKey: this.apiKey,
+        provider: this.apiProvider,
+        model: this.apiModel,
+        language: this.language,
+        prompt: this.prompt,
+        context: this.context,
+        imageUrl: this.imageUrl,
+      });
+      modal.classList.add("open");
+      this.updateVisibleTools();
+    };
+
+    // Remove any existing event listener before adding new one
+    modalTrigger.removeEventListener("click", this.modalTriggerHandler);
+    modalTrigger.addEventListener("click", this.modalTriggerHandler);
 
     // Close button
     const closeButton = this.shadowRoot.querySelector(".close-button");
     if (closeButton) {
-      closeButton.onclick = () => {
-        modal.classList.remove("open");
-      };
+      closeButton.onclick = () => modal.classList.remove("open");
     }
 
     // Click outside modal
