@@ -5,7 +5,7 @@ import { resolve } from "path";
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(__dirname, "src/components/AITextEnhancer.js"),
+      entry: resolve(__dirname, "src/index.js"),
       name: "AITextEnhancer",
       fileName: (format) => `ai-text-enhancer.${format}.js`,
       formats: ["es", "umd"],

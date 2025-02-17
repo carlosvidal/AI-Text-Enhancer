@@ -1,112 +1,32 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Text Enhancer Demo</title>
+    <title>AI Text Enhancer - Test Page</title>
 
-    <!-- TinyMCE -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.7.0/tinymce.min.js"></script>
+    <!-- CKEditor -->
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.1.0/classic/ckeditor.js"></script>
 
-    <!-- CKEditor 5 -->
-    <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
-
-    <!-- Quill -->
-    <link
-      href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
-      rel="stylesheet"
-    />
-    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-
-    <!-- Froala (requiere licencia) -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/froala-editor@latest/css/froala_editor.pkgd.min.css"
-      rel="stylesheet"
-    />
-    <script src="https://cdn.jsdelivr.net/npm/froala-editor@latest/js/froala_editor.pkgd.min.js"></script>
-
-    <!-- Estilos de demostración -->
+    <!-- Styles -->
     <style>
+      /* General Styles */
       body {
         font-family: system-ui, -apple-system, sans-serif;
-        max-width: 1400px;
-        margin: 0 auto;
+        max-width: 800px;
+        margin: 20px auto;
         padding: 20px;
-        background: #f9fafb;
       }
 
+      /* Container Styles */
       .container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
-        gap: 20px;
-        margin-bottom: 40px;
-      }
-
-      .editor-container {
         padding: 20px;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
-        margin-bottom: 20px;
         background: white;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        min-height: 400px;
       }
 
-      .editor-container h2 {
-        margin-top: 0;
-        margin-bottom: 20px;
-        color: #1f2937;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .editor-container h2 img {
-        height: 24px;
-      }
-
-      textarea {
-        width: 100%;
-        height: 300px;
-        padding: 12px;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        font-family: inherit;
-        font-size: 0.875rem;
-        line-height: 1.5;
-        resize: vertical;
-        box-sizing: border-box;
-      }
-
-      textarea,
-      .ql-container,
-      #ckeditor-container,
-      .fr-box,
-      .tox-tinymce {
-        height: 300px !important;
-        min-height: 300px !important;
-      }
-
-      .controls {
-        margin-top: 20px;
-        display: flex;
-        gap: 10px;
-      }
-
-      button {
-        padding: 8px 16px;
-        border: none;
-        border-radius: 6px;
-        background: #3b82f6;
-        color: white;
-        cursor: pointer;
-        font-size: 14px;
-      }
-
-      button:hover {
-        background: #2563eb;
-      }
-
+      /* Form Styles */
       .api-key-form {
         margin-bottom: 20px;
         padding: 20px;
@@ -114,392 +34,288 @@
         border-radius: 8px;
       }
 
-      .api-key-form input {
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+      }
+
+      .api-key-form input,
+      .api-key-form select {
         padding: 8px 12px;
         border: 1px solid #d1d5db;
         border-radius: 6px;
         width: 300px;
         margin-right: 10px;
+        background-color: white;
       }
 
-      /* Editor specific styles */
-      .ql-container {
-        font-size: 0.875rem;
-        font-family: inherit;
+      /* Button Styles */
+      button {
+        padding: 8px 16px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
       }
 
-      .ql-toolbar {
-        border-top-left-radius: 6px;
-        border-top-right-radius: 6px;
+      button:hover {
+        background: #2563eb;
       }
 
-      .ql-container {
-        border-bottom-left-radius: 6px;
-        border-bottom-right-radius: 6px;
+      .api-key-form button {
+        margin-top: 10px;
       }
 
-      /* CKEditor necesita estos ajustes adicionales */
-      .ck-editor__editable {
-        min-height: 300px !important;
-        max-height: 300px !important;
-        overflow-y: auto !important;
+      /* Editor Styles */
+      .editor-container {
+        margin-bottom: 20px;
       }
-
-      /* Froala ajustes */
-      .fr-box.fr-basic .fr-element {
-        min-height: 300px !important;
-        height: 300px !important;
-      }
-
-      /* PRUEBA */
-
-      @keyframes ai-button-glow {
-        0% {
-          background-position: 0 0;
-        }
-
-        50% {
-          background-position: 200% 0;
-        }
-
-        100% {
-          background-position: 0 0;
-        }
-      }
-
-      @keyframes pulse {
-        0% {
-          filter: blur(0);
-        }
-
-        50% {
-          filter: blur(0.5em);
-        }
-
-        100% {
-          filter: blur(0);
-        }
-      }
-
-      @keyframes shake {
-        0%,
-        100% {
-          transform: rotate(0deg);
-        }
-
-        25% {
-          transform: rotate(5deg);
-        }
-
-        50% {
-          transform: rotate(-5deg);
-        }
-
-        75% {
-          transform: rotate(5deg);
-        }
-      }
-      /* ai-text-enhancer {
-        position: relative;
-        &:before {
-          content: "";
-          opacity: 0;
-          position: absolute;
-          left: 0;
-          top: 0;
-          background: linear-gradient(
-            45deg,
-            #fb0094,
-            #0000ff,
-            #00ff00,
-            #ffff00,
-            #ff0000
-          );
-          background-size: 200%;
-          width: 100%;
-          height: 100%;
-          border-radius: 10em;
-          z-index: -1;
-          animation: ai-button-glow 5s linear infinite;
-          transition: filter 250ms ease-in-out, opacity 250ms ease-in-out;
-        }
-
-        &:hover {
-          &:before {
-            width: 100%;
-            height: 100%;
-            filter: blur(0.5em);
-            opacity: 1;
-          }
-        }
-      } */
     </style>
   </head>
   <body>
-    <h1>AI Text Enhancer Demo</h1>
+    <h1>AI Text Enhancer Test Page</h1>
 
     <!-- API Key Form -->
     <div class="api-key-form">
-      <label for="api-key">OpenAI API Key:</label>
-      <input type="password" id="api-key" placeholder="sk-..." />
-      <button onclick="updateApiKeys()">Actualizar API Key</button>
+      <div class="form-group">
+        <label for="api-key">OpenAI API Key:</label>
+        <input type="password" id="api-key" placeholder="sk-..." />
+      </div>
+
+      <div class="form-group">
+        <label for="api-provider">Provider:</label>
+        <select id="api-provider">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="cohere">Cohere</option>
+          <option value="google">Google</option>
+          <option value="mistral">Mistral</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="api-model">Model:</label>
+        <select id="api-model">
+          <option value="gpt-4-turbo">GPT-4 Turbo</option>
+          <option value="gpt-4">GPT-4</option>
+          <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="language">Language:</label>
+        <select id="language">
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="it">Italian</option>
+          <option value="pt">Portuguese</option>
+        </select>
+      </div>
+
+      <button onclick="updateEnhancerConfig()">Update Configuration</button>
     </div>
 
-    <!-- Textarea normal -->
-    <div class="editor-container">
-      <h2>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path
-            d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-          />
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-        </svg>
-        Textarea Normal
-      </h2>
-      <textarea
-        id="simple-editor"
-        placeholder="Escribe o pega tu texto aquí..."
-      >
-Este es un ejemplo de descripción básica que se puede mejorar usando IA.
-
-El producto es resistente y duradero, hecho con buenos materiales. Tiene varias funciones útiles y es fácil de usar. Viene en diferentes colores y tamaños para adaptarse a tus necesidades.
-
-Es una buena opción para quien busque calidad a buen precio.</textarea
-      >
-      <ai-text-enhancer
-        id="simple-enhancer"
-        editor-id="simple-editor"
-        api-provider="openai"
-        api-model="gpt-4-vision-preview"
-        prompt="Eres un asistente experto en marketing y copywriting, especializado en mejorar descripciones de productos."
-      ></ai-text-enhancer>
-    </div>
-
+    <!-- Editor Container -->
     <div class="container">
-      <!-- TinyMCE Editor -->
       <div class="editor-container">
-        <h2>
-          <img src="https://www.tiny.cloud/favicon.ico" alt="TinyMCE Logo" />
-          Editor TinyMCE
-        </h2>
-        <div id="tinymce-editor"></div>
-        <ai-text-enhancer
-          id="tinymce-enhancer"
-          editor-id="tinymce-editor"
-          api-provider="openai"
-          api-model="gpt-4-vision-preview"
-          prompt="Eres un asistente experto en SEO, especializado en optimizar contenido para motores de búsqueda."
-        ></ai-text-enhancer>
+        <textarea
+          name="editor2"
+          id="editor2"
+          style="width: 100%; height: 300px"
+        >
+This is a sample product description that can be enhanced using AI.
+                  It's made with quality materials and comes in different sizes.
+                  Features include durability and ease of use. Good value for money.</textarea
+        >
       </div>
 
-      <!-- CKEditor -->
-      <div class="editor-container">
-        <h2>
-          <img src="https://ckeditor.com/favicon.ico" alt="CKEditor Logo" />
-          CKEditor 5
-        </h2>
-        <div id="ckeditor-container"></div>
-        <ai-text-enhancer
-          id="ckeditor-enhancer"
-          editor-id="ckeditor-container"
-          api-provider="openai"
-          api-model="gpt-4-vision-preview"
-          prompt="Eres un experto en copywriting, especializado en crear contenido persuasivo."
-        ></ai-text-enhancer>
-      </div>
-
-      <!-- Quill Editor -->
-      <div class="editor-container">
-        <h2>
-          <img src="https://quilljs.com/favicon.ico" alt="Quill Logo" />
-          Quill Editor
-        </h2>
-        <div id="quill-editor"></div>
-        <ai-text-enhancer
-          id="quill-enhancer"
-          editor-id="quill-editor"
-          api-provider="openai"
-          api-model="gpt-4-vision-preview"
-          prompt="Eres un experto en marketing digital, especializado en crear contenido que conecta con la audiencia."
-        ></ai-text-enhancer>
-      </div>
-
-      <!-- Froala Editor -->
-      <div class="editor-container">
-        <h2>
-          <img src="https://froala.com/favicon.ico" alt="Froala Logo" />
-          Froala Editor
-        </h2>
-        <div id="froala-editor"></div>
-        <ai-text-enhancer
-          id="froala-enhancer"
-          editor-id="froala-editor"
-          api-provider="openai"
-          api-model="gpt-4-vision-preview"
-          prompt="Eres un experto en e-commerce, especializado en descripciones de productos que venden."
-        ></ai-text-enhancer>
-      </div>
+      <ai-text-enhancer
+        id="enhancer"
+        editor-id="editor2"
+        api-provider="openai"
+        api-model="gpt-4-turbo"
+        language="es"
+      >
+      </ai-text-enhancer>
     </div>
 
-    <!-- Script para updateApiKeys -->
+    <!-- Scripts -->
     <script>
-      window.updateApiKeys = async function () {
-        console.log("🔄 updateApiKeys called");
-        const apiKey = document.getElementById("api-key").value;
-        console.log("🔑 API Key length:", apiKey.length);
+      // Model configurations
+      const providerModels = {
+        openai: [
+          { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+          { value: "gpt-4", label: "GPT-4" },
+          { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+        ],
+        anthropic: [
+          { value: "claude-3-opus-20240229", label: "Claude 3 Opus" },
+          { value: "claude-3-sonnet-20240229", label: "Claude 3 Sonnet" },
+        ],
+        deepseek: [{ value: "deepseek-chat", label: "DeepSeek Chat" }],
+        cohere: [{ value: "command", label: "Command" }],
+        google: [{ value: "gemini-pro", label: "Gemini Pro" }],
+        mistral: [
+          { value: "mistral-large-latest", label: "Mistral Large" },
+          { value: "mistral-medium-latest", label: "Mistral Medium" },
+        ],
+      };
 
-        if (!apiKey) {
-          console.error("❌ API Key is empty");
-          return;
-        }
-
-        const enhancers = document.querySelectorAll("ai-text-enhancer");
-        console.log(`📝 Found ${enhancers.length} enhancers`);
-
-        try {
-          for (let i = 0; i < enhancers.length; i++) {
-            const enhancer = enhancers[i];
-            console.log(`🔄 Processing enhancer ${i + 1}`);
-
-            if (!enhancer.isInitialized) {
-              console.log(`⏳ Waiting for enhancer ${i + 1} to initialize`);
-              await new Promise((resolve) => {
-                const checkInterval = setInterval(() => {
-                  if (enhancer.isInitialized) {
-                    clearInterval(checkInterval);
-                    console.log(`✅ Enhancer ${i + 1} initialized`);
-                    resolve();
-                  }
-                }, 100);
-              });
+      // Helper Functions
+      function updateEnhancerAttributes(settings) {
+        const enhancer = document.getElementById("enhancer");
+        console.log("Updating attributes:", { settings, enhancer });
+      
+        if (enhancer && settings) {
+          // Force a small delay to ensure proper update sequence
+          setTimeout(() => {
+            if (settings.apiKey) {
+              enhancer.setAttribute("api-key", settings.apiKey);
             }
+            if (settings.provider) {
+              enhancer.setAttribute("api-provider", settings.provider);
+            }
+            if (settings.model) {
+              enhancer.setAttribute("api-model", settings.model);
+            }
+            if (settings.language) {
+              enhancer.setAttribute("language", settings.language);
+            }
+      
+            // Dispatch a custom event to ensure the component knows about the changes
+            enhancer.dispatchEvent(new CustomEvent('configurationUpdated', {
+              detail: settings,
+              bubbles: true,
+              composed: true
+            }));
+          }, 0);
+        }
+      }
 
-            console.log(`🔑 Setting API Key for enhancer ${i + 1}`);
-            enhancer.setAttribute("api-key", apiKey);
-            console.log(`✅ API Key set for enhancer ${i + 1}`);
+      // Load saved settings on startup
+      async function loadSavedSettings() {
+        try {
+          console.log("Loading saved settings...");
+          const savedSettings = JSON.parse(
+            localStorage.getItem("aiEnhancerSettings") || "{}"
+          );
+          console.log("Saved settings:", savedSettings);
+
+          if (!savedSettings || Object.keys(savedSettings).length === 0) {
+            console.log("No saved settings found");
+            return;
           }
 
-          console.log("✅ All API keys updated successfully");
+          // Update form fields first
+          if (savedSettings.apiKey) {
+            document.getElementById("api-key").value = savedSettings.apiKey;
+          }
+          if (savedSettings.provider) {
+            const providerSelect = document.getElementById("api-provider");
+            providerSelect.value = savedSettings.provider;
+
+            const modelSelect = document.getElementById("api-model");
+            const models = providerModels[savedSettings.provider] || [];
+            modelSelect.innerHTML = models
+              .map(
+                (model) =>
+                  `<option value="${model.value}">${model.label}</option>`
+              )
+              .join("");
+
+            if (savedSettings.model) {
+              modelSelect.value = savedSettings.model;
+            }
+          }
+          if (savedSettings.language) {
+            document.getElementById("language").value = savedSettings.language;
+          }
+
+          // Update component attributes with retry mechanism
+          const enhancer = document.getElementById("enhancer");
+          console.log("Enhancer component:", enhancer);
+
+          if (enhancer) {
+            let retryCount = 0;
+            const maxRetries = 10;
+
+            const tryUpdateAttributes = () => {
+              console.log("Attempt to update attributes:", retryCount);
+              if (enhancer.isConnected) {
+                console.log("Component is connected, updating attributes");
+                updateEnhancerAttributes(savedSettings);
+                return true;
+              }
+
+              if (retryCount < maxRetries) {
+                retryCount++;
+                setTimeout(tryUpdateAttributes, 100);
+                return false;
+              }
+
+              console.warn("Max retries reached, component might not be ready");
+              return false;
+            };
+
+            tryUpdateAttributes();
+          }
         } catch (error) {
-          console.error("❌ Error updating API keys:", error);
+          console.error("Error loading settings:", error);
+        }
+      }
+
+      // Event Listeners
+      document.addEventListener("DOMContentLoaded", loadSavedSettings);
+
+      window.addEventListener("load", () => {
+        console.log("Window load event fired");
+        loadSavedSettings();
+      });
+
+      // Configuration Functions
+      window.updateEnhancerConfig = async function () {
+        const settings = {
+          apiKey: document.getElementById("api-key").value,
+          provider: document.getElementById("api-provider").value,
+          model: document.getElementById("api-model").value,
+          language: document.getElementById("language").value,
+        };
+
+        localStorage.setItem("aiEnhancerSettings", JSON.stringify(settings));
+        updateEnhancerAttributes(settings);
+
+        if (settings.language) {
+          const enhancer = document.getElementById("enhancer");
+          if (enhancer) {
+            const existingModal = enhancer.shadowRoot?.querySelector(".modal");
+            if (existingModal) {
+              existingModal.remove();
+            }
+
+            enhancer.dispatchEvent(
+              new CustomEvent("languageChange", {
+                detail: { language: settings.language },
+                bubbles: true,
+                composed: true,
+              })
+            );
+          }
         }
       };
     </script>
 
-    <!-- Importar el componente y inicializar editores -->
+    <!-- Import AI Text Enhancer Component -->
     <script type="module">
-      // Esperar a que el DOM esté listo
-      document.addEventListener("DOMContentLoaded", async () => {
-        try {
-          // Importar el componente
-          await import("../src/ai-text-enhancer.js");
-
-          // Inicializar TinyMCE
-          tinymce.init({
-            selector: "#tinymce-editor",
-            height: 300,
-            menubar: false,
-            plugins: [
-              "advlist",
-              "autolink",
-              "lists",
-              "link",
-              "image",
-              "charmap",
-              "preview",
-              "anchor",
-              "searchreplace",
-              "visualblocks",
-              "code",
-              "fullscreen",
-              "insertdatetime",
-              "media",
-              "table",
-              "help",
-              "wordcount",
-            ],
-            toolbar:
-              "undo redo | blocks | bold italic forecolor | alignleft aligncenter " +
-              "alignright alignjustify | bullist numlist outdent indent | removeformat | help",
-            content_style:
-              "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
-            setup: function (editor) {
-              editor.on("init", function () {
-                editor.setContent(
-                  "Este es un ejemplo de descripción en TinyMCE que se puede optimizar para SEO usando IA."
-                );
-              });
-            },
-          });
-
-          // Inicializar CKEditor 5
-          ClassicEditor.create(document.querySelector("#ckeditor-container"))
-            .then((editor) => {
-              editor.editing.view.change((writer) => {
-                writer.setStyle(
-                  "min-height",
-                  "300px",
-                  editor.editing.view.document.getRoot()
-                );
-              });
-              editor.setData(
-                "Este es un ejemplo de descripción en CKEditor que se puede mejorar con técnicas de copywriting usando IA."
-              );
-            })
-            .catch((error) => {
-              console.error(error);
-            });
-
-          // Inicializar Quill
-          const quill = new Quill("#quill-editor", {
-            theme: "snow",
-            modules: {
-              toolbar: [
-                ["bold", "italic", "underline", "strike"],
-                ["blockquote", "code-block"],
-                [{ header: 1 }, { header: 2 }],
-                [{ list: "ordered" }, { list: "bullet" }],
-                [{ script: "sub" }, { script: "super" }],
-                [{ indent: "-1" }, { indent: "+1" }],
-                [{ direction: "rtl" }],
-                [{ size: ["small", false, "large", "huge"] }],
-                [{ header: [1, 2, 3, 4, 5, 6, false] }],
-                [{ color: [] }, { background: [] }],
-                [{ font: [] }],
-                [{ align: [] }],
-                ["clean"],
-              ],
-            },
-          });
-
-          // Usar contenido inicial y configurar el observer manualmente para evitar warnings
-          quill.setContents([
-            {
-              insert:
-                "Este es un ejemplo de descripción en Quill que se puede mejorar con estrategias de marketing digital usando IA.\n",
-            },
-          ]);
-
-          // Inicializar Froala (requiere licencia)
-          new FroalaEditor("#froala-editor", {
-            height: 300,
-            placeholderText:
-              "Este es un ejemplo de descripción en Froala que se puede mejorar con técnicas de e-commerce usando IA.",
-          });
-        } catch (error) {
-          console.error("Error inicializando los componentes:", error);
-        }
-      });
+      import "../src/index.js";
     </script>
   </body>
 </html>

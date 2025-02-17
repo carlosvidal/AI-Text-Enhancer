@@ -179,38 +179,60 @@ class AITextEnhancer extends HTMLElement {
   }
 
   updateLanguageForChildren(language) {
-    console.log('[AITextEnhancer] Updating language for children:', language);
-    console.log('[AITextEnhancer] Current shadow root:', this.shadowRoot);
-    
-    const components = this.shadowRoot.querySelectorAll('[language]');
-    console.log('[AITextEnhancer] Components before update:', Array.from(components).map(c => ({
-      tag: c.tagName,
-      hasAttribute: c.hasAttribute('language'),
-      currentLang: c.getAttribute('language')
-    })));
-    
-    // Also try to get response-history specifically
-    const responseHistory = this.shadowRoot.querySelector('response-history');
-    console.log('[AITextEnhancer] Response history component:', responseHistory);
-    
-    components.forEach(component => {
-      console.log('[AITextEnhancer] Setting language for component:', {
-        tag: component.tagName,
-        oldLang: component.getAttribute('language'),
-        newLang: language
-      });
-      component.setAttribute('language', language);
-    });
-    
-    // Ensure response-history gets the language even if not found in initial query
-    if (responseHistory && !responseHistory.hasAttribute('language')) {
-      console.log('[AITextEnhancer] Setting language directly on response-history');
-      responseHistory.setAttribute('language', language);
+    console.log("[AITextEnhancer] Updating language for children:", language);
+
+    if (!this.shadowRoot) {
+      console.warn("[AITextEnhancer] No shadowRoot available yet");
+      return;
     }
+
+    // Update modal trigger text
+    const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
+    if (modalTrigger) {
+      modalTrigger.textContent = this.translations.modalTitle || "Enhance Text";
+    }
+
+    const components = this.shadowRoot.querySelectorAll("[language]");
+    console.log(
+      "[AITextEnhancer] Found components to update:",
+      components.length
+    );
+
+    components.forEach((component) => {
+      const oldLang = component.getAttribute("language");
+      component.setAttribute("language", language);
+      console.log("[AITextEnhancer] Updated component language:", {
+        component: component.tagName,
+        from: oldLang,
+        to: language,
+      });
+    });
+
+    // Force update on specific components
+    const toolbar = this.shadowRoot.querySelector("ai-toolbar");
+    const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+    const responseHistory = this.shadowRoot.querySelector("response-history");
+
+    [toolbar, chatComponent, responseHistory].forEach((component) => {
+      if (component) {
+        component.setAttribute("language", language);
+        console.log(
+          "[AITextEnhancer] Forced language update on:",
+          component.tagName
+        );
+      }
+    });
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
-    console.log('[AITextEnhancer] Attribute changed:', name, 'from', oldValue, 'to', newValue);
+    console.log(
+      "[AITextEnhancer] Attribute changed:",
+      name,
+      "from",
+      oldValue,
+      "to",
+      newValue
+    );
     if (oldValue === newValue) return;
 
     switch (name) {
@@ -224,33 +246,16 @@ class AITextEnhancer extends HTMLElement {
         }
         break;
       case "language":
-        console.log('[AITextEnhancer] Language changed, initialized:', this.isInitialized);
-        if (this.isInitialized) {
-          const toolbar = this.shadowRoot.querySelector("ai-toolbar");
-          const chatComponent = this.shadowRoot.querySelector("chat-with-image");
-          const responseHistory = this.shadowRoot.querySelector("response-history");
-
-          console.log('[AITextEnhancer] Found components:', {
-            toolbar: !!toolbar,
-            chatComponent: !!chatComponent,
-            responseHistory: !!responseHistory
-          });
-
-          if (toolbar) {
-            toolbar.setAttribute("language", newValue);
-          }
-          if (chatComponent) {
-            chatComponent.setAttribute("language", newValue);
-          }
-          if (responseHistory) {
-            responseHistory.setAttribute("language", newValue);
-          }
-        }
+        this.updateLanguageForChildren(newValue);
+        this.bindModalEvents(); // Rebind modal events after language change
         break;
       case "api-provider":
       case "api-model":
-        if (this.isInitialized) {
-          this.initializeComponents();
+        if (this.isInitialized && this.apiClient) {
+          this.apiClient.updateConfig({
+            provider: this.apiProvider,
+            model: this.apiModel,
+          });
         }
         break;
       case "image-url":
@@ -265,6 +270,46 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
+  bindModalEvents() {
+    const modal = this.shadowRoot.querySelector(".modal");
+    const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
+    const closeButton = this.shadowRoot.querySelector(".close-button");
+
+    if (!modal || !modalTrigger) {
+      console.warn("[AITextEnhancer] Modal elements not found");
+      return;
+    }
+
+    // Remove existing event listeners if any
+    const newModalTrigger = modalTrigger.cloneNode(true);
+    modalTrigger.parentNode.replaceChild(newModalTrigger, modalTrigger);
+
+    // Add new event listener
+    newModalTrigger.onclick = () => {
+      console.log("[AITextEnhancer] Current attributes when modal opens:", {
+        apiKey: this.apiKey,
+        provider: this.apiProvider,
+        model: this.apiModel,
+        language: this.language,
+        prompt: this.prompt,
+        context: this.context,
+        imageUrl: this.imageUrl,
+      });
+      modal.classList.add("open");
+      this.updateVisibleTools();
+    };
+
+    if (closeButton) {
+      closeButton.onclick = () => modal.classList.remove("open");
+    }
+
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        modal.classList.remove("open");
+      }
+    };
+  }
+
   // Core functionality
   setupEventListeners() {
     const chatComponent = this.shadowRoot.querySelector("chat-with-image");
@@ -275,11 +320,32 @@ class AITextEnhancer extends HTMLElement {
     this.responseHistory = this.shadowRoot.querySelector("response-history");
     if (this.responseHistory) {
       // Corregir los nombres de los eventos para que coincidan con los originales
-      this.responseHistory.addEventListener("responseCopy", this.handleResponseCopy);
-      this.responseHistory.addEventListener("responseUse", this.handleResponseUse);
-      this.responseHistory.addEventListener("responseRetry", this.handleResponseRetry);
-      this.responseHistory.addEventListener("responseEdit", this.handleResponseEdit);
+      this.responseHistory.addEventListener(
+        "responseCopy",
+        this.handleResponseCopy
+      );
+      this.responseHistory.addEventListener(
+        "responseUse",
+        this.handleResponseUse
+      );
+      this.responseHistory.addEventListener(
+        "responseRetry",
+        this.handleResponseRetry
+      );
+      this.responseHistory.addEventListener(
+        "responseEdit",
+        this.handleResponseEdit
+      );
     }
+
+    this.addEventListener("configurationUpdated", (event) => {
+      console.log("[AITextEnhancer] Configuration updated:", event.detail);
+      if (this.isInitialized) {
+        this.initializeComponents().catch((error) => {
+          console.error("Error reinitializing components:", error);
+        });
+      }
+    });
 
     this.bindEvents();
   }
@@ -295,7 +361,7 @@ class AITextEnhancer extends HTMLElement {
 
       // Initialize markdown handler first
       await this.markdownHandler.initialize();
-      console.log('[AITextEnhancer] Markdown handler initialized');
+      console.log("[AITextEnhancer] Markdown handler initialized");
 
       // Initialize API client
       this.apiClient = createAPIClient({
@@ -312,10 +378,12 @@ class AITextEnhancer extends HTMLElement {
       }
 
       // Pass markdown handler to response history
-      const responseHistory = this.shadowRoot.querySelector('response-history');
+      const responseHistory = this.shadowRoot.querySelector("response-history");
       if (responseHistory) {
         responseHistory.markdownHandler = this.markdownHandler;
-        console.log('[AITextEnhancer] Markdown handler passed to response history');
+        console.log(
+          "[AITextEnhancer] Markdown handler passed to response history"
+        );
       }
 
       // Set initial state
@@ -430,6 +498,14 @@ class AITextEnhancer extends HTMLElement {
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
+    console.log(
+      "[AITextEnhancer] Attribute changed:",
+      name,
+      "from",
+      oldValue,
+      "to",
+      newValue
+    );
     if (oldValue === newValue) return;
 
     switch (name) {
@@ -441,6 +517,8 @@ class AITextEnhancer extends HTMLElement {
         }
         break;
       case "language":
+        this.updateLanguageForChildren(newValue);
+        this.bindModalEvents();
         if (this.isInitialized) {
           const toolbar = this.shadowRoot.querySelector("ai-toolbar");
           const chatComponent =
@@ -533,7 +611,8 @@ class AITextEnhancer extends HTMLElement {
       // Initialize markdown handler and pass it to response history
       if (this.markdownHandler) {
         await this.markdownHandler.initialize();
-        const responseHistory = this.shadowRoot.querySelector('response-history');
+        const responseHistory =
+          this.shadowRoot.querySelector("response-history");
         if (responseHistory) {
           responseHistory.markdownHandler = this.markdownHandler;
         }
@@ -571,6 +650,15 @@ class AITextEnhancer extends HTMLElement {
     const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
     if (modalTrigger) {
       modalTrigger.onclick = () => {
+        console.log("[AITextEnhancer] Current attributes when modal opens:", {
+          apiKey: this.apiKey,
+          provider: this.apiProvider,
+          model: this.apiModel,
+          language: this.language,
+          prompt: this.prompt,
+          context: this.context,
+          imageUrl: this.imageUrl,
+        });
         modal.classList.add("open");
         this.updateVisibleTools();
       };
