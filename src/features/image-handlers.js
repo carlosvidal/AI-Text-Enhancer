@@ -52,26 +52,6 @@ export const imageHandlerMixin = {
           <div class="image-preview-thumbnail">
             <img src="${imageUrl}" alt="Product preview - ${filename}">
           </div>
-          <div class="image-preview-info">
-            <div class="image-preview-label" aria-hidden="true">${
-              isInitial ? "Initial image" : "Uploaded image"
-            }</div>
-            <div class="image-preview-filename">${filename}</div>
-          </div>
-          ${
-            !isInitial && !this.isImageUsed(imageToRender)
-              ? `
-            <button class="image-preview-remove" 
-                    aria-label="Remove image ${filename}"
-                    title="Remove image">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          `
-              : ""
-          }
         </div>
       </div>
     `;
