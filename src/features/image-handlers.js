@@ -1,12 +1,20 @@
+// En image-handlers.js
+
 export const imageHandlerMixin = {
+  isImageUsed(image) {
+    if (!this.responseHistory) return false;
+
+    const imageId = image instanceof File ? image.name : image;
+    return this.responseHistory.responses.some(
+      (response) =>
+        response.action !== "image-upload" && response.imageUsed === imageId
+    );
+  },
   handleImageChange(file) {
     if (file) {
       this.productImage = file;
       this.productImageUrl = null;
-      this.addResponseToHistory(
-        "image-upload",
-        this.renderImagePreview(file)
-      );
+      this.addResponseToHistory("image-upload", this.renderImagePreview(file));
     }
   },
 
@@ -23,19 +31,23 @@ export const imageHandlerMixin = {
     const imageToRender = image || this.productImage || this.productImageUrl;
     if (!imageToRender) return "";
 
-    const imageUrl = imageToRender instanceof File
-      ? URL.createObjectURL(imageToRender)
-      : imageToRender;
+    const imageUrl =
+      imageToRender instanceof File
+        ? URL.createObjectURL(imageToRender)
+        : imageToRender;
 
-    const filename = imageToRender instanceof File
-      ? imageToRender.name
-      : new URL(imageToRender).pathname.split("/").pop() || "From URL";
+    const filename =
+      imageToRender instanceof File
+        ? imageToRender.name
+        : new URL(imageToRender).pathname.split("/").pop() || "From URL";
 
     return `
-      <div class="image-preview-card ${isInitial ? "initial-image" : ""}" 
+      <div class="image-preview-card" 
            data-image-id="${Date.now()}"
            role="figure"
-           aria-label="${isInitial ? "Initial product image" : "Uploaded product image"}">
+           aria-label="${
+             isInitial ? "Initial product image" : "Uploaded product image"
+           }">
         <div class="image-preview-content">
           <div class="image-preview-thumbnail">
             <img src="${imageUrl}" alt="Product preview - ${filename}">
@@ -64,12 +76,4 @@ export const imageHandlerMixin = {
       </div>
     `;
   },
-
-  isImageUsed(image) {
-    const imageId = image instanceof File ? image.name : image;
-    return this.responseHistory.responses.some(
-      (response) =>
-        response.action !== "image-upload" && response.imageUsed === imageId
-    );
-  }
 };

@@ -404,7 +404,7 @@ class AITextEnhancer extends HTMLElement {
         action: "chat-question",
         content: `**${this.translations.chat.question}:** ${message}`,
         timestamp: new Date(),
-        image: image // Add image to the response object
+        image: image, // Asegurarse de que este campo esté presente
       };
       this.responseHistory.addResponse(questionResponse);
 
@@ -536,7 +536,10 @@ class AITextEnhancer extends HTMLElement {
         this.handleResponseEdit
       );
       // Agregar el listener para toolaction
-      this.responseHistory.addEventListener("toolaction", this.handleToolAction);
+      this.responseHistory.addEventListener(
+        "toolaction",
+        this.handleToolAction
+      );
     }
 
     this.bindEvents();
@@ -719,7 +722,7 @@ class AITextEnhancer extends HTMLElement {
       this.addResponseToHistory(
         "chat-question",
         `**${this.translations.chat.question}:** ${message}`,
-        image  // Pass the image to the response
+        image // Pass the image to the response
       );
 
       const tempResponse = {

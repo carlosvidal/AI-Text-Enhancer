@@ -66,13 +66,15 @@ export class ChatWithImage extends HTMLElement {
   updateImagePreview() {
     // Remove this method's content - we don't want to show preview in chat
     // Just keep track of the selected image
-    const existingPreview = this.shadowRoot.querySelector(".image-preview-container");
+    const existingPreview = this.shadowRoot.querySelector(
+      ".image-preview-container"
+    );
     if (existingPreview) {
-        existingPreview.remove();
+      existingPreview.remove();
     }
-}
+  }
 
-render() {
+  render() {
     const style = document.createElement("style");
     style.textContent = `
       ${variables}
@@ -144,7 +146,7 @@ render() {
     this.shadowRoot.appendChild(
       document.createRange().createContextualFragment(template)
     );
-}
+  }
 
   setupEventListeners() {
     const form = this.shadowRoot.querySelector(".chat-form");
@@ -163,22 +165,22 @@ render() {
       imageInput.addEventListener("change", (e) => {
         this.handleFileSelect(e);
         // Reset the input value to allow selecting the same file again
-        e.target.value = '';
+        e.target.value = "";
       });
     }
-}
+  }
 
-handleFileSelect(event) {
+  handleFileSelect(event) {
     const file = event.target.files[0];
     if (file) {
-        this.tempImage = file;
+      this.tempImage = file;
     }
-}
+  }
 
-handleSubmit(event) {
+  handleSubmit(event) {
     event.preventDefault();
     event.stopPropagation();
-    
+
     const input = this.shadowRoot.querySelector(".chat-input");
     const message = input.value.trim();
 
@@ -193,18 +195,18 @@ handleSubmit(event) {
       input.value = "";
       this.tempImage = null;
     }
-}
+  }
 
-// Remove these duplicate methods
-// updateImagePreview() {
-//     // Remove this method's content...
-// }
+  // Remove these duplicate methods
+  // updateImagePreview() {
+  //     // Remove this method's content...
+  // }
 
-// updateImagePreview() {
-//     // Empty function...
-// }
+  // updateImagePreview() {
+  //     // Empty function...
+  // }
 
-updateImagePreview() {
+  updateImagePreview() {
     const container = this.shadowRoot.querySelector(".chat-input-container");
     const existingPreview = this.shadowRoot.querySelector(
       ".image-preview-container"
@@ -233,7 +235,7 @@ updateImagePreview() {
         this.updateImagePreview();
       });
     }
-}
+  }
 
   updateTranslations() {
     const input = this.shadowRoot.querySelector(".chat-input");
