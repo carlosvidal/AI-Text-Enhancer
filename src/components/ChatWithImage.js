@@ -63,14 +63,22 @@ export class ChatWithImage extends HTMLElement {
     }
   }
 
-  render() {
+  updateImagePreview() {
+    // Remove this method's content - we don't want to show preview in chat
+    // Just keep track of the selected image
+    const existingPreview = this.shadowRoot.querySelector(".image-preview-container");
+    if (existingPreview) {
+        existingPreview.remove();
+    }
+}
+
+render() {
     const style = document.createElement("style");
     style.textContent = `
       ${variables}
       ${animations}
       ${chatStyles}
-      ${imagePreviewStyles}
-
+      
       .chat-input-container {
         position: relative;
         flex: 1;
@@ -101,7 +109,6 @@ export class ChatWithImage extends HTMLElement {
 
     const template = `
       <div class="chat-container">
-        <div id="imagePreviewContainer"></div>
         <form class="chat-form">
           <div class="chat-input-container">
             <input type="text" class="chat-input" placeholder="${
@@ -137,60 +144,45 @@ export class ChatWithImage extends HTMLElement {
     this.shadowRoot.appendChild(
       document.createRange().createContextualFragment(template)
     );
-  }
+}
 
   setupEventListeners() {
     const form = this.shadowRoot.querySelector(".chat-form");
     const input = this.shadowRoot.querySelector(".chat-input");
     const uploadButton = this.shadowRoot.querySelector(".chat-upload-button");
-    const imageInput = this.shadowRoot.querySelector("#imageInput"); // Changed from #image-upload to #imageInput
+    const imageInput = this.shadowRoot.querySelector("#imageInput");
 
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const message = input.value.trim();
-
-      if (message || this.tempImage) {
-        // Allow submission if there's a message or image
-        this.dispatchEvent(
-          new CustomEvent("chatMessage", {
-            detail: {
-              message,
-              image: this.tempImage, // Use tempImage instead of imageInput.files[0]
-            },
-            bubbles: true,
-            composed: true,
-          })
-        );
-        input.value = "";
-        if (imageInput) imageInput.value = "";
-        this.tempImage = null;
-        this.updateImagePreview();
-      }
-    });
+    form.addEventListener("submit", this.handleSubmit.bind(this));
 
     if (uploadButton && imageInput) {
-      // Check both elements exist
-      uploadButton.addEventListener("click", () => {
-        imageInput.click();
+      uploadButton.addEventListener("click", (e) => {
+        // Prevent the click event from triggering multiple times
+        e.stopPropagation();
       });
 
-      imageInput.addEventListener("change", this.handleFileSelect.bind(this));
+      imageInput.addEventListener("change", (e) => {
+        this.handleFileSelect(e);
+        // Reset the input value to allow selecting the same file again
+        e.target.value = '';
+      });
     }
+}
 
-    // Event delegation for removing images
-    this.shadowRoot.addEventListener("click", (e) => {
-      if (e.target.closest(".image-preview-remove")) {
-        this.removeImage();
-      }
-    });
-  }
+handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        this.tempImage = file;
+    }
+}
 
-  handleSubmit(event) {
+handleSubmit(event) {
     event.preventDefault();
+    event.stopPropagation();
+    
     const input = this.shadowRoot.querySelector(".chat-input");
     const message = input.value.trim();
 
-    if (message) {
+    if (message || this.tempImage) {
       this.dispatchEvent(
         new CustomEvent("chatMessage", {
           detail: { message, image: this.tempImage },
@@ -200,19 +192,19 @@ export class ChatWithImage extends HTMLElement {
       );
       input.value = "";
       this.tempImage = null;
-      this.updateImagePreview();
     }
-  }
+}
 
-  handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      this.tempImage = file;
-      this.updateImagePreview();
-    }
-  }
+// Remove these duplicate methods
+// updateImagePreview() {
+//     // Remove this method's content...
+// }
 
-  updateImagePreview() {
+// updateImagePreview() {
+//     // Empty function...
+// }
+
+updateImagePreview() {
     const container = this.shadowRoot.querySelector(".chat-input-container");
     const existingPreview = this.shadowRoot.querySelector(
       ".image-preview-container"
@@ -235,12 +227,13 @@ export class ChatWithImage extends HTMLElement {
       `;
 
       container.appendChild(preview);
-      preview.querySelector(".remove-image").addEventListener("click", () => {
+      preview.querySelector(".remove-image").addEventListener("click", (e) => {
+        e.stopPropagation(); // Add this to prevent event bubbling
         this.tempImage = null;
         this.updateImagePreview();
       });
     }
-  }
+}
 
   updateTranslations() {
     const input = this.shadowRoot.querySelector(".chat-input");

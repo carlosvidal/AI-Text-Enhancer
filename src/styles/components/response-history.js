@@ -8,6 +8,7 @@ export const responseHistoryStyles = `
   .response-entry {
     background: var(--ai-surface);
     border-radius: var(--ai-radius);
+    border: 1px solid var(--ai-border);
     margin-bottom: 1rem;
     padding: 1rem;
   }
@@ -29,6 +30,7 @@ export const responseHistoryStyles = `
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block;
   }
 
   .response-header {
@@ -37,6 +39,8 @@ export const responseHistoryStyles = `
     align-items: center;
     margin-bottom: 0.5rem;
     color: var(--ai-text-secondary);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--ai-border);
   }
 
   .response-footer {
@@ -89,6 +93,10 @@ export const responseHistoryStyles = `
     font-size: 0.875rem;
     transition: all 0.2s ease;
     white-space: nowrap;
+  }
+
+  .response-action {
+    padding: 0.5rem;
   }
 
   .response-action:hover,
@@ -154,5 +162,27 @@ export const responseHistoryStyles = `
 
   .response-entry[data-action="info"] {
     border-left-color: var(--ai-info);
+  }
+
+  .response-content-with-image {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+
+  .response-image {
+    margin: 1rem 0;
+    max-width: 300px;
+    border-radius: var(--ai-radius);
+    overflow: hidden;
+    border: 1px solid var(--ai-border);
+  }
+
+  .response-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
   }
 `;

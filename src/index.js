@@ -393,32 +393,22 @@ class AITextEnhancer extends HTMLElement {
     }
 
     try {
-      // Asegurar que tenemos un mensaje válido
+      // Validate message
       if (!message?.trim()) {
         throw new Error("Message cannot be empty");
       }
 
-      // Preparar el contenido del chat
-      const currentContent =
-        this.currentContent?.trim() || "No content available";
+      // Add the question with image to history
+      const questionResponse = {
+        id: Date.now(),
+        action: "chat-question",
+        content: `**${this.translations.chat.question}:** ${message}`,
+        timestamp: new Date(),
+        image: image // Add image to the response object
+      };
+      this.responseHistory.addResponse(questionResponse);
 
-      if (image) {
-        if (!this.validateImage(image)) {
-          throw new Error("Invalid image format or size");
-        }
-        this.addResponseToHistory(
-          "image-upload",
-          this.renderImagePreview(image)
-        );
-      }
-
-      // Agregar la pregunta al historial
-      this.addResponseToHistory(
-        "chat-question",
-        `**${this.translations.chat.question}:** ${message}`
-      );
-
-      // Mostrar indicador de carga
+      // Show loading state
       const tempResponse = {
         id: Date.now(),
         action: "chat-response",
@@ -427,18 +417,17 @@ class AITextEnhancer extends HTMLElement {
       };
       this.responseHistory.addResponse(tempResponse);
 
-      // Hacer la solicitud a la API
+      // Make API request
       const response = await this.apiClient.chatResponse(
-        currentContent,
+        this.currentContent,
         message.trim(),
         image
       );
 
-      if (tempResponse) {
-        this.responseHistory.removeResponse(tempResponse.id);
-      }
+      // Remove loading state
+      this.responseHistory.removeResponse(tempResponse.id);
 
-      // Procesar y mostrar la respuesta
+      // Process and show response
       if (!response) {
         throw new Error("Empty response from API");
       }
@@ -447,8 +436,6 @@ class AITextEnhancer extends HTMLElement {
         ? { content: response, imageUsed: image.name }
         : response;
 
-      const chatContent = `${currentContent}-${message}`;
-      this.cacheManager.set("chat", chatContent, finalContent);
       this.addResponseToHistory(
         "chat-response",
         finalContent.content || finalContent
@@ -728,9 +715,11 @@ class AITextEnhancer extends HTMLElement {
         );
       }
 
+      // Add the question to history with image
       this.addResponseToHistory(
         "chat-question",
-        `**${this.translations.chat.question}:** ${message}`
+        `**${this.translations.chat.question}:** ${message}`,
+        image  // Pass the image to the response
       );
 
       const tempResponse = {

@@ -61,16 +61,15 @@ export class ResponseHistory extends HTMLElement {
 
   createResponseEntry(response) {
     const entry = document.createElement("div");
-    entry.className = `response-entry ${response.imageUrl ? "with-image" : ""}`;
+    entry.className = "response-entry";
     entry.dataset.id = response.id;
+    entry.dataset.action = response.action;
 
     const contentWrapper = document.createElement("div");
     contentWrapper.className = "response-content-wrapper";
 
     const isTyping = response.content.includes('<span class="typing">');
-    const contentClass = isTyping
-      ? "response-content typing-animation"
-      : "response-content";
+    const contentClass = isTyping ? "response-content typing-animation" : "response-content";
 
     const isQuestion = response.action === "chat-question";
     const isSystemMessage =
@@ -78,134 +77,74 @@ export class ResponseHistory extends HTMLElement {
       response.action === "info" ||
       response.action === "chat-error";
 
-    // Crear la barra de herramientas para cada respuesta que no sea pregunta o mensaje del sistema
-    const toolsHtml =
-      !isQuestion && !isSystemMessage
-        ? `
-        <button class="tool-button" data-action="improve" data-response-id="${
-          response.id
-        }">
-          ${getToolIcon("improve")}
-          ${this.translations?.tools?.improve || "Improve"}
-        </button>
-        <button class="tool-button" data-action="summarize" data-response-id="${
-          response.id
-        }">
-          ${getToolIcon("summarize")}
-          ${this.translations?.tools?.summarize || "Summarize"}
-        </button>
-        <button class="tool-button" data-action="expand" data-response-id="${
-          response.id
-        }">
-          ${getToolIcon("expand")}
-          ${this.translations?.tools?.expand || "Expand"}
-        </button>
-        <button class="tool-button" data-action="paraphrase" data-response-id="${
-          response.id
-        }">
-          ${getToolIcon("paraphrase")}
-          ${this.translations?.tools?.paraphrase || "Paraphrase"}
-        </button>
-        <button class="tool-button" data-action="more-formal" data-response-id="${
-          response.id
-        }">
-          ${getToolIcon("more-formal")}
-          ${this.translations?.tools?.["more-formal"] || "More Formal"}
-        </button>
-        <button class="tool-button" data-action="more-casual" data-response-id="${
-          response.id
-        }">
-          ${getToolIcon("more-casual")}
-          ${this.translations?.tools?.["more-casual"] || "More Casual"}
-        </button>
-    `
-        : "";
-
-    // Modificar el actionsHtml para incluir el botón retry
-    const actionsHtml = isSystemMessage
-      ? ""
-      : isQuestion
-      ? `
+    // Restaurar el HTML original de las acciones
+    const actionsHtml = !isQuestion && !isSystemMessage ? `
       <div class="response-footer">
         <div class="response-tools">
-          ${toolsHtml}
-        </div>
-        <div class="response-actions">
-          <button class="response-action edit-button" data-response-id="${
-            response.id
-          }">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          <button class="tool-button" data-action="improve" data-response-id="${response.id}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
             </svg>
-            ${this.translations?.actions?.edit || "Edit"}
+            <span>Improve</span>
+          </button>
+          <button class="tool-button" data-action="summarize" data-response-id="${response.id}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 6h16M4 12h16M4 18h12"/>
+            </svg>
+            <span>Summarize</span>
+          </button>
+          <button class="tool-button" data-action="expand" data-response-id="${response.id}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 21H3M21 10H3M21 3h-7M21 17h-7M14 7h7M3 3l4 4M3 3l4-4"/>
+            </svg>
+            <span>Expand</span>
           </button>
         </div>
-      </div>
-    `
-      : `
-      <div class="response-footer">
-        <div class="response-tools">
-          ${toolsHtml}
-        </div>
         <div class="response-actions">
-          <button class="response-action copy-button" data-response-id="${
-            response.id
-          }">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+          <button class="response-action copy-button" data-action="copy" data-response-id="${response.id}" title="Copy">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
-            ${this.translations?.actions?.copy || "Copy"}
           </button>
-          <button class="response-action use-button" data-response-id="${
-            response.id
-          }">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
-              <polyline points="20 6 9 17 4 12"/>
+          <button class="response-action use-button" data-action="use" data-response-id="${response.id}" title="Use">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m5 12 5 5L20 7"/>
             </svg>
-            ${this.translations?.actions?.use || "Use"}
           </button>
-          <button class="response-action retry-button" data-response-id="${
-            response.id
-          }" data-action="${response.action}">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+          <button class="response-action retry-button" data-action="retry" data-response-id="${response.id}" title="Retry">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+              <path d="M21 21v-5h-5"/>
             </svg>
-            ${this.translations?.actions?.retry || "Retry"}
           </button>
         </div>
       </div>
-    `;
+    ` : '';
 
+    // Manejar el contenido y la imagen
     contentWrapper.innerHTML = `
       <div class="response-header">
         <div class="response-tool">
           ${getToolIcon(response.action)}
-          <span>${
-            this.translations?.tools[response.action] || response.action
-          }</span>
+          <span>${this.translations?.tools[response.action] || response.action}</span>
         </div>
-        <div class="response-timestamp">${this.formatTimestamp(
-          response.timestamp
-        )}</div>
+        <div class="response-timestamp">${this.formatTimestamp(response.timestamp)}</div>
       </div>
+      ${response.image ? `
+        <div class="response-image">
+          <img src="${URL.createObjectURL(response.image)}" alt="Uploaded image" />
+        </div>
+      ` : ''}
       <div class="${contentClass}">
-        ${
-          this.markdownHandler
-            ? this.markdownHandler.convert(response.content)
-            : response.content
-        }
+        ${this.markdownHandler ? this.markdownHandler.convert(response.content) : response.content}
       </div>
       ${actionsHtml}
     `;
 
-    if (response.imageUrl) {
-      entry.appendChild(contentWrapper);
-    } else {
-      entry.innerHTML = contentWrapper.innerHTML;
-    }
-
+    entry.appendChild(contentWrapper);
     return entry;
   }
 
