@@ -55,14 +55,14 @@ export function createTemplate(component) {
         <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/>
         <path d="m14 7 3 3"/>
       </svg>
-      <span>${t.modalTrigger}</span>
+      <span>${t?.modalTrigger || 'Enhance Text'}</span>
     </button>
     
     <div class="modal">
       <div class="modal-content">
         <button class="close-button">×</button>
         <div class="modal-header">
-          <h2>${t.modalTitle}</h2>
+          <h2>${t?.modalTitle || 'Enhance Text'}</h2>
         </div>
         
         <div class="modal-body">
@@ -70,7 +70,9 @@ export function createTemplate(component) {
             <div class="tools-container">
               <ai-toolbar language="${component.language}"></ai-toolbar>
             </div>
-            <response-history language="${component.language}"></response-history>
+            <response-history language="${
+              component.language
+            }"></response-history>
           </div>
           <div class="chat-section">
             <chat-with-image

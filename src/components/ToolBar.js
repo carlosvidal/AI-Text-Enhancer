@@ -34,8 +34,11 @@ export class ToolBar extends HTMLElement {
 
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue) return;
-
-    if (this.shadowRoot.querySelector(".tools")) {
+  
+    if (name === 'language') {
+      // Re-render the entire toolbar when language changes
+      this.render();
+    } else if (name === 'has-content') {
       this.updateVisibleTools();
     }
   }

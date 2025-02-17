@@ -187,19 +187,33 @@ class AITextEnhancer extends HTMLElement {
       return;
     }
 
-    // Update modal trigger text
-    const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
+    // Update modal texts
+    const modalTrigger = this.shadowRoot.querySelector(".modal-trigger span");
+    const modalTitle = this.shadowRoot.querySelector(".modal-header h2");
+
     if (modalTrigger) {
-      modalTrigger.textContent = this.translations.modalTitle || "Enhance Text";
+      modalTrigger.textContent =
+        this.translations.modalTrigger || "Enhance Text";
       console.log(
         "[AITextEnhancer] Updated modal trigger text:",
         modalTrigger.textContent
       );
+    }
 
-      // Ensure event listener is still working
-      if (this.modalTriggerHandler) {
-        modalTrigger.removeEventListener("click", this.modalTriggerHandler);
-        modalTrigger.addEventListener("click", this.modalTriggerHandler);
+    if (modalTitle) {
+      modalTitle.textContent = this.translations.modalTitle || "Enhance Text";
+      console.log(
+        "[AITextEnhancer] Updated modal title text:",
+        modalTitle.textContent
+      );
+    }
+
+    // Ensure event listener is still working
+    if (this.modalTriggerHandler) {
+      const trigger = this.shadowRoot.querySelector(".modal-trigger");
+      if (trigger) {
+        trigger.removeEventListener("click", this.modalTriggerHandler);
+        trigger.addEventListener("click", this.modalTriggerHandler);
       }
     }
 

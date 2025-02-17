@@ -1,7 +1,6 @@
 // styles/components/response-history.js
 export const responseHistoryStyles = `
   .response-container {
-    padding: 1rem;
     overflow-y: auto;
     max-height: 100%;
   }

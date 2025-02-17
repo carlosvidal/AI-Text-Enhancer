@@ -3,6 +3,8 @@
 // Verificar que el archivo de traducciones existe y tiene el formato correcto
 export const TRANSLATIONS = {
   en: {
+    modalTrigger: "Enhance with AI",
+    modalTitle: "Enhance your text",
     tools: {
       improve: "Improve",
       summarize: "Summarize",
@@ -39,10 +41,6 @@ export const TRANSLATIONS = {
   es: {
     modalTrigger: "Mejorar con IA",
     modalTitle: "Mejora tu texto",
-    tabs: {
-      editor: "Editor",
-      chat: "Chat",
-    },
     tools: {
       improve: "Mejorar",
       summarize: "Resumir",
@@ -80,10 +78,6 @@ export const TRANSLATIONS = {
   fr: {
     modalTrigger: "Améliorer avec IA",
     modalTitle: "Améliorez votre texte",
-    tabs: {
-      editor: "Éditeur",
-      chat: "Chat",
-    },
     tools: {
       improve: "Améliorer",
       summarize: "Résumer",
@@ -121,10 +115,6 @@ export const TRANSLATIONS = {
   de: {
     modalTrigger: "Beschreibung Verbessern",
     modalTitle: "Verbessern Sie Ihre Beschreibung",
-    tabs: {
-      editor: "Editor",
-      chat: "Chat",
-    },
     tools: {
       improve: "Verbessern",
       summarize: "Zusammenfassen",
@@ -162,10 +152,6 @@ export const TRANSLATIONS = {
   pt: {
     modalTrigger: "Melhorar com IA",
     modalTitle: "Melhore sua texto",
-    tabs: {
-      editor: "Editor",
-      chat: "Chat",
-    },
     tools: {
       improve: "Melhorar",
       summarize: "Resumir",
@@ -184,7 +170,7 @@ export const TRANSLATIONS = {
       generate: "Gerar",
       copy: "Copiar",
       use: "Usar",
-      edit: "Editar"
+      edit: "Editar",
     },
     preview: {
       placeholder: "O texto melhorado aparecerá aqui",
@@ -198,6 +184,43 @@ export const TRANSLATIONS = {
         "Erro: Chave API não configurada. Por favor, forneça uma chave API válida.",
       initialization: "Erro ao inicializar componente:",
       request: "Erro ao processar solicitação:",
+    },
+  },
+  it: {
+    modalTrigger: "Migliorare con IA",
+    modalTitle: "Migliorare il tuo testo",
+    tools: {
+      improve: "Migliorare",
+      summarize: "Sommario",
+      expand: "Espandere",
+      paraphrase: "Parafrasare",
+      "more-formal": "Più Formale",
+      "more-casual": "Più Casual",
+      "chat-question": "Domanda",
+      "chat-response": "Risposta",
+      "chat-error": "Errore",
+    },
+    actions: {
+      retry: "Riprova",
+      insert: "Inserire",
+      replace: "Sostituire",
+      generate: "Generare",
+      copy: "Copiare",
+      use: "Usare",
+      edit: "Modificare",
+    },
+    preview: {
+      placeholder: "Il testo migliorato apparirà qui",
+    },
+    chat: {
+      placeholder: "Fai una domanda sulla descrizione del prodotto...",
+      question: "Domanda",
+    },
+    errors: {
+      apiKey:
+        "Errore: Chiave API non configurata. Fornisci una chiave API valida.",
+      initialization: "Errore inizializzazione componente:",
+      request: "Errore elaborazione richiesta:",
     },
   },
 };
