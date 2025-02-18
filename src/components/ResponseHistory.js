@@ -344,10 +344,14 @@ export class ResponseHistory extends HTMLElement {
     this.render();
   }
 
-  updateResponse(id, content) {
+  updateResponse(id, contentOrCallback) {
     const response = this.responses.find((r) => r.id === id);
     if (response) {
-      response.content = content;
+      if (typeof contentOrCallback === 'function') {
+        response.content = contentOrCallback(response.content);
+      } else {
+        response.content = contentOrCallback;
+      }
       this.render();
     }
   }

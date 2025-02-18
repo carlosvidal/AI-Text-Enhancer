@@ -360,25 +360,25 @@ class APIClient {
     }
   }
 
-  async chatResponse(content, message, image = null) {
+  async chatResponse(content, message, image = null, onProgress = () => {}) {
     try {
       const messages = [
         { role: "system", content: this.config.systemPrompt },
         { role: "user", content }
       ];
-
+  
       if (message) {
         messages.push({ role: "user", content: message });
       }
-
+  
       const payload = {
         model: this.config.models[this.config.provider],
         messages,
         temperature: this.config.temperature,
         stream: true
       };
-
-      // Add image if provided and supported by the model
+  
+      // Handle image if provided
       if (image && this.config.visionModels[this.config.provider]) {
         const imageData = await this.imageToBase64(image);
         messages[messages.length - 1].content = [
@@ -392,7 +392,7 @@ class APIClient {
           }
         ];
       }
-
+  
       const response = await fetch(this.config.endpoints[this.config.provider], {
         method: 'POST',
         headers: {
@@ -402,13 +402,13 @@ class APIClient {
         },
         body: JSON.stringify(payload)
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error?.message || `API Error: ${response.status} ${response.statusText}`);
       }
-
-      return await this.processStream(response, () => {});
+  
+      return await this.processStream(response, onProgress);
     } catch (error) {
       throw new APIError(`Chat response failed: ${error.message}`, error);
     }

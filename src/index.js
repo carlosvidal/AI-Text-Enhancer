@@ -408,43 +408,36 @@ class AITextEnhancer extends HTMLElement {
       };
       this.responseHistory.addResponse(questionResponse);
 
-      // Show loading state
-      const tempResponse = {
-        id: Date.now(),
+      // Create a response ID for streaming updates
+      const responseId = Date.now() + 1;
+      
+      // Add initial empty response
+      this.responseHistory.addResponse({
+        id: responseId,
         action: "chat-response",
-        content: '<span class="typing">|</span>',
+        content: "",
         timestamp: new Date(),
-      };
-      this.responseHistory.addResponse(tempResponse);
+      });
 
-      // Make API request
+      // Stream handler
+      const onProgress = (chunk) => {
+        this.responseHistory.updateResponse(responseId, (prevContent) => prevContent + chunk);
+      };
+
+      // Make API request with streaming
       const response = await this.apiClient.chatResponse(
         this.currentContent,
         message.trim(),
-        image
+        image,
+        onProgress
       );
 
-      // Remove loading state
-      this.responseHistory.removeResponse(tempResponse.id);
-
-      // Process and show response
       if (!response) {
         throw new Error("Empty response from API");
       }
 
-      const finalContent = image
-        ? { content: response, imageUsed: image.name }
-        : response;
-
-      this.addResponseToHistory(
-        "chat-response",
-        finalContent.content || finalContent
-      );
     } catch (error) {
       console.error("Chat Error:", error);
-      if (tempResponse) {
-        this.responseHistory.removeResponse(tempResponse.id);
-      }
       const errorMessage = this.formatErrorMessage(error);
       this.addResponseToHistory("chat-error", errorMessage);
     }

@@ -129,6 +129,18 @@ export const responseHistoryStyles = `
   .response-content {
     margin: 1rem 0;
     line-height: 1.5;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .response-content.typing-animation {
+    border-right: 2px solid var(--ai-text);
+    animation: typing-cursor 0.8s step-end infinite;
+  }
+
+  @keyframes typing-cursor {
+    from, to { border-color: transparent; }
+    50% { border-color: var(--ai-text); }
   }
 
   .response-content pre {
@@ -252,12 +264,6 @@ export const responseHistoryStyles = `
   object-fit: contain; // Mantener la proporción de la imagen
   border-radius: var(--ai-radius);
   border: 1px solid var(--ai-border);
-}
-
-.response-entry .response-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
 }
 
 .response-content .image-preview-card {
