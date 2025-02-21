@@ -31,8 +31,10 @@ export function createTemplate(component) {
       }
 
       .chat-section {
-        border-top: 1px solid var(--ai-border);
-        padding-top: 1rem;
+        position: absolute;
+        width: 100%;
+        bottom: 0;
+        left: 0;
       }
 
       .tools-container {

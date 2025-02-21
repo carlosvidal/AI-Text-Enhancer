@@ -6,6 +6,12 @@ export const chatStyles = `
     gap: 0.5rem;
   }
 
+  .chat-container {
+  border: 1px solid var(--ai-border);
+    border-radius: 8px;
+}
+  }
+
   .chat-input {
     flex: 1;
     padding: 0.75rem;

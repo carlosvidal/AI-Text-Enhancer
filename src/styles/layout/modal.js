@@ -50,6 +50,7 @@ export const modalStyles = `
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+    position: relative;
   }
 
   .editor-section {

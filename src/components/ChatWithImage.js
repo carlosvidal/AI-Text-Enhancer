@@ -81,23 +81,68 @@ export class ChatWithImage extends HTMLElement {
       ${animations}
       ${chatStyles}
       
+      .chat-form {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 8px;
+      }
+      
       .chat-input-container {
         position: relative;
         flex: 1;
         display: flex;
+        align-items: flex-end;
+      }
+      
+      .chat-submit {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
         align-items: center;
+        justify-content: center;
+      }
+      
+      .chat-input {
+        flex: 1;
+        min-height: 24px;
+        max-height: 150px;
+        padding: 12px;
+        padding-right: 40px;
+        background: var(--ai-background);
+        color: var(--ai-text);
+        font-size: 14px;
+        line-height: 1.5;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      
+      .chat-input:empty::before {
+        content: attr(data-placeholder);
+        color: var(--ai-text-light);
+      }
+      
+      .chat-input:focus {
+        outline: none;
       }
       
       .chat-upload-button {
-        position: absolute;
-        right: 12px;
         display: inline-flex;
-        align-items: center;
-        padding: 6px;
-        background: none;
-        border: none;
         cursor: pointer;
         color: var(--ai-text-light);
+
+            width: 32px;
+    height: 32px;
+    background: lightgray;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--ai-radius);
+    border: 0;
+    flex-shrink: 0;
       }
       
       .chat-upload-button:hover {
@@ -113,24 +158,26 @@ export class ChatWithImage extends HTMLElement {
       <div class="chat-container">
         <form class="chat-form">
           <div class="chat-input-container">
-            <input type="text" class="chat-input" placeholder="${
-              this.translations.chat.placeholder
-            }">
-            ${
-              this.supportsImages
-                ? `
-              <label class="chat-upload-button" title="Upload image">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
-                  <circle cx="9" cy="9" r="2"/>
-                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                </svg>
-                <input type="file" accept="image/*" class="hidden" id="imageInput">
-              </label>
-            `
-                : ""
-            }
+            <div class="chat-input" 
+                 contenteditable="true" 
+                 data-placeholder="${this.translations.chat.placeholder}"
+                 role="textbox"
+                 aria-multiline="true"></div>
           </div>
+          ${
+            this.supportsImages
+              ? `
+            <label class="chat-upload-button" title="Upload image">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
+                <circle cx="9" cy="9" r="2"/>
+                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+              </svg>
+              <input type="file" accept="image/*" class="hidden" id="imageInput">
+            </label>
+          `
+              : ""
+          }
           <button type="submit" class="chat-submit">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M5 12h14"/>
@@ -155,6 +202,14 @@ export class ChatWithImage extends HTMLElement {
     const imageInput = this.shadowRoot.querySelector("#imageInput");
 
     form.addEventListener("submit", this.handleSubmit.bind(this));
+
+    // Prevent default enter behavior and handle form submission
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        form.dispatchEvent(new Event("submit"));
+      }
+    });
 
     if (uploadButton && imageInput) {
       uploadButton.addEventListener("click", (e) => {
@@ -182,7 +237,7 @@ export class ChatWithImage extends HTMLElement {
     event.stopPropagation();
 
     const input = this.shadowRoot.querySelector(".chat-input");
-    const message = input.value.trim();
+    const message = input.innerText.trim();
 
     if (message || this.tempImage) {
       this.dispatchEvent(
@@ -192,48 +247,8 @@ export class ChatWithImage extends HTMLElement {
           composed: true,
         })
       );
-      input.value = "";
+      input.innerText = "";
       this.tempImage = null;
-    }
-  }
-
-  // Remove these duplicate methods
-  // updateImagePreview() {
-  //     // Remove this method's content...
-  // }
-
-  // updateImagePreview() {
-  //     // Empty function...
-  // }
-
-  updateImagePreview() {
-    const container = this.shadowRoot.querySelector(".chat-input-container");
-    const existingPreview = this.shadowRoot.querySelector(
-      ".image-preview-container"
-    );
-
-    if (existingPreview) {
-      existingPreview.remove();
-    }
-
-    if (this.tempImage) {
-      const preview = document.createElement("div");
-      preview.className = "image-preview-container";
-      preview.innerHTML = `
-        <img src="${URL.createObjectURL(
-          this.tempImage
-        )}" alt="Preview" class="image-preview" />
-        <button class="remove-image" aria-label="${
-          this.translations.chat.removeImage
-        }">×</button>
-      `;
-
-      container.appendChild(preview);
-      preview.querySelector(".remove-image").addEventListener("click", (e) => {
-        e.stopPropagation(); // Add this to prevent event bubbling
-        this.tempImage = null;
-        this.updateImagePreview();
-      });
     }
   }
 
@@ -242,7 +257,10 @@ export class ChatWithImage extends HTMLElement {
     const submitButton = this.shadowRoot.querySelector(".chat-submit");
 
     if (input && submitButton) {
-      input.placeholder = this.translations.chat.placeholder;
+      input.setAttribute(
+        "data-placeholder",
+        this.translations.chat.placeholder
+      );
       submitButton.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M5 12h14"/>
