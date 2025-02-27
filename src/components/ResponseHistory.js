@@ -68,11 +68,13 @@ export class ResponseHistory extends HTMLElement {
     const contentWrapper = document.createElement("div");
     contentWrapper.className = "response-content-wrapper";
 
-    // Determinar si estamos en un estado de escritura (sin contenido o con el placeholder de typing)
-    const isTyping =
-      response.content === "" ||
-      response.content.includes('<span class="typing">');
-    const contentClass = isTyping
+    // Verificar explícitamente si está en proceso de escritura
+    // Un contenido vacío o muy corto indicaría un estado de escritura en progreso
+    const isLoading = response.content === "" || response.content.length < 5;
+
+    // Usamos la clase typing-animation SOLO cuando realmente está cargando
+    // No para respuestas completas
+    const contentClass = isLoading
       ? "response-content typing-animation"
       : "response-content";
 
@@ -202,22 +204,26 @@ export class ResponseHistory extends HTMLElement {
         </div>
       `;
     } else {
-      // Si el contenido está vacío y es una respuesta, mostrar indicador de "escribiendo"
-      if (response.content === "" && response.action === "chat-response") {
-        mainContent = `<div class="typing-indicator">Escribiendo respuesta...</div>`;
-      } else if (
-        response.content === "" &&
-        [
-          "improve",
-          "summarize",
-          "expand",
-          "paraphrase",
-          "more-formal",
-          "more-casual",
-        ].includes(response.action)
-      ) {
-        mainContent = `<div class="typing-indicator">Pensando...</div>`;
+      // Manejar contenido vacío con indicadores de carga apropiados
+      if (isLoading) {
+        if (response.action === "chat-response") {
+          mainContent = `<div class="typing-indicator">Escribiendo respuesta...</div>`;
+        } else if (
+          [
+            "improve",
+            "summarize",
+            "expand",
+            "paraphrase",
+            "more-formal",
+            "more-casual",
+          ].includes(response.action)
+        ) {
+          mainContent = `<div class="typing-indicator">Pensando...</div>`;
+        } else {
+          mainContent = "";
+        }
       } else {
+        // Cuando hay contenido (respuesta completada), usar el contenido normal sin animación
         mainContent = this.markdownHandler
           ? this.markdownHandler.convert(response.content)
           : response.content;
@@ -242,16 +248,22 @@ export class ResponseHistory extends HTMLElement {
       ${actionsHtml}
     `;
 
-    // Añadir estilos para la animación de escritura si no existen
+    // Añadir estilos mejorados para la animación de escritura
     if (!this.shadowRoot.querySelector("#typing-animation-style")) {
       const styleEl = document.createElement("style");
       styleEl.id = "typing-animation-style";
       styleEl.textContent = `
+        /* Mostrar cursor SOLO en elementos con clase typing-animation */
         .typing-animation::after {
           content: '|';
           display: inline-block;
           margin-left: 2px;
           animation: typingCursor 0.8s infinite step-end;
+        }
+        
+        /* Las respuestas normales NO tienen cursor */
+        .response-content:not(.typing-animation)::after {
+          content: none;
         }
         
         @keyframes typingCursor {
@@ -264,13 +276,25 @@ export class ResponseHistory extends HTMLElement {
           font-style: italic;
         }
         
+        /* Animación suave para el nuevo texto */
         @keyframes textReveal {
           from { opacity: 0; transform: translateY(5px); }
           to { opacity: 1; transform: translateY(0); }
         }
         
+        /* Solo animar párrafos nuevos, no todo el contenido */
         .response-content p {
-          animation: textReveal 0.2s ease-out forwards;
+          animation: textReveal 0.3s ease-out forwards;
+        }
+        
+        /* Evitar parpadeo durante actualizaciones */
+        .response-entry {
+          transition: none;
+        }
+        
+        /* Eliminar CUALQUIER cursor adicional que pueda estar presente */
+        .typing-animation span.typing {
+          display: none !important;
         }
       `;
       this.shadowRoot.appendChild(styleEl);
@@ -404,6 +428,7 @@ export class ResponseHistory extends HTMLElement {
     if (index === -1) return;
 
     const response = this.responses[index];
+    const oldContent = response.content;
 
     // Actualizar el contenido basado en callback o string directo
     if (typeof contentOrCallback === "function") {
@@ -411,6 +436,12 @@ export class ResponseHistory extends HTMLElement {
     } else {
       response.content = contentOrCallback;
     }
+
+    // Determinar si estamos finalizando la escritura
+    // (contenido vacío o muy corto antes, contenido sustancial ahora)
+    const wasTyping = oldContent === "" || oldContent.length < 5;
+    const isComplete = response.content.length > 20;
+    const finishingTyping = wasTyping && isComplete;
 
     // Obtener el elemento DOM que necesita actualizarse
     const responseEntry = this.shadowRoot.querySelector(`[data-id="${id}"]`);
@@ -420,9 +451,14 @@ export class ResponseHistory extends HTMLElement {
       return;
     }
 
-    // Actualizar solo el contenido del elemento existente para mejor rendimiento
+    // Actualizar solo el contenido del elemento existente
     const contentElement = responseEntry.querySelector(".response-content");
     if (contentElement) {
+      // Si estamos finalizando la escritura, quitar la clase de animación
+      if (finishingTyping) {
+        contentElement.classList.remove("typing-animation");
+      }
+
       // Aplicar markdown si está disponible
       if (this.markdownHandler) {
         contentElement.innerHTML = this.markdownHandler.convert(
@@ -430,6 +466,12 @@ export class ResponseHistory extends HTMLElement {
         );
       } else {
         contentElement.innerHTML = response.content;
+      }
+
+      // Si ya no estamos en estado de escritura pero el elemento todavía tiene
+      // la clase de animación, quitarla
+      if (isComplete && contentElement.classList.contains("typing-animation")) {
+        contentElement.classList.remove("typing-animation");
       }
     }
   }

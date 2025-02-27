@@ -126,12 +126,19 @@ export const responseHistoryStyles = `
     to { border-color: transparent; }
   }
 
-  .response-content {
-    margin: 1rem 0;
-    line-height: 1.5;
-    white-space: normal;
-    word-break: break-word;
-  }
+.response-content {
+  position: relative;
+  padding: 1rem;
+  line-height: 1.5;
+  color: var(--ai-text);
+  transition: none; /* Evitar transiciones que puedan causar parpadeo */
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+  .response-content::after {
+  content: none;
+}
+
 
   .response-content.typing-animation {
     border-right: 2px solid var(--ai-text);
@@ -337,15 +344,59 @@ export const responseHistoryStyles = `
   display: inline-block;
   margin-left: 2px;
   animation: typingCursor 0.8s infinite step-end;
+  position: relative; /* Mantenerlo en línea con el texto */
+  opacity: 0.7; /* Hacerlo menos invasivo */
+  vertical-align: middle;
+  height: 1em;
+}
+
+.typing-animation span.typing {
+  display: none !important;
 }
 
 @keyframes typingCursor {
-  from, to { 
-    opacity: 1; 
-  }
-  50% { 
-    opacity: 0; 
-  }
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0; }
+}
+
+.typing-indicator {
+  color: var(--ai-text-light);
+  font-style: italic;
+  padding: 0.5rem 0;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Mejorar el rendimiento evitando cambios de layout */
+.response-entry {
+  contain: content; /* Mejora el rendimiento de renderizado */
+}
+
+/* Evitar parpadeo durante las actualizaciones de contenido */
+.response-content-wrapper {
+  will-change: contents; /* Optimiza para cambios frecuentes */
+}
+
+/* Eliminar animaciones cuando la carga haya terminado */
+.response-content:not(.typing-animation) {
+  animation: none;
+}
+
+/* Mantener el contenido estable durante las actualizaciones */
+.response-content p, 
+.response-content ul, 
+.response-content ol,
+.response-content pre {
+  margin-bottom: 1em;
+}
+
+/* Eliminar margen en el último elemento para mantener espaciado consistente */
+.response-content > *:last-child {
+  margin-bottom: 0;
 }
 
 /* Estilos para los mensajes de chat y respuestas */

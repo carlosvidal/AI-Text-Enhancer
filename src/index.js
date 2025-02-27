@@ -510,8 +510,15 @@ class AITextEnhancer extends HTMLElement {
         onProgress
       );
 
-      // No es necesario hacer una actualización final porque el contenido ya ha sido actualizado
-      // durante el proceso de streaming
+      // Marcar explícitamente que la respuesta está completa
+      setTimeout(() => {
+        const responseElement = this.shadowRoot.querySelector(
+          `[data-id="${responseId}"] .response-content`
+        );
+        if (responseElement) {
+          responseElement.classList.remove("typing-animation");
+        }
+      }, 100);
     } catch (error) {
       console.error("Chat Error:", error);
       const errorMessage = this.formatErrorMessage(error);
@@ -574,15 +581,24 @@ class AITextEnhancer extends HTMLElement {
         onProgress
       );
 
+      // Marcar explícitamente que la respuesta está completa
+      // Esto garantiza que se elimine la animación del cursor
+      setTimeout(() => {
+        // El timeout asegura que esta actualización ocurra después de la última chunk
+        const responseElement = this.shadowRoot.querySelector(
+          `[data-id="${responseId}"] .response-content`
+        );
+        if (responseElement) {
+          responseElement.classList.remove("typing-animation");
+        }
+      }, 100);
+
       // Guardar en caché si la respuesta es exitosa
       this.cacheManager.set(
         action,
         content || this.currentContent,
         completeText
       );
-
-      // No necesitamos una actualización final ya que la hemos estado actualizando
-      // durante el proceso de streaming
     } catch (error) {
       console.error("Error in handleToolAction:", error);
       // Si hay un error, actualizamos la respuesta con el mensaje de error
