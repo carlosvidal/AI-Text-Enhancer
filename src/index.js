@@ -18,6 +18,8 @@ import {
 } from "./features/keyboard-navigation.js";
 import { responseHandlerMixin } from "./features/response-handlers.js";
 import { imageHandlerMixin } from "./features/image-handlers.js";
+// Nuevo import
+import { stateManagementMixin } from "./features/state-integration.js";
 import { createTemplate } from "./template.js";
 
 class AITextEnhancer extends HTMLElement {
@@ -29,7 +31,8 @@ class AITextEnhancer extends HTMLElement {
       this,
       keyboardNavigationMixin,
       responseHandlerMixin,
-      imageHandlerMixin
+      imageHandlerMixin,
+      stateManagementMixin // Agregar el nuevo mixin
     );
 
     // Register required components
@@ -52,6 +55,9 @@ class AITextEnhancer extends HTMLElement {
     this.markdownHandler = new MarkdownHandler();
     this.tokenManager = new TokenManager();
 
+    // Inicializar el gestor de estado
+    this.initializeStateManager();
+
     // Initialize cache
     this.cacheManager = createCacheManager({
       prefix: "ai-text-enhancer",
@@ -60,11 +66,13 @@ class AITextEnhancer extends HTMLElement {
     });
 
     // State initialization
-    this.enhancedText = "";
-    this.chatMessages = [];
-    this.isInitialized = false;
-    this.productImage = null;
-    this.usageControl = null;
+    this.stateManager.batchUpdate({
+      enhancedText: "",
+      chatMessages: [],
+      isInitialized: false,
+      productImage: null,
+      usageControl: null,
+    });
 
     // Bind methods after mixins are applied
     this.bindMethods();
@@ -512,10 +520,14 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
-  async handleToolAction(event) {
-    const { action, responseId } = event.detail;
-    const content = event.detail.content || this.currentContent;
+  // Agrega este método para solicitar actualizaciones explícitas
+  requestUpdate(part = null) {
+    // Este método delegará en el stateManager
+    return this.requestUpdate(part);
+  }
 
+  async handleToolAction(event) {
+    const { action, responseId, content } = event.detail;
     if (!this.apiKey) {
       console.warn("No API key provided");
       this.addResponseToHistory("error", this.translations.errors.apiKey);
@@ -547,13 +559,16 @@ class AITextEnhancer extends HTMLElement {
       const completeText = await this.apiClient.enhanceText(
         content,
         action,
-        null,
+        this.stateManager.getState("productImage"), // Usar stateManager aquí
         this.context
       );
 
       this.responseHistory.removeResponse(tempResponse.id);
       this.addResponseToHistory(action, completeText);
       this.cacheManager.set(action, content, completeText);
+
+      // Actualizar el estado después de una acción exitosa
+      this.stateManager.updateState("enhancedText", completeText);
     } catch (error) {
       console.error("Error in handleToolAction:", error);
       if (tempResponse) {
