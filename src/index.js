@@ -7,7 +7,6 @@ import { createAPIClient } from "./services/api-client.js";
 import { createCacheManager } from "./services/cache-manager.js";
 import { ModelManager } from "./services/model-manager.js";
 import { EditorAdapter } from "./services/editor-adapter.js";
-// Update this import line
 import { createEventEmitter } from "./utils/event-utils.js";
 import { attachShadowTemplate } from "./utils/dom-utils.js";
 import { TRANSLATIONS } from "./constants/translations.js";
@@ -95,7 +94,7 @@ class AITextEnhancer extends HTMLElement {
       "api-provider",
       "api-model",
       "language",
-      "prompt", // Make sure this is included
+      "prompt",
       "context",
       "image-url",
       "tenant-id",
@@ -175,7 +174,54 @@ class AITextEnhancer extends HTMLElement {
       await this.initializeComponents();
     } catch (error) {
       console.error("Error initializing component:", error);
-      this.notificationManager.error(`Initialization error: ${error.message}`);
+      if (this.notificationManager) {
+        this.notificationManager.error(
+          `Initialization error: ${error.message}`
+        );
+      }
+    }
+  }
+
+  attributeChangedCallback(name, oldValue, newValue) {
+    console.log(
+      "[AITextEnhancer] Attribute changed:",
+      name,
+      "from",
+      oldValue,
+      "to",
+      newValue
+    );
+    if (oldValue === newValue) return;
+
+    switch (name) {
+      case "api-key":
+        if (this.apiClient) {
+          this.apiClient.setApiKey(newValue);
+        } else if (!this.isInitialized) {
+          this.initializeComponents();
+        }
+        break;
+      case "language":
+        this.updateLanguageForChildren(newValue);
+        break;
+      case "api-provider":
+      case "api-model":
+        if (this.isInitialized && this.apiClient) {
+          this.apiClient.updateConfig({
+            provider: this.apiProvider,
+            model: this.apiModel,
+          });
+        }
+        break;
+      case "image-url":
+        if (this.isInitialized) {
+          const chatComponent =
+            this.shadowRoot.querySelector("chat-with-image");
+          if (chatComponent) {
+            chatComponent.setAttribute("image-url", newValue || "");
+          }
+        }
+        break;
     }
   }
 
@@ -250,49 +296,6 @@ class AITextEnhancer extends HTMLElement {
     });
   }
 
-  attributeChangedCallback(name, oldValue, newValue) {
-    console.log(
-      "[AITextEnhancer] Attribute changed:",
-      name,
-      "from",
-      oldValue,
-      "to",
-      newValue
-    );
-    if (oldValue === newValue) return;
-
-    switch (name) {
-      case "api-key":
-        if (this.apiClient) {
-          this.apiClient.setApiKey(newValue);
-        } else if (!this.isInitialized) {
-          this.initializeComponents();
-        }
-        break;
-      case "language":
-        this.updateLanguageForChildren(newValue);
-        break;
-      case "api-provider":
-      case "api-model":
-        if (this.isInitialized && this.apiClient) {
-          this.apiClient.updateConfig({
-            provider: this.apiProvider,
-            model: this.apiModel,
-          });
-        }
-        break;
-      case "image-url":
-        if (this.isInitialized) {
-          const chatComponent =
-            this.shadowRoot.querySelector("chat-with-image");
-          if (chatComponent) {
-            chatComponent.setAttribute("image-url", newValue || "");
-          }
-        }
-        break;
-    }
-  }
-
   // Core functionality
   setupEventListeners() {
     const chatComponent = this.shadowRoot.querySelector("chat-with-image");
@@ -302,7 +305,6 @@ class AITextEnhancer extends HTMLElement {
 
     this.responseHistory = this.shadowRoot.querySelector("response-history");
     if (this.responseHistory) {
-      // Corregir los nombres de los eventos para que coincidan con los originales
       this.responseHistory.addEventListener(
         "responseCopy",
         this.handleResponseCopy
@@ -319,6 +321,10 @@ class AITextEnhancer extends HTMLElement {
         "responseEdit",
         this.handleResponseEdit
       );
+      this.responseHistory.addEventListener(
+        "toolaction",
+        this.handleToolAction
+      );
     }
 
     this.addEventListener("configurationUpdated", (event) => {
@@ -331,6 +337,55 @@ class AITextEnhancer extends HTMLElement {
     });
 
     this.bindEvents();
+  }
+
+  bindEvents() {
+    // Modal events
+    const modal = this.shadowRoot.querySelector(".modal");
+    const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
+
+    if (!modal || !modalTrigger) {
+      console.warn("[AITextEnhancer] Modal elements not found in bindEvents");
+      return;
+    }
+
+    // Store the event handler as a property so we can reuse it
+    this.modalTriggerHandler = () => {
+      console.log("[AITextEnhancer] Current attributes when modal opens:", {
+        apiKey: this.apiKey,
+        provider: this.apiProvider,
+        model: this.apiModel,
+        language: this.language,
+        prompt: this.prompt,
+        context: this.context,
+        imageUrl: this.imageUrl,
+      });
+      modal.classList.add("open");
+      this.updateVisibleTools();
+    };
+
+    // Remove any existing event listener before adding new one
+    modalTrigger.removeEventListener("click", this.modalTriggerHandler);
+    modalTrigger.addEventListener("click", this.modalTriggerHandler);
+
+    // Close button
+    const closeButton = this.shadowRoot.querySelector(".close-button");
+    if (closeButton) {
+      closeButton.onclick = () => modal.classList.remove("open");
+    }
+
+    // Click outside modal
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        modal.classList.remove("open");
+      }
+    };
+
+    // Tool buttons
+    const toolbar = this.shadowRoot.querySelector("ai-toolbar");
+    if (toolbar) {
+      toolbar.addEventListener("toolaction", this.handleToolAction);
+    }
   }
 
   async initializeComponents() {
@@ -384,6 +439,18 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
+  isModalOpen() {
+    return this.shadowRoot.querySelector(".modal").classList.contains("open");
+  }
+
+  updateVisibleTools() {
+    const hasContent = Boolean(this.currentContent.trim());
+    const toolbar = this.shadowRoot.querySelector("ai-toolbar");
+    if (toolbar) {
+      toolbar.setAttribute("has-content", hasContent.toString());
+    }
+  }
+
   async handleChatMessage(event) {
     const { message, image } = event.detail;
 
@@ -394,15 +461,15 @@ class AITextEnhancer extends HTMLElement {
 
     try {
       // Validate message
-      if (!message?.trim()) {
-        throw new Error("Message cannot be empty");
+      if (!message?.trim() && !image) {
+        throw new Error("Message or image is required");
       }
 
       // Add the question with image to history
       const questionResponse = {
         id: Date.now(),
         action: "chat-question",
-        content: `**${this.translations.chat.question}:** ${message}`,
+        content: `**${this.translations.chat.question}:** ${message || ""}`,
         timestamp: new Date(),
         image: image,
       };
@@ -410,7 +477,7 @@ class AITextEnhancer extends HTMLElement {
 
       // Create a response ID for streaming updates
       const responseId = Date.now() + 1;
-      
+
       // Add initial empty response
       this.responseHistory.addResponse({
         id: responseId,
@@ -421,7 +488,10 @@ class AITextEnhancer extends HTMLElement {
 
       // Stream handler
       const onProgress = (chunk) => {
-        this.responseHistory.updateResponse(responseId, (prevContent) => prevContent + chunk);
+        this.responseHistory.updateResponse(
+          responseId,
+          (prevContent) => prevContent + chunk
+        );
       };
 
       // Make API request with streaming
@@ -435,7 +505,6 @@ class AITextEnhancer extends HTMLElement {
       if (!response) {
         throw new Error("Empty response from API");
       }
-
     } catch (error) {
       console.error("Chat Error:", error);
       const errorMessage = this.formatErrorMessage(error);
@@ -443,209 +512,10 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
-  validateImage(image) {
-    const maxSize = 4 * 1024 * 1024; // 4MB
-    const validTypes = ["image/jpeg", "image/png", "image/gif"];
-
-    return image.size <= maxSize && validTypes.includes(image.type);
-  }
-
-  formatErrorMessage(error) {
-    if (error.message.includes("CORS")) {
-      return "Error: Unable to connect to AI service. Please check your API key and try again.";
-    }
-    if (error.message.includes("Failed to fetch")) {
-      return "Error: Network connection failed. Please check your internet connection.";
-    }
-    return `Error: ${error.message}`;
-  }
-
-  attributeChangedCallback(name, oldValue, newValue) {
-    console.log(
-      "[AITextEnhancer] Attribute changed:",
-      name,
-      "from",
-      oldValue,
-      "to",
-      newValue
-    );
-    if (oldValue === newValue) return;
-
-    switch (name) {
-      case "api-key":
-        if (this.apiClient) {
-          this.apiClient.setApiKey(newValue);
-        } else if (!this.isInitialized) {
-          this.initializeComponents();
-        }
-        break;
-      case "language":
-        this.updateLanguageForChildren(newValue);
-        break;
-      case "api-provider":
-      case "api-model":
-        if (this.isInitialized && this.apiClient) {
-          this.apiClient.updateConfig({
-            provider: this.apiProvider,
-            model: this.apiModel,
-          });
-        }
-        break;
-      case "image-url":
-        if (this.isInitialized) {
-          const chatComponent =
-            this.shadowRoot.querySelector("chat-with-image");
-          if (chatComponent) {
-            chatComponent.setAttribute("image-url", newValue || "");
-          }
-        }
-        break;
-    }
-  }
-
-  // Core functionality
-  setupEventListeners() {
-    const chatComponent = this.shadowRoot.querySelector("chat-with-image");
-    if (chatComponent) {
-      chatComponent.addEventListener("chatMessage", this.handleChatMessage);
-    }
-
-    this.responseHistory = this.shadowRoot.querySelector("response-history");
-    if (this.responseHistory) {
-      this.responseHistory.addEventListener(
-        "responseCopy",
-        this.handleResponseCopy
-      );
-      this.responseHistory.addEventListener(
-        "responseUse",
-        this.handleResponseUse
-      );
-      this.responseHistory.addEventListener(
-        "responseRetry",
-        this.handleResponseRetry
-      );
-      this.responseHistory.addEventListener(
-        "responseEdit",
-        this.handleResponseEdit
-      );
-      // Agregar el listener para toolaction
-      this.responseHistory.addEventListener(
-        "toolaction",
-        this.handleToolAction
-      );
-    }
-
-    this.bindEvents();
-  }
-
-  async initializeComponents() {
-    if (this.isInitialized) return;
-
-    try {
-      const apiKey = this.apiKey;
-      if (!apiKey) {
-        throw new Error("API key is required");
-      }
-
-      // Initialize API client
-      this.apiClient = createAPIClient({
-        apiKey: this.apiKey,
-        provider: this.apiProvider,
-        model: this.apiModel,
-        systemPrompt: this.prompt,
-        temperature: 0.7,
-      });
-
-      // Initialize editor adapter if editor ID is provided
-      if (this.editorId) {
-        this.editorAdapter = new EditorAdapter(this.editorId);
-      }
-
-      // Initialize markdown handler and pass it to response history
-      if (this.markdownHandler) {
-        await this.markdownHandler.initialize();
-        const responseHistory =
-          this.shadowRoot.querySelector("response-history");
-        if (responseHistory) {
-          responseHistory.markdownHandler = this.markdownHandler;
-        }
-      }
-
-      // Set initial state
-      this.isInitialized = true;
-
-      // Update visible tools based on content
-      this.updateVisibleTools();
-    } catch (error) {
-      console.error("Error in initializeComponents:", error);
-      throw error;
-    }
-  }
-
-  updateVisibleTools() {
-    const hasContent = Boolean(this.currentContent.trim());
-    const toolbar = this.shadowRoot.querySelector("ai-toolbar");
-    if (toolbar) {
-      toolbar.setAttribute("has-content", hasContent.toString());
-    }
-  }
-
-  // ... keep other core methods that aren't moved to mixins ...
-  bindEvents() {
-    // Modal events
-    const modal = this.shadowRoot.querySelector(".modal");
-    const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
-
-    if (!modal || !modalTrigger) {
-      console.warn("[AITextEnhancer] Modal elements not found in bindEvents");
-      return;
-    }
-
-    // Store the event handler as a property so we can reuse it
-    this.modalTriggerHandler = () => {
-      console.log("[AITextEnhancer] Current attributes when modal opens:", {
-        apiKey: this.apiKey,
-        provider: this.apiProvider,
-        model: this.apiModel,
-        language: this.language,
-        prompt: this.prompt,
-        context: this.context,
-        imageUrl: this.imageUrl,
-      });
-      modal.classList.add("open");
-      this.updateVisibleTools();
-    };
-
-    // Remove any existing event listener before adding new one
-    modalTrigger.removeEventListener("click", this.modalTriggerHandler);
-    modalTrigger.addEventListener("click", this.modalTriggerHandler);
-
-    // Close button
-    const closeButton = this.shadowRoot.querySelector(".close-button");
-    if (closeButton) {
-      closeButton.onclick = () => modal.classList.remove("open");
-    }
-
-    // Click outside modal
-    modal.onclick = (e) => {
-      if (e.target === modal) {
-        modal.classList.remove("open");
-      }
-    };
-
-    // Tool buttons
-    const toolbar = this.shadowRoot.querySelector("ai-toolbar");
-    if (toolbar) {
-      toolbar.addEventListener("toolaction", this.handleToolAction);
-    }
-  }
-
-  isModalOpen() {
-    return this.shadowRoot.querySelector(".modal").classList.contains("open");
-  }
-
   async handleToolAction(event) {
-    const { action, responseId, content } = event.detail;
+    const { action, responseId } = event.detail;
+    const content = event.detail.content || this.currentContent;
+
     if (!this.apiKey) {
       console.warn("No API key provided");
       this.addResponseToHistory("error", this.translations.errors.apiKey);
@@ -693,6 +563,16 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
+  formatErrorMessage(error) {
+    if (error.message.includes("CORS")) {
+      return "Error: Unable to connect to AI service. Please check your API key and try again.";
+    }
+    if (error.message.includes("Failed to fetch")) {
+      return "Error: Network connection failed. Please check your internet connection.";
+    }
+    return `Error: ${error.message}`;
+  }
+
   addResponseToHistory(action, content) {
     const response = {
       id: Date.now(),
@@ -705,7 +585,6 @@ class AITextEnhancer extends HTMLElement {
   }
 }
 
-// Remove the Object.assign here since we're doing it in the constructor
 customElements.define("ai-text-enhancer", AITextEnhancer);
 
 export default AITextEnhancer;

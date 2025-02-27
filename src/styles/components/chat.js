@@ -9,7 +9,7 @@ export const chatStyles = `
   .chat-container {
   border: 1px solid var(--ai-border);
     border-radius: 8px;
-}
+    background: white;
   }
 
   .chat-input {
