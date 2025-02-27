@@ -68,10 +68,14 @@ export class ResponseHistory extends HTMLElement {
     const contentWrapper = document.createElement("div");
     contentWrapper.className = "response-content-wrapper";
 
-    const isTyping = response.content.includes('<span class="typing">');
+    // Determinar si estamos en un estado de escritura (sin contenido o con el placeholder de typing)
+    const isTyping =
+      response.content === "" ||
+      response.content.includes('<span class="typing">');
     const contentClass = isTyping
       ? "response-content typing-animation"
       : "response-content";
+
     const isQuestion = response.action === "chat-question";
     const isSystemMessage = ["error", "info", "chat-error"].includes(
       response.action
@@ -198,9 +202,26 @@ export class ResponseHistory extends HTMLElement {
         </div>
       `;
     } else {
-      mainContent = this.markdownHandler
-        ? this.markdownHandler.convert(response.content)
-        : response.content;
+      // Si el contenido está vacío y es una respuesta, mostrar indicador de "escribiendo"
+      if (response.content === "" && response.action === "chat-response") {
+        mainContent = `<div class="typing-indicator">Escribiendo respuesta...</div>`;
+      } else if (
+        response.content === "" &&
+        [
+          "improve",
+          "summarize",
+          "expand",
+          "paraphrase",
+          "more-formal",
+          "more-casual",
+        ].includes(response.action)
+      ) {
+        mainContent = `<div class="typing-indicator">Pensando...</div>`;
+      } else {
+        mainContent = this.markdownHandler
+          ? this.markdownHandler.convert(response.content)
+          : response.content;
+      }
     }
 
     contentWrapper.innerHTML = `
@@ -220,6 +241,40 @@ export class ResponseHistory extends HTMLElement {
       </div>
       ${actionsHtml}
     `;
+
+    // Añadir estilos para la animación de escritura si no existen
+    if (!this.shadowRoot.querySelector("#typing-animation-style")) {
+      const styleEl = document.createElement("style");
+      styleEl.id = "typing-animation-style";
+      styleEl.textContent = `
+        .typing-animation::after {
+          content: '|';
+          display: inline-block;
+          margin-left: 2px;
+          animation: typingCursor 0.8s infinite step-end;
+        }
+        
+        @keyframes typingCursor {
+          from, to { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        
+        .typing-indicator {
+          color: var(--ai-text-light);
+          font-style: italic;
+        }
+        
+        @keyframes textReveal {
+          from { opacity: 0; transform: translateY(5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .response-content p {
+          animation: textReveal 0.2s ease-out forwards;
+        }
+      `;
+      this.shadowRoot.appendChild(styleEl);
+    }
 
     entry.appendChild(contentWrapper);
     return entry;
@@ -345,15 +400,42 @@ export class ResponseHistory extends HTMLElement {
   }
 
   updateResponse(id, contentOrCallback) {
-    const response = this.responses.find((r) => r.id === id);
-    if (response) {
-      if (typeof contentOrCallback === 'function') {
-        response.content = contentOrCallback(response.content);
-      } else {
-        response.content = contentOrCallback;
-      }
-      this.render();
+    const index = this.responses.findIndex((r) => r.id === id);
+    if (index === -1) return;
+
+    const response = this.responses[index];
+
+    // Actualizar el contenido basado en callback o string directo
+    if (typeof contentOrCallback === "function") {
+      response.content = contentOrCallback(response.content);
+    } else {
+      response.content = contentOrCallback;
     }
+
+    // Obtener el elemento DOM que necesita actualizarse
+    const responseEntry = this.shadowRoot.querySelector(`[data-id="${id}"]`);
+    if (!responseEntry) {
+      // Si no se encuentra el elemento, re-renderizar todo
+      this.render();
+      return;
+    }
+
+    // Actualizar solo el contenido del elemento existente para mejor rendimiento
+    const contentElement = responseEntry.querySelector(".response-content");
+    if (contentElement) {
+      // Aplicar markdown si está disponible
+      if (this.markdownHandler) {
+        contentElement.innerHTML = this.markdownHandler.convert(
+          response.content
+        );
+      } else {
+        contentElement.innerHTML = response.content;
+      }
+    }
+  }
+
+  getTypingPlaceholder() {
+    return '<span class="typing">|</span>';
   }
 
   getResponse(id) {

@@ -327,4 +327,57 @@ export const responseHistoryStyles = `
   white-space: nowrap;
   text-align: center;
 }
+
+.typing-animation {
+  position: relative;
+}
+
+.typing-animation::after {
+  content: '|';
+  display: inline-block;
+  margin-left: 2px;
+  animation: typingCursor 0.8s infinite step-end;
+}
+
+@keyframes typingCursor {
+  from, to { 
+    opacity: 1; 
+  }
+  50% { 
+    opacity: 0; 
+  }
+}
+
+/* Estilos para los mensajes de chat y respuestas */
+.response-entry[data-action="chat-response"] .response-content:empty::after,
+.response-entry[data-action="summarize"] .response-content:empty::after,
+.response-entry[data-action="improve"] .response-content:empty::after,
+.response-entry[data-action="expand"] .response-content:empty::after,
+.response-entry[data-action="paraphrase"] .response-content:empty::after,
+.response-entry[data-action="more-formal"] .response-content:empty::after,
+.response-entry[data-action="more-casual"] .response-content:empty::after {
+  content: 'Pensando...';
+  color: var(--ai-text-light);
+  font-style: italic;
+}
+
+.response-entry[data-action="chat-response"] .response-content:empty::after {
+  content: 'Escribiendo respuesta...';
+}
+
+/* Efecto de revelación gradual del texto */
+@keyframes textReveal {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.response-content p {
+  animation: textReveal 0.2s ease-out forwards;
+}
 `;

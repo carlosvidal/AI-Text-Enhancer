@@ -468,25 +468,25 @@ class AITextEnhancer extends HTMLElement {
     }
 
     try {
-      // Validate message
+      // Validar mensaje
       if (!message?.trim() && !image) {
-        throw new Error("Message or image is required");
+        throw new Error("Message cannot be empty");
       }
 
-      // Add the question with image to history
+      // Agregar la pregunta con imagen al historial
       const questionResponse = {
         id: Date.now(),
         action: "chat-question",
-        content: `**${this.translations.chat.question}:** ${message || ""}`,
+        content: `**${this.translations.chat.question}:** ${message}`,
         timestamp: new Date(),
         image: image,
       };
       this.responseHistory.addResponse(questionResponse);
 
-      // Create a response ID for streaming updates
+      // Crear un ID para el streaming de respuestas
       const responseId = Date.now() + 1;
 
-      // Add initial empty response
+      // Agregar respuesta inicial vacía
       this.responseHistory.addResponse({
         id: responseId,
         action: "chat-response",
@@ -494,7 +494,7 @@ class AITextEnhancer extends HTMLElement {
         timestamp: new Date(),
       });
 
-      // Stream handler
+      // Manejador de streaming
       const onProgress = (chunk) => {
         this.responseHistory.updateResponse(
           responseId,
@@ -502,7 +502,7 @@ class AITextEnhancer extends HTMLElement {
         );
       };
 
-      // Make API request with streaming
+      // Hacer solicitud API con streaming
       const response = await this.apiClient.chatResponse(
         this.currentContent,
         message.trim(),
@@ -510,9 +510,8 @@ class AITextEnhancer extends HTMLElement {
         onProgress
       );
 
-      if (!response) {
-        throw new Error("Empty response from API");
-      }
+      // No es necesario hacer una actualización final porque el contenido ya ha sido actualizado
+      // durante el proceso de streaming
     } catch (error) {
       console.error("Chat Error:", error);
       const errorMessage = this.formatErrorMessage(error);
@@ -534,47 +533,63 @@ class AITextEnhancer extends HTMLElement {
       return;
     }
 
-    let tempResponse = null;
-
     try {
+      // Verificar caché primero
       const cachedResponse = this.cacheManager.get(action, content);
-
       if (cachedResponse) {
         this.addResponseToHistory(action, cachedResponse);
         return;
       }
 
-      tempResponse = {
-        id: Date.now(),
-        action,
-        content: '<span class="typing">|</span>',
-        timestamp: new Date(),
-      };
-      this.responseHistory.addResponse(tempResponse);
-
+      // Inicializar el cliente API si es necesario
       if (!this.apiClient || !this.isInitialized) {
         await this.initializeComponents();
       }
 
-      const completeText = await this.apiClient.enhanceText(
-        content,
+      // Crear ID único para la respuesta
+      const responseId = Date.now();
+
+      // Agregar respuesta inicial vacía con indicador de carga
+      this.responseHistory.addResponse({
+        id: responseId,
         action,
-        this.stateManager.getState("productImage"), // Usar stateManager aquí
-        this.context
+        content: "", // Empezamos con contenido vacío que se irá actualizando
+        timestamp: new Date(),
+      });
+
+      // Manejador de progreso para actualizaciones en streaming
+      const onProgress = (chunk) => {
+        this.responseHistory.updateResponse(
+          responseId,
+          (prevContent) => prevContent + chunk
+        );
+      };
+
+      // Hacer la solicitud API con streaming
+      const completeText = await this.apiClient.enhanceText(
+        content || this.currentContent,
+        action,
+        this.productImage,
+        this.context,
+        onProgress
       );
 
-      this.responseHistory.removeResponse(tempResponse.id);
-      this.addResponseToHistory(action, completeText);
-      this.cacheManager.set(action, content, completeText);
+      // Guardar en caché si la respuesta es exitosa
+      this.cacheManager.set(
+        action,
+        content || this.currentContent,
+        completeText
+      );
 
-      // Actualizar el estado después de una acción exitosa
-      this.stateManager.updateState("enhancedText", completeText);
+      // No necesitamos una actualización final ya que la hemos estado actualizando
+      // durante el proceso de streaming
     } catch (error) {
       console.error("Error in handleToolAction:", error);
-      if (tempResponse) {
-        this.responseHistory.removeResponse(tempResponse.id);
-      }
-      this.addResponseToHistory("error", error.message || "An error occurred");
+      // Si hay un error, actualizamos la respuesta con el mensaje de error
+      this.responseHistory.updateResponse(
+        responseId,
+        `Error: ${error.message || "An unexpected error occurred"}`
+      );
     }
   }
 

@@ -4,7 +4,7 @@ import { ModelManager } from "./model-manager.js";
 class APIClient {
   constructor(config = {}) {
     this.modelManager = new ModelManager(config.provider || "openai");
-  
+
     this.config = {
       provider: config.provider || "openai",
       endpoints: {
@@ -17,7 +17,7 @@ class APIClient {
         mistral: "https://api.mistral.ai/v1/chat/completions",
       },
       models: {
-        openai: config.model || "gpt-4-turbo", // Set a specific default model instead of using ModelManager
+        openai: config.model || "gpt-4-turbo",
         deepseek: "deepseek-chat",
         anthropic: "claude-3-opus-20240229",
         cohere: "command",
@@ -55,6 +55,21 @@ class APIClient {
     }
   }
 
+  updateConfig(config = {}) {
+    if (config.provider) {
+      this.setProvider(config.provider);
+    }
+    if (config.model) {
+      this.setModel(config.model);
+    }
+    if (config.temperature !== undefined) {
+      this.config.temperature = config.temperature;
+    }
+    if (config.systemPrompt) {
+      this.config.systemPrompt = config.systemPrompt;
+    }
+  }
+
   async processStream(response, onProgress) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -64,14 +79,32 @@ class APIClient {
     const processChunk = (chunk) => {
       try {
         const data = JSON.parse(chunk);
+        let newContent = "";
+
+        // Handle OpenAI format
         if (
           data.choices &&
           data.choices[0].delta &&
           data.choices[0].delta.content
         ) {
-          const newContent = data.choices[0].delta.content;
+          newContent = data.choices[0].delta.content;
+        }
+        // Handle Anthropic format
+        else if (
+          data.type === "content_block_delta" &&
+          data.delta &&
+          data.delta.text
+        ) {
+          newContent = data.delta.text;
+        }
+        // Handle Cohere format
+        else if (data.text || data.generation) {
+          newContent = data.text || data.generation || "";
+        }
+
+        if (newContent) {
           completeText += newContent;
-          onProgress(newContent); // Enviamos solo el nuevo fragmento
+          onProgress(newContent);
           return true;
         }
       } catch (error) {
@@ -98,7 +131,7 @@ class APIClient {
         }
       }
 
-      // Procesar cualquier contenido restante en el buffer
+      // Process any remaining content in the buffer
       if (buffer) {
         const lines = buffer.split("\n");
         for (const line of lines) {
@@ -188,7 +221,7 @@ class APIClient {
     if (!this.config.apiKey) {
       throw new Error("API key not configured");
     }
-  
+
     try {
       const model = this.config.models[this.config.provider];
       if (!model) {
@@ -204,7 +237,7 @@ class APIClient {
             Authorization: `Bearer ${this.config.apiKey}`,
           },
           body: JSON.stringify({
-            model: model, // Use the model from config
+            model: model,
             messages: [
               {
                 role: "system",
@@ -212,7 +245,9 @@ class APIClient {
               },
               {
                 role: "user",
-                content: `${prompt}\n\n${content || "Crea una nueva descripción."}`,
+                content: `${prompt}\n\n${
+                  content || "Crea una nueva descripción."
+                }`,
               },
             ],
             temperature: this.config.temperature,
@@ -220,7 +255,7 @@ class APIClient {
           }),
         }
       );
-  
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
@@ -228,7 +263,7 @@ class APIClient {
             `API Error: ${response.status} ${response.statusText}`
         );
       }
-  
+
       return await this.processStream(response, onProgress);
     } catch (error) {
       throw new APIError(error.message, error);
@@ -335,7 +370,13 @@ class APIClient {
     });
   }
 
-  async enhanceText(content, action = "improve", imageFile = null, context = "", onProgress = () => {}) {
+  async enhanceText(
+    content,
+    action = "improve",
+    imageFile = null,
+    context = "",
+    onProgress = () => {}
+  ) {
     const prompts = {
       improve: `Mejora esta descripción considerando estos detalles del producto:\n${context}\n\nDescripción actual:`,
       summarize: `Teniendo en cuenta estos detalles del producto:\n${context}\n\nCrea un resumen conciso y efectivo de la siguiente descripción:`,
@@ -344,15 +385,25 @@ class APIClient {
       formal: `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más formal, profesional y técnico, manteniendo la información clave pero usando un lenguaje más sofisticado y corporativo:`,
       casual: `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más casual y cercano, como si estuvieras explicándolo a un amigo, manteniendo un lenguaje accesible y conversacional pero sin perder profesionalismo:`,
       empty: `Usando estos detalles del producto:\n${context}\n\nCrea una descripción profesional y atractiva que destaque sus características principales:`,
+      "more-formal": `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más formal, profesional y técnico, manteniendo la información clave pero usando un lenguaje más sofisticado y corporativo:`,
+      "more-casual": `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más casual y cercano, como si estuvieras explicándolo a un amigo, manteniendo un lenguaje accesible y conversacional pero sin perder profesionalismo:`,
     };
 
     const prompt = prompts[action] || prompts.improve;
 
     if (imageFile && this.config.visionModels[this.config.provider]) {
       try {
-        return await this.makeRequestWithImage(prompt, content, imageFile, onProgress);
+        return await this.makeRequestWithImage(
+          prompt,
+          content,
+          imageFile,
+          onProgress
+        );
       } catch (error) {
-        console.warn("Image analysis failed, falling back to text-only analysis:", error);
+        console.warn(
+          "Image analysis failed, falling back to text-only analysis:",
+          error
+        );
         return await this.makeRequest(prompt, content, onProgress);
       }
     } else {
@@ -364,20 +415,20 @@ class APIClient {
     try {
       const messages = [
         { role: "system", content: this.config.systemPrompt },
-        { role: "user", content }
+        { role: "user", content },
       ];
-  
+
       if (message) {
         messages.push({ role: "user", content: message });
       }
-  
+
       const payload = {
         model: this.config.models[this.config.provider],
         messages,
         temperature: this.config.temperature,
-        stream: true
+        stream: true,
       };
-  
+
       // Handle image if provided
       if (image && this.config.visionModels[this.config.provider]) {
         const imageData = await this.imageToBase64(image);
@@ -387,27 +438,35 @@ class APIClient {
             type: "image_url",
             image_url: {
               url: `data:${image.type};base64,${imageData}`,
-              detail: "auto"
-            }
-          }
+              detail: "auto",
+            },
+          },
         ];
       }
-  
-      const response = await fetch(this.config.endpoints[this.config.provider], {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.apiKey}`,
-          ...(this.config.provider === "anthropic" ? { "anthropic-version": "2023-06-01" } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-  
+
+      const response = await fetch(
+        this.config.endpoints[this.config.provider],
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.config.apiKey}`,
+            ...(this.config.provider === "anthropic"
+              ? { "anthropic-version": "2023-06-01" }
+              : {}),
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `API Error: ${response.status} ${response.statusText}`);
+        throw new Error(
+          errorData.error?.message ||
+            `API Error: ${response.status} ${response.statusText}`
+        );
       }
-  
+
       return await this.processStream(response, onProgress);
     } catch (error) {
       throw new APIError(`Chat response failed: ${error.message}`, error);
@@ -417,14 +476,15 @@ class APIClient {
   async convertImageToBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(`data:${file.type};base64,${reader.result.split(',')[1]}`);
+      reader.onload = () =>
+        resolve(`data:${file.type};base64,${reader.result.split(",")[1]}`);
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
   }
 
   get supportsImages() {
-    return ["gpt-4-vision-preview"].includes(this.model);
+    return Boolean(this.config.visionModels[this.config.provider]);
   }
 }
 
