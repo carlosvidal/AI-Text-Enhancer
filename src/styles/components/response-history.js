@@ -1,5 +1,6 @@
 // styles/components/response-history.js
 export const responseHistoryStyles = `
+  /* ===== CONTENEDORES PRINCIPALES ===== */
   .response-container {
     overflow-y: auto;
     max-height: 100%;
@@ -11,33 +12,177 @@ export const responseHistoryStyles = `
     border: 1px solid var(--ai-border);
     margin-bottom: 1rem;
     padding: 1rem;
+    /* Optimizaciones de rendimiento */
+    contain: content;
+    position: relative;
+    will-change: contents;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
-.response-entry.with-image {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 1rem;
-  align-items: start;
-}
+  .response-content-wrapper {
+    flex: 1;
+    min-width: 0;
+    /* Optimizar para cambios frecuentes */
+    will-change: contents;
+  }
 
-.response-image-container {
-  width: 120px;
-}
+  .response-entry[data-action="error"],
+  .response-entry[data-action="info"],
+  .response-entry[data-action="chat-error"] {
+    background: var(--ai-surface-light);
+    border-left: 3px solid var(--ai-error);
+    padding-left: calc(1rem - 3px);
+  }
 
+  .response-entry[data-action="info"] {
+    border-left-color: var(--ai-info);
+  }
 
-  .image-preview {
-    width: 120px;
-    height: 120px;
+  /* ===== ÁREA DE CONTENIDO ===== */
+  .response-content {
+    margin: 1rem 0;
+    line-height: 1.5;
+    /* Claves para el streaming sin parpadeo */
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    position: relative;
+    /* Evitar que el contenido salte durante la actualización */
+    min-height: 1.5em;
+  }
+
+  /* Control para streaming activo */
+  .response-content[data-streaming-active="true"] {
+    transition: none !important;
+    user-select: none;
+  }
+
+  /* Desactivar transiciones durante streaming para contenido anidado */
+  .response-content[data-streaming-active="true"] * {
+    transition: none !important;
+  }
+
+  /* Restaurar selección cuando termina el streaming */
+  .response-content:not([data-streaming-active="true"]) {
+    user-select: text;
+  }
+
+  /* Contenido para markdown */
+  .response-content p {
+    margin: 0.5em 0;
+    animation: textReveal 0.2s ease-out forwards;
+  }
+
+  .response-content ul, 
+  .response-content ol {
+    margin: 0.5em 0;
+    padding-left: 1.5em;
+  }
+
+  .response-content pre {
+    background: var(--ai-surface-dark);
+    padding: 1rem;
     border-radius: var(--ai-radius);
-    overflow: hidden;
+    overflow-x: auto;
+    margin-bottom: 1em;
   }
 
-  .image-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  .response-content code {
+    font-family: var(--ai-font-mono);
+    font-size: 0.9em;
+    padding: 0.2em 0.4em;
+    background: var(--ai-surface-dark);
+    border-radius: var(--ai-radius-sm);
   }
 
+  /* Mantener contenido estable */
+  .response-content p, 
+  .response-content ul, 
+  .response-content ol,
+  .response-content pre {
+    contain: layout;
+  }
+
+  /* Eliminar margen en el último elemento para mantener espaciado consistente */
+  .response-content > *:last-child {
+    margin-bottom: 0;
+  }
+
+  /* ===== ANIMACIÓN DE ESCRITURA ===== */
+  /* Deshabilitar el cursor por defecto */
+  .response-content::after {
+    content: none;
+  }
+
+  /* Cursor de escritura personalizado */
+  .typing-animation::after {
+    content: '|';
+    display: inline-block;
+    width: 0.5em;
+    height: 1.2em;
+    background: transparent;
+    margin-left: 1px;
+    border: none;
+    animation: typingCursor 0.8s infinite step-end;
+    vertical-align: middle;
+    position: relative;
+    opacity: 0.8;
+  }
+
+  /* Eliminar CUALQUIER cursor adicional */
+  .typing-animation span.typing,
+  .typing span.cursor,
+  span.typing-cursor {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  /* Animación del cursor */
+  @keyframes typingCursor {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 0; }
+  }
+
+  /* Indicadores de carga */
+  .typing-indicator {
+    color: var(--ai-text-light);
+    font-style: italic;
+    padding: 0.25rem 0;
+    animation: fadeInOut 1.5s ease-in-out infinite;
+  }
+
+  /* Animación para indicadores de carga */
+  @keyframes fadeInOut {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  /* Efecto de texto apareciendo gradualmente */
+  @keyframes textReveal {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Mensajes de estado iniciales para contenido vacío */
+  .response-entry[data-action="chat-response"] .response-content:empty::after,
+  .response-entry[data-action="summarize"] .response-content:empty::after,
+  .response-entry[data-action="improve"] .response-content:empty::after,
+  .response-entry[data-action="expand"] .response-content:empty::after,
+  .response-entry[data-action="paraphrase"] .response-content:empty::after,
+  .response-entry[data-action="more-formal"] .response-content:empty::after,
+  .response-entry[data-action="more-casual"] .response-content:empty::after {
+    content: 'Pensando...';
+    color: var(--ai-text-light);
+    font-style: italic;
+  }
+
+  .response-entry[data-action="chat-response"] .response-content:empty::after {
+    content: 'Escribiendo respuesta...';
+  }
+
+  /* ===== CABECERA Y PIE DE RESPUESTA ===== */
   .response-header {
     display: flex;
     justify-content: space-between;
@@ -55,6 +200,7 @@ export const responseHistoryStyles = `
     border-top: 1px solid var(--ai-border);
   }
 
+  /* ===== BOTONES Y ACCIONES ===== */
   .response-actions {
     display: flex;
     gap: 0.5rem;
@@ -114,76 +260,29 @@ export const responseHistoryStyles = `
     height: 16px;
   }
 
-  .typing-animation {
-    overflow: hidden;
-    border-right: 2px solid var(--ai-text);
-    white-space: pre-wrap;
-    animation: typing 1s steps(40, end) infinite;
+  /* ===== IMÁGENES Y ADJUNTOS ===== */
+  .response-entry.with-image {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    align-items: start;
   }
 
-  @keyframes typing {
-    from { border-color: var(--ai-text); }
-    to { border-color: transparent; }
+  .response-image-container {
+    width: 120px;
   }
 
-.response-content {
-  position: relative;
-  padding: 1rem;
-  line-height: 1.5;
-  color: var(--ai-text);
-  transition: none; /* Evitar transiciones que puedan causar parpadeo */
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-  .response-content::after {
-  content: none;
-}
-
-
-  .response-content.typing-animation {
-    border-right: 2px solid var(--ai-text);
-    animation: typing-cursor 0.8s step-end infinite;
-  }
-
-  @keyframes typing-cursor {
-    from, to { border-color: transparent; }
-    50% { border-color: var(--ai-text); }
-  }
-
-  .response-content pre {
-    background: var(--ai-surface-dark);
-    padding: 1rem;
+  .image-preview {
+    width: 120px;
+    height: 120px;
     border-radius: var(--ai-radius);
-    overflow-x: auto;
+    overflow: hidden;
   }
 
-  .response-content code {
-    font-family: var(--ai-font-mono);
-    font-size: 0.9em;
-    padding: 0.2em 0.4em;
-    background: var(--ai-surface-dark);
-    border-radius: var(--ai-radius-sm);
-  }
-
-  .response-content p {
-    margin: 0.5em 0;
-  }
-
-  .response-content ul, .response-content ol {
-    margin: 0.5em 0;
-    padding-left: 1.5em;
-  }
-
-  .response-entry[data-action="error"],
-  .response-entry[data-action="info"],
-  .response-entry[data-action="chat-error"] {
-    background: var(--ai-surface-light);
-    border-left: 3px solid var(--ai-error);
-    padding-left: calc(1rem - 3px);
-  }
-
-  .response-entry[data-action="info"] {
-    border-left-color: var(--ai-info);
+  .image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .response-content-with-image {
@@ -192,7 +291,6 @@ export const responseHistoryStyles = `
     gap: 1rem;
     margin: 1rem 0;
   }
-
 
   .response-image {
     width: 100%;
@@ -210,225 +308,112 @@ export const responseHistoryStyles = `
   }
 
   .image-filename {
-  font-size: 0.75rem;
-  color: var(--ai-text-light);
-  margin-top: 0.25rem;
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.response-content-wrapper {
-  flex: 1;
-  min-width: 0;
-}
-
-.question-with-image {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-  margin: 0.5rem 0;
-}
-
-.question-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.question-image {
-  flex-shrink: 0;
-  width: 100px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.question-image img {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
-  border-radius: var(--ai-radius);
-  border: 1px solid var(--ai-border);
-}
-
-.image-filename {
-  font-size: 0.75rem;
-  color: var(--ai-text-light);
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
-}
-
-// En response-history.js, modifica o agrega estos estilos
-
-.response-entry img {
-  max-width: 100px;  // Limitar el ancho máximo
-  max-height: 100px; // Limitar la altura máxima
-  object-fit: contain; // Mantener la proporción de la imagen
-  border-radius: var(--ai-radius);
-  border: 1px solid var(--ai-border);
-}
-
-.response-content .image-preview-card {
-  flex-shrink: 0;
-  width: 100px;
-  margin: 0;  // Eliminar márgenes que pudieran venir por defecto
-}
-
-.response-content .image-preview-card img {
-  width: 100%;
-  height: 100px;
-  object-fit: cover;
-}
-
-.response-content .image-preview-filename {
-  font-size: 0.75rem;
-  color: var(--ai-text-light);
-  text-align: center;
-  margin-top: 0.25rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-// En response-history.js, agregar estos estilos
-
-.question-container {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-}
-
-.question-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.question-image {
-  flex-shrink: 0;
-  width: 100px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.question-image img {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
-  border-radius: var(--ai-radius);
-  border: 1px solid var(--ai-border);
-}
-
-.question-image .image-filename {
-  font-size: 0.75rem;
-  color: var(--ai-text-light);
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
-}
-
-.typing-animation {
-  position: relative;
-}
-
-.typing-animation::after {
-  content: '|';
-  display: inline-block;
-  margin-left: 2px;
-  animation: typingCursor 0.8s infinite step-end;
-  position: relative; /* Mantenerlo en línea con el texto */
-  opacity: 0.7; /* Hacerlo menos invasivo */
-  vertical-align: middle;
-  height: 1em;
-}
-
-.typing-animation span.typing {
-  display: none !important;
-}
-
-@keyframes typingCursor {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 0; }
-}
-
-.typing-indicator {
-  color: var(--ai-text-light);
-  font-style: italic;
-  padding: 0.5rem 0;
-  animation: pulse 1.5s infinite ease-in-out;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
-}
-
-/* Mejorar el rendimiento evitando cambios de layout */
-.response-entry {
-  contain: content; /* Mejora el rendimiento de renderizado */
-}
-
-/* Evitar parpadeo durante las actualizaciones de contenido */
-.response-content-wrapper {
-  will-change: contents; /* Optimiza para cambios frecuentes */
-}
-
-/* Eliminar animaciones cuando la carga haya terminado */
-.response-content:not(.typing-animation) {
-  animation: none;
-}
-
-/* Mantener el contenido estable durante las actualizaciones */
-.response-content p, 
-.response-content ul, 
-.response-content ol,
-.response-content pre {
-  margin-bottom: 1em;
-}
-
-/* Eliminar margen en el último elemento para mantener espaciado consistente */
-.response-content > *:last-child {
-  margin-bottom: 0;
-}
-
-/* Estilos para los mensajes de chat y respuestas */
-.response-entry[data-action="chat-response"] .response-content:empty::after,
-.response-entry[data-action="summarize"] .response-content:empty::after,
-.response-entry[data-action="improve"] .response-content:empty::after,
-.response-entry[data-action="expand"] .response-content:empty::after,
-.response-entry[data-action="paraphrase"] .response-content:empty::after,
-.response-entry[data-action="more-formal"] .response-content:empty::after,
-.response-entry[data-action="more-casual"] .response-content:empty::after {
-  content: 'Pensando...';
-  color: var(--ai-text-light);
-  font-style: italic;
-}
-
-.response-entry[data-action="chat-response"] .response-content:empty::after {
-  content: 'Escribiendo respuesta...';
-}
-
-/* Efecto de revelación gradual del texto */
-@keyframes textReveal {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
+    font-size: 0.75rem;
+    color: var(--ai-text-light);
+    margin-top: 0.25rem;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  /* Estilos para imágenes en las respuestas */
+  .response-entry img {
+    max-width: 100px;
+    max-height: 100px;
+    object-fit: contain;
+    border-radius: var(--ai-radius);
+    border: 1px solid var(--ai-border);
   }
+
+  .response-content .image-preview-card {
+    flex-shrink: 0;
+    width: 100px;
+    margin: 0;
+  }
+
+  .response-content .image-preview-card img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+  }
+
+  .response-content .image-preview-filename {
+    font-size: 0.75rem;
+    color: var(--ai-text-light);
+    text-align: center;
+    margin-top: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ===== PREGUNTAS CON IMÁGENES ===== */
+  .question-container {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .question-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .question-image {
+    flex-shrink: 0;
+    width: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .question-image img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: var(--ai-radius);
+    border: 1px solid var(--ai-border);
+  }
+
+  .question-image .image-filename {
+    font-size: 0.75rem;
+    color: var(--ai-text-light);
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .question-with-image {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    margin: 0.5rem 0;
+  }
+
+  /* ESTILO PARA MENSAJES DE INFORMACIÓN */
+.response-entry[data-action="info"],
+.response-entry[data-action="error"],
+.response-entry[data-action="chat-error"] {
+  background-color: var(--ai-surface-light, #f9fafb);
+  padding: 0.5rem 0.75rem !important; 
+  display: flex !important;
+  align-items: center !important;
+  max-height: none !important;
 }
 
-.response-content p {
-  animation: textReveal 0.2s ease-out forwards;
+.response-entry[data-action="info"] .response-header,
+.response-entry[data-action="error"] .response-header,
+.response-entry[data-action="chat-error"] .response-header {
+  display: none !important; /* Ocultar header para más compacidad */
+}
+
+/* ESTILO PARA PREGUNTAS */
+.response-entry[data-action="chat-question"] {
+  padding: 0.5rem 0.75rem !important;
+  max-height: none !important;
 }
 `;

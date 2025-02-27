@@ -490,11 +490,25 @@ class AITextEnhancer extends HTMLElement {
       this.responseHistory.addResponse({
         id: responseId,
         action: "chat-response",
-        content: "",
+        content: "", // Empezar con contenido vacío para streaming adecuado
         timestamp: new Date(),
       });
 
-      // Manejador de streaming
+      // Iniciar auto-scroll para mantener visible el contenido
+      const scrollToBottom = () => {
+        const responseContainer = this.shadowRoot.querySelector(
+          ".response-container"
+        );
+        if (responseContainer) {
+          responseContainer.scrollTop = responseContainer.scrollHeight;
+        }
+      };
+
+      // Iniciar auto-scroll y mantenerlo durante el streaming
+      scrollToBottom();
+      const scrollInterval = setInterval(scrollToBottom, 300);
+
+      // Manejador de streaming optimizado para evitar parpadeo
       const onProgress = (chunk) => {
         this.responseHistory.updateResponse(
           responseId,
@@ -503,22 +517,27 @@ class AITextEnhancer extends HTMLElement {
       };
 
       // Hacer solicitud API con streaming
-      const response = await this.apiClient.chatResponse(
+      await this.apiClient.chatResponse(
         this.currentContent,
         message.trim(),
         image,
         onProgress
       );
 
-      // Marcar explícitamente que la respuesta está completa
+      // Esperar un momento para permitir que la última actualización se complete
       setTimeout(() => {
-        const responseElement = this.shadowRoot.querySelector(
-          `[data-id="${responseId}"] .response-content`
-        );
-        if (responseElement) {
-          responseElement.classList.remove("typing-animation");
+        // Detener el auto-scroll
+        clearInterval(scrollInterval);
+
+        // Aplicar formateo final con Markdown
+        const response = this.responseHistory.getResponse(responseId);
+        if (response) {
+          this.responseHistory.updateResponse(responseId, response.content);
         }
-      }, 100);
+
+        // Un último scroll para asegurar que todo el contenido sea visible
+        scrollToBottom();
+      }, 200);
     } catch (error) {
       console.error("Chat Error:", error);
       const errorMessage = this.formatErrorMessage(error);
@@ -533,12 +552,18 @@ class AITextEnhancer extends HTMLElement {
   }
 
   async handleToolAction(event) {
-    const { action, responseId, content } = event.detail;
+    // Primero obtenemos los datos del evento
+    const { action, responseId: eventResponseId, content } = event.detail;
+
     if (!this.apiKey) {
       console.warn("No API key provided");
       this.addResponseToHistory("error", this.translations.errors.apiKey);
       return;
     }
+
+    // Usar el ID del evento si está disponible, o crear uno nuevo
+    // IMPORTANTE: No redeclarar responseId, usamos una variable con nombre diferente
+    const currentResponseId = eventResponseId || Date.now();
 
     try {
       // Verificar caché primero
@@ -553,26 +578,43 @@ class AITextEnhancer extends HTMLElement {
         await this.initializeComponents();
       }
 
-      // Crear ID único para la respuesta
-      const responseId = Date.now();
+      // Agregar respuesta inicial vacía solo si no estamos usando un ID existente
+      if (!eventResponseId) {
+        this.responseHistory.addResponse({
+          id: currentResponseId,
+          action,
+          content: "", // Contenido vacío es crucial para streaming
+          timestamp: new Date(),
+        });
+      }
 
-      // Agregar respuesta inicial vacía con indicador de carga
-      this.responseHistory.addResponse({
-        id: responseId,
-        action,
-        content: "", // Empezamos con contenido vacío que se irá actualizando
-        timestamp: new Date(),
-      });
+      // Iniciar auto-desplazamiento para mantener visible el último contenido
+      let autoScrollId;
+      const startAutoScroll = () => {
+        const container = this.shadowRoot.querySelector(".response-container");
+        if (container) {
+          autoScrollId = setInterval(() => {
+            container.scrollTop = container.scrollHeight;
+          }, 200);
+        }
+      };
+      startAutoScroll();
 
-      // Manejador de progreso para actualizaciones en streaming
+      // Crear un manejador de progreso optimizado
       const onProgress = (chunk) => {
+        if (!chunk) return; // Ignorar chunks vacías
+
+        // Enviar la actualización incremental
         this.responseHistory.updateResponse(
-          responseId,
+          currentResponseId,
           (prevContent) => prevContent + chunk
         );
       };
 
-      // Hacer la solicitud API con streaming
+      // Ejecutar la solicitud con streaming
+      console.log(
+        `[AITextEnhancer] Ejecutando acción "${action}" con streaming`
+      );
       const completeText = await this.apiClient.enhanceText(
         content || this.currentContent,
         action,
@@ -581,30 +623,46 @@ class AITextEnhancer extends HTMLElement {
         onProgress
       );
 
-      // Marcar explícitamente que la respuesta está completa
-      // Esto garantiza que se elimine la animación del cursor
-      setTimeout(() => {
-        // El timeout asegura que esta actualización ocurra después de la última chunk
-        const responseElement = this.shadowRoot.querySelector(
-          `[data-id="${responseId}"] .response-content`
-        );
-        if (responseElement) {
-          responseElement.classList.remove("typing-animation");
-        }
-      }, 100);
+      // Detener auto-desplazamiento
+      if (autoScrollId) {
+        clearInterval(autoScrollId);
+      }
 
-      // Guardar en caché si la respuesta es exitosa
-      this.cacheManager.set(
-        action,
-        content || this.currentContent,
-        completeText
-      );
+      // Finalizar el streaming y aplicar formato
+      setTimeout(() => {
+        // Este timeout asegura que todas las actualizaciones incrementales
+        // se hayan procesado antes de la actualización final
+        const response = this.responseHistory.getResponse(currentResponseId);
+        if (response) {
+          // Aplicar una actualización final con formateo completo
+          this.responseHistory.updateResponse(
+            currentResponseId,
+            response.content
+          );
+
+          // Desplazar al último contenido
+          const container = this.shadowRoot.querySelector(
+            ".response-container"
+          );
+          if (container) {
+            container.scrollTop = container.scrollHeight;
+          }
+        }
+
+        // Guardar en caché para futuras solicitudes similares
+        this.cacheManager.set(
+          action,
+          content || this.currentContent,
+          completeText
+        );
+      }, 300);
     } catch (error) {
       console.error("Error in handleToolAction:", error);
-      // Si hay un error, actualizamos la respuesta con el mensaje de error
+
+      // Actualizar con el error
       this.responseHistory.updateResponse(
-        responseId,
-        `Error: ${error.message || "An unexpected error occurred"}`
+        currentResponseId,
+        `Error: ${error.message || "Se produjo un error inesperado"}`
       );
     }
   }
