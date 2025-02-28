@@ -169,8 +169,6 @@ export class ResponseHistory extends HTMLElement {
       ? "response-content typing-animation"
       : "response-content";
 
-    // ...resto del código original para otros tipos de respuesta...
-
     // Crear el contenido principal como lo hacías antes
     let mainContent;
     if (response.action === "image-upload") {
@@ -203,18 +201,28 @@ export class ResponseHistory extends HTMLElement {
       response.action
     );
 
-    const toolsHtml =
-      !isQuestion && !isSystemMessage
-        ? `
-    <button class="tool-button" data-action="improve" data-response-id="${
-      response.id
-    }">
-      ${getToolIcon("improve")}
-      ${this.translations?.tools?.improve || "Improve"}
-    </button>
-    <!-- Resto de tus botones... -->
-  `
-        : "";
+    // Generar los botones de herramientas
+    let toolsHtml = "";
+    if (!isQuestion && !isSystemMessage) {
+      toolsHtml = `
+        <button class="tool-button" data-action="improve" data-response-id="${response.id}">
+          ${getToolIcon("improve")}
+          ${this.translations?.tools?.improve || "Improve"}
+        </button>
+        <button class="tool-button" data-action="summarize" data-response-id="${response.id}">
+          ${getToolIcon("summarize")}
+          ${this.translations?.tools?.summarize || "Summarize"}
+        </button>
+        <button class="tool-button" data-action="expand" data-response-id="${response.id}">
+          ${getToolIcon("expand")}
+          ${this.translations?.tools?.expand || "Expand"}
+        </button>
+        <button class="tool-button" data-action="paraphrase" data-response-id="${response.id}">
+          ${getToolIcon("paraphrase")}
+          ${this.translations?.tools?.paraphrase || "Paraphrase"}
+        </button>
+      `;
+    }
 
     // Botones de acción
     const actionsHtml =

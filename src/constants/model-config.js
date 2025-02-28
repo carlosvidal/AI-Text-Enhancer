@@ -8,6 +8,7 @@ export const MODEL_CONFIG = {
         suggested: true,
         maxTokens: 4096,
         costPer1k: 0.01,
+        supportsImages: true,
       },
       "gpt-4": {
         name: "GPT-4",
@@ -15,6 +16,7 @@ export const MODEL_CONFIG = {
         description: "Most capable GPT-4 model",
         maxTokens: 4096,
         costPer1k: 0.03,
+        supportsImages: true,
       },
       "gpt-3.5-turbo": {
         name: "GPT-3.5 Turbo",
@@ -22,9 +24,11 @@ export const MODEL_CONFIG = {
         description: "Efficient and cost-effective model",
         maxTokens: 4096,
         costPer1k: 0.0015,
+        supportsImages: false,
       },
     },
     defaultModel: "gpt-4-turbo",
+    visionModel: "gpt-4-turbo", // Preferred model for vision tasks
   },
   anthropic: {
     models: {
@@ -33,9 +37,17 @@ export const MODEL_CONFIG = {
         contextWindow: 200000,
         description: "Most capable Claude model",
         suggested: true,
+        supportsImages: true,
+      },
+      "claude-3-sonnet-20240229": {
+        name: "Claude 3 Sonnet",
+        contextWindow: 200000,
+        description: "Balance of intelligence and speed",
+        supportsImages: true,
       },
     },
     defaultModel: "claude-3-opus-20240229",
+    visionModel: "claude-3-opus-20240229", // Preferred model for vision tasks
   },
 
   deepseek: {
@@ -90,15 +102,18 @@ export const MODEL_CONFIG = {
         description: "Most capable Gemini model",
         suggested: true,
         maxTokens: 4096,
+        supportsImages: false,
       },
       "gemini-pro-vision": {
         name: "Gemini Pro Vision",
         contextWindow: 32768,
         description: "Multimodal capabilities",
         maxTokens: 4096,
+        supportsImages: true,
       },
     },
     defaultModel: "gemini-pro",
+    visionModel: "gemini-pro-vision", // Preferred model for vision tasks
   },
 
   mistral: {

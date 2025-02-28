@@ -80,56 +80,97 @@ class APIClient {
     let buffer = "";
     let completeText = "";
 
-    const processChunk = (chunk) => {
-      try {
-        const data = JSON.parse(chunk);
-        if (
-          data.choices &&
-          data.choices[0].delta &&
-          data.choices[0].delta.content
-        ) {
-          const newContent = data.choices[0].delta.content;
-          completeText += newContent;
-          onProgress(newContent); // Enviamos solo el nuevo fragmento
-          return true;
-        }
-      } catch (error) {
-        return false;
-      }
-      return false;
-    };
-
     try {
+      console.log("Iniciando procesamiento de stream");
+
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log("Stream completado");
+          break;
+        }
+
+        // Log para depuración
+        console.log("Fragmento raw recibido:", new TextDecoder().decode(value));
 
         buffer += decoder.decode(value, { stream: true });
+        console.log("Buffer acumulado:", buffer);
+
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const chunk = line.slice(5);
-            if (chunk === "[DONE]") continue;
-            processChunk(chunk);
-          }
-        }
-      }
+          console.log("Procesando línea:", line);
 
-      // Procesar cualquier contenido restante en el buffer
-      if (buffer) {
-        const lines = buffer.split("\n");
-        for (const line of lines) {
-          if (line.startsWith("data: ") && line !== "data: [DONE]") {
-            processChunk(line.slice(5));
+          if (line.startsWith("data: ")) {
+            const chunk = line.slice(5).trim();
+            if (chunk === "[DONE]") {
+              console.log("Fin de stream detectado");
+              continue;
+            }
+            
+            // Skip empty chunks
+            if (!chunk) {
+              console.log("Skipping empty chunk");
+              continue;
+            }
+
+            try {
+              const data = JSON.parse(chunk);
+              console.log("Chunk JSON parseado:", data);
+
+              // Handle different response formats based on provider
+              if (
+                data.choices &&
+                data.choices[0].delta &&
+                data.choices[0].delta.content
+              ) {
+                // OpenAI format
+                const newContent = data.choices[0].delta.content;
+                completeText += newContent;
+                console.log("Contenido nuevo añadido (OpenAI):", newContent);
+                onProgress(newContent);
+              } else if (data.text) {
+                // Simple text format (used by some proxies)
+                completeText += data.text;
+                console.log("Contenido nuevo añadido (text):", data.text);
+                onProgress(data.text);
+              } else if (data.content) {
+                // Direct content field
+                completeText += data.content;
+                console.log("Contenido nuevo añadido (content):", data.content);
+                onProgress(data.content);
+              } else if (data.delta && data.delta.text) {
+                // Anthropic format
+                completeText += data.delta.text;
+                console.log("Contenido nuevo añadido (Anthropic):", data.delta.text);
+                onProgress(data.delta.text);
+              }
+            } catch (e) {
+              console.error("Error procesando chunk:", e, "Texto:", chunk);
+              
+              // If it's not valid JSON but contains text, try to extract directly
+              if (chunk.includes('"text":"') || chunk.includes('"content":"')) {
+                try {
+                  const textMatch = chunk.match(/"(text|content)":"([^"]*)"/);
+                  if (textMatch && textMatch[2]) {
+                    const extractedText = textMatch[2];
+                    completeText += extractedText;
+                    console.log("Contenido extraído de texto malformado:", extractedText);
+                    onProgress(extractedText);
+                  }
+                } catch (extractError) {
+                  console.error("Error extracting text from malformed JSON:", extractError);
+                }
+              }
+            }
           }
         }
       }
 
       return completeText;
     } catch (error) {
-      console.error("Error processing stream:", error);
+      console.error("Error en procesamiento de stream:", error);
       throw error;
     }
   }
@@ -202,11 +243,14 @@ class APIClient {
     try {
       let imageData;
       let imageUrl;
+      let mimeType = "image/jpeg"; // Default mime type
 
       if (typeof imageSource === "string") {
         imageUrl = imageSource;
       } else if (imageSource instanceof File) {
         imageData = await this.imageToBase64(imageSource);
+        mimeType = imageSource.type || mimeType; // Use the actual file type if available
+        console.log("Image file type:", mimeType);
       } else {
         throw new Error("Invalid image source");
       }
@@ -232,7 +276,7 @@ class APIClient {
               image_url: imageUrl
                 ? { url: imageUrl, detail: "high" }
                 : {
-                    url: `data:image/jpeg;base64,${imageData}`,
+                    url: `data:${mimeType};base64,${imageData}`,
                     detail: "high",
                   },
             },
@@ -250,7 +294,7 @@ class APIClient {
               type: "image",
               source: imageUrl
                 ? { type: "url", url: imageUrl }
-                : { type: "base64", media_type: "image/jpeg", data: imageData },
+                : { type: "base64", media_type: mimeType, data: imageData },
             },
             {
               type: "text",
@@ -260,7 +304,47 @@ class APIClient {
             },
           ],
         });
+      } else if (this.config.provider === "google") {
+        // Google Gemini format
+        messages.push({
+          role: "user",
+          parts: [
+            {
+              text: `${this.config.systemPrompt}\n\n${prompt}\n\n${
+                content || "Please create a new description."
+              }`,
+            },
+            {
+              inline_data: {
+                mime_type: mimeType,
+                data: imageData
+              }
+            }
+          ]
+        });
       }
+
+      // Get the appropriate vision model
+      const visionModel = this.modelManager.getVisionModelForProvider(this.config.provider);
+      
+      const payload = {
+        provider: this.config.provider,
+        model: visionModel || this.config.models[this.config.provider],
+        messages: messages,
+        temperature: this.config.temperature,
+        stream: true,
+        tenantId: this.config.tenantId,
+        userId: this.config.userId,
+        hasImage: true,
+      };
+
+      console.log("Sending image request to proxy:", {
+        endpoint: this.config.proxyEndpoint,
+        provider: this.config.provider,
+        model: payload.model,
+        hasImage: true,
+        imageType: mimeType
+      });
 
       const response = await fetch(this.config.proxyEndpoint, {
         method: "POST",
@@ -270,30 +354,30 @@ class APIClient {
             Authorization: `Bearer ${this.config.sessionToken}`,
           }),
         },
-        body: JSON.stringify({
-          provider: this.config.provider,
-          model:
-            this.config.visionModels[this.config.provider] ||
-            this.config.models[this.config.provider],
-          messages: messages,
-          temperature: this.config.temperature,
-          stream: true,
-          tenantId: this.config.tenantId,
-          userId: this.config.userId,
-          hasImage: true,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      console.log("Image request response status:", response.status, response.statusText);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error?.message ||
-            `API Error: ${response.status} ${response.statusText}`
-        );
+        try {
+          const errorData = await response.json();
+          console.error("Image API Error Response:", errorData);
+          throw new Error(
+            errorData.error?.message ||
+              `API Error: ${response.status} ${response.statusText}`
+          );
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError);
+          const rawText = await response.text().catch(() => "");
+          console.error("Raw error response:", rawText);
+          throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
       }
 
       return await this.processStream(response, onProgress);
     } catch (error) {
+      console.error("Image processing error:", error);
       throw new Error(`Image processing failed: ${error.message}`);
     }
   }
@@ -376,46 +460,74 @@ class APIClient {
         { role: "user", content: content },
       ];
 
+      let hasImage = false;
+
       if (message) {
         // Si hay imagen y el proveedor la soporta, formatear adecuadamente
         if (
           image &&
           this.modelManager.isImageSupportedForProvider(this.config.provider)
         ) {
-          const imageData = await this.imageToBase64(image);
+          try {
+            const imageData = await this.imageToBase64(image);
+            const mimeType = image.type || "image/jpeg"; // Default to jpeg if type is not available
+            console.log("Chat with image - file type:", mimeType);
+            
+            hasImage = true;
 
-          if (this.config.provider === "openai") {
-            messages.push({
-              role: "user",
-              content: [
-                { type: "text", text: message },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: `data:${image.type};base64,${imageData}`,
-                    detail: "auto",
+            if (this.config.provider === "openai") {
+              messages.push({
+                role: "user",
+                content: [
+                  { type: "text", text: message },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:${mimeType};base64,${imageData}`,
+                      detail: "auto",
+                    },
                   },
-                },
-              ],
-            });
-          } else if (this.config.provider === "anthropic") {
-            messages.push({
-              role: "user",
-              content: [
-                { type: "text", text: message },
-                {
-                  type: "image",
-                  source: {
-                    type: "base64",
-                    media_type: image.type,
-                    data: imageData,
+                ],
+              });
+            } else if (this.config.provider === "anthropic") {
+              messages.push({
+                role: "user",
+                content: [
+                  { type: "text", text: message },
+                  {
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: mimeType,
+                      data: imageData,
+                    },
                   },
-                },
-              ],
-            });
-          } else {
-            // Para proveedores que no soportan imágenes, enviar solo texto
+                ],
+              });
+            } else if (this.config.provider === "google") {
+              // Google Gemini format
+              messages.push({
+                role: "user",
+                parts: [
+                  { text: message },
+                  {
+                    inline_data: {
+                      mime_type: mimeType,
+                      data: imageData
+                    }
+                  }
+                ]
+              });
+            } else {
+              // Para proveedores que no soportan imágenes, enviar solo texto
+              messages.push({ role: "user", content: message });
+              hasImage = false;
+            }
+          } catch (imageError) {
+            console.error("Failed to process image for chat:", imageError);
+            // Fallback to text-only message
             messages.push({ role: "user", content: message });
+            hasImage = false;
           }
         } else {
           // Sin imagen, solo añadir el mensaje normal
@@ -423,18 +535,28 @@ class APIClient {
         }
       }
 
+      // Select the appropriate model based on whether we're sending an image
+      const model = hasImage
+        ? this.modelManager.getVisionModelForProvider(this.config.provider)
+        : this.config.models[this.config.provider];
+        
       const payload = {
         provider: this.config.provider,
-        model: this.config.models[this.config.provider],
+        model: model,
         messages: messages,
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
         userId: this.config.userId,
-        hasImage:
-          !!image &&
-          this.modelManager.isImageSupportedForProvider(this.config.provider),
+        hasImage: hasImage,
       };
+
+      console.log("Sending chat request to proxy:", {
+        endpoint: this.config.proxyEndpoint,
+        provider: this.config.provider,
+        model: payload.model,
+        hasImage: hasImage
+      });
 
       const response = await fetch(this.config.proxyEndpoint, {
         method: "POST",
@@ -447,16 +569,27 @@ class APIClient {
         body: JSON.stringify(payload),
       });
 
+      console.log("Chat response status:", response.status, response.statusText);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error?.message ||
-            `API Error: ${response.status} ${response.statusText}`
-        );
+        try {
+          const errorData = await response.json();
+          console.error("Chat API Error Response:", errorData);
+          throw new Error(
+            errorData.error?.message ||
+              `API Error: ${response.status} ${response.statusText}`
+          );
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError);
+          const rawText = await response.text().catch(() => "");
+          console.error("Raw error response:", rawText);
+          throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
       }
 
       return await this.processStream(response, onProgress);
     } catch (error) {
+      console.error("Chat response error:", error);
       throw new APIError(`Chat response failed: ${error.message}`, error);
     }
   }

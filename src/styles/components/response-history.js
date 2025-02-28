@@ -43,12 +43,9 @@ export const responseHistoryStyles = `
   .response-content {
     margin: 1rem 0;
     line-height: 1.5;
-    /* Claves para el streaming sin parpadeo */
-    white-space: pre-wrap;
     word-break: break-word;
     overflow-wrap: break-word;
     position: relative;
-    /* Evitar que el contenido salte durante la actualización */
     min-height: 1.5em;
   }
 
