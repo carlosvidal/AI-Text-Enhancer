@@ -165,20 +165,11 @@ class AITextEnhancer extends HTMLElement {
       const template = createTemplate(this);
       attachShadowTemplate(this, template);
 
-      // Setup basic functionality first
       this.updateLanguageForChildren(this.language);
       this.setupEventListeners();
       setupKeyboardNavigation(this);
 
-      // Skip initialization if no API key
-      if (!this.apiKey) {
-        this.addResponseToHistory(
-          "info",
-          "Please enter your API key to start using the enhancer."
-        );
-        return;
-      }
-
+      // Ya no es necesario verificar la API key
       await this.initializeComponents();
     } catch (error) {
       console.error("Error initializing component:", error);
@@ -400,42 +391,24 @@ class AITextEnhancer extends HTMLElement {
     if (this.isInitialized) return;
 
     try {
-      const apiKey = this.apiKey;
-      if (!apiKey) {
-        throw new Error("API key is required");
-      }
-
-      // Initialize markdown handler first
+      // Inicializar markdown handler
       await this.markdownHandler.initialize();
       console.log("[AITextEnhancer] Markdown handler initialized");
 
-      // Initialize API client
+      // Inicializar API client con proxy
       this.apiClient = createAPIClient({
-        apiKey: this.apiKey,
         provider: this.apiProvider,
         model: this.apiModel,
         systemPrompt: this.prompt,
         temperature: 0.7,
+        // Configurar proxy endpoint
+        proxyEndpoint: "http://llmproxy.test:8080/llm-proxy", // Sin "api/"
+        tenantId: this.getAttribute("tenant-id") || "default",
+        userId: this.getAttribute("user-id") || "default",
       });
 
-      // Initialize editor adapter if editor ID is provided
-      if (this.editorId) {
-        this.editorAdapter = new EditorAdapter(this.editorId);
-      }
-
-      // Pass markdown handler to response history
-      const responseHistory = this.shadowRoot.querySelector("response-history");
-      if (responseHistory) {
-        responseHistory.markdownHandler = this.markdownHandler;
-        console.log(
-          "[AITextEnhancer] Markdown handler passed to response history"
-        );
-      }
-
-      // Set initial state
+      // Resto del código...
       this.isInitialized = true;
-
-      // Update visible tools based on content
       this.updateVisibleTools();
     } catch (error) {
       console.error("Error in initializeComponents:", error);
@@ -446,7 +419,6 @@ class AITextEnhancer extends HTMLElement {
       throw error;
     }
   }
-
   isModalOpen() {
     return this.shadowRoot.querySelector(".modal").classList.contains("open");
   }
@@ -462,11 +434,7 @@ class AITextEnhancer extends HTMLElement {
   async handleChatMessage(event) {
     const { message, image } = event.detail;
 
-    if (!this.apiKey) {
-      this.addResponseToHistory("chat-error", this.translations.errors.apiKey);
-      return;
-    }
-
+    // Ya no es necesario verificar la API key
     try {
       // Validar mensaje
       if (!message?.trim() && !image) {
@@ -494,20 +462,6 @@ class AITextEnhancer extends HTMLElement {
         timestamp: new Date(),
       });
 
-      // Iniciar auto-scroll para mantener visible el contenido
-      const scrollToBottom = () => {
-        const responseContainer = this.shadowRoot.querySelector(
-          ".response-container"
-        );
-        if (responseContainer) {
-          responseContainer.scrollTop = responseContainer.scrollHeight;
-        }
-      };
-
-      // Iniciar auto-scroll y mantenerlo durante el streaming
-      scrollToBottom();
-      const scrollInterval = setInterval(scrollToBottom, 300);
-
       // Manejador de streaming optimizado para evitar parpadeo
       const onProgress = (chunk) => {
         this.responseHistory.updateResponse(
@@ -524,19 +478,14 @@ class AITextEnhancer extends HTMLElement {
         onProgress
       );
 
-      // Esperar un momento para permitir que la última actualización se complete
+      // Un último scroll para asegurar que todo el contenido sea visible
       setTimeout(() => {
-        // Detener el auto-scroll
-        clearInterval(scrollInterval);
-
-        // Aplicar formateo final con Markdown
-        const response = this.responseHistory.getResponse(responseId);
-        if (response) {
-          this.responseHistory.updateResponse(responseId, response.content);
+        const responseContainer = this.shadowRoot.querySelector(
+          ".response-container"
+        );
+        if (responseContainer) {
+          responseContainer.scrollTop = responseContainer.scrollHeight;
         }
-
-        // Un último scroll para asegurar que todo el contenido sea visible
-        scrollToBottom();
       }, 200);
     } catch (error) {
       console.error("Chat Error:", error);
@@ -548,122 +497,67 @@ class AITextEnhancer extends HTMLElement {
   // Agrega este método para solicitar actualizaciones explícitas
   requestUpdate(part = null) {
     // Este método delegará en el stateManager
-    return this.requestUpdate(part);
+    // return this.requestUpdate(part); // ¡Esto es una llamada recursiva infinita!
+    return this.stateManager.triggerUpdate(part);
   }
 
   async handleToolAction(event) {
-    // Primero obtenemos los datos del evento
-    const { action, responseId: eventResponseId, content } = event.detail;
+    const { action, responseId, content } = event.detail;
+    // Ya no necesitamos verificar la API key
 
-    if (!this.apiKey) {
-      console.warn("No API key provided");
-      this.addResponseToHistory("error", this.translations.errors.apiKey);
-      return;
-    }
-
-    // Usar el ID del evento si está disponible, o crear uno nuevo
-    // IMPORTANTE: No redeclarar responseId, usamos una variable con nombre diferente
-    const currentResponseId = eventResponseId || Date.now();
-
+    let tempResponse = null;
     try {
-      // Verificar caché primero
       const cachedResponse = this.cacheManager.get(action, content);
+
       if (cachedResponse) {
         this.addResponseToHistory(action, cachedResponse);
         return;
       }
 
-      // Inicializar el cliente API si es necesario
-      if (!this.apiClient || !this.isInitialized) {
+      tempResponse = {
+        id: Date.now(),
+        action,
+        content: '<span class="typing">|</span>',
+        timestamp: new Date(),
+      };
+      this.responseHistory.addResponse(tempResponse);
+
+      if (!this.apiClient || !this.stateManager.get("isInitialized")) {
         await this.initializeComponents();
       }
 
-      // Agregar respuesta inicial vacía solo si no estamos usando un ID existente
-      if (!eventResponseId) {
-        this.responseHistory.addResponse({
-          id: currentResponseId,
-          action,
-          content: "", // Contenido vacío es crucial para streaming
-          timestamp: new Date(),
-        });
-      }
-
-      // Iniciar auto-desplazamiento para mantener visible el último contenido
-      let autoScrollId;
-      const startAutoScroll = () => {
-        const container = this.shadowRoot.querySelector(".response-container");
-        if (container) {
-          autoScrollId = setInterval(() => {
-            container.scrollTop = container.scrollHeight;
-          }, 200);
-        }
-      };
-      startAutoScroll();
-
-      // Crear un manejador de progreso optimizado
+      // Manejador de streaming
       const onProgress = (chunk) => {
-        if (!chunk) return; // Ignorar chunks vacías
-
-        // Enviar la actualización incremental
         this.responseHistory.updateResponse(
-          currentResponseId,
-          (prevContent) => prevContent + chunk
+          tempResponse.id,
+          (prevContent) =>
+            prevContent.replace('<span class="typing">|</span>', "") + chunk
         );
       };
 
-      // Ejecutar la solicitud con streaming
-      console.log(
-        `[AITextEnhancer] Ejecutando acción "${action}" con streaming`
-      );
+      // Hacer la petición real al proxy
       const completeText = await this.apiClient.enhanceText(
-        content || this.currentContent,
+        content,
         action,
-        this.productImage,
+        null,
         this.context,
         onProgress
       );
 
-      // Detener auto-desplazamiento
-      if (autoScrollId) {
-        clearInterval(autoScrollId);
+      // Si no usamos streaming, necesitamos actualizar la respuesta completa
+      if (!completeText.includes('<span class="typing">|</span>')) {
+        this.responseHistory.removeResponse(tempResponse.id);
+        this.addResponseToHistory(action, completeText);
       }
 
-      // Finalizar el streaming y aplicar formato
-      setTimeout(() => {
-        // Este timeout asegura que todas las actualizaciones incrementales
-        // se hayan procesado antes de la actualización final
-        const response = this.responseHistory.getResponse(currentResponseId);
-        if (response) {
-          // Aplicar una actualización final con formateo completo
-          this.responseHistory.updateResponse(
-            currentResponseId,
-            response.content
-          );
-
-          // Desplazar al último contenido
-          const container = this.shadowRoot.querySelector(
-            ".response-container"
-          );
-          if (container) {
-            container.scrollTop = container.scrollHeight;
-          }
-        }
-
-        // Guardar en caché para futuras solicitudes similares
-        this.cacheManager.set(
-          action,
-          content || this.currentContent,
-          completeText
-        );
-      }, 300);
+      // Guardar en caché
+      this.cacheManager.set(action, content, completeText);
     } catch (error) {
       console.error("Error in handleToolAction:", error);
-
-      // Actualizar con el error
-      this.responseHistory.updateResponse(
-        currentResponseId,
-        `Error: ${error.message || "Se produjo un error inesperado"}`
-      );
+      if (tempResponse) {
+        this.responseHistory.removeResponse(tempResponse.id);
+      }
+      this.addResponseToHistory("error", error.message || "An error occurred");
     }
   }
 

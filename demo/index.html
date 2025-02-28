@@ -170,7 +170,7 @@ Features include durability and ease of use. Good value for money.
       // Helper Functions
       function updateEnhancerAttributes(settings) {
         const enhancer = document.getElementById("enhancer");
-        console.log("Updating attributes:", { settings, enhancer });
+        // console.log("Updating attributes:", { settings, enhancer });
 
         if (enhancer && settings) {
           // Force a small delay to ensure proper update sequence
@@ -203,14 +203,14 @@ Features include durability and ease of use. Good value for money.
       // Load saved settings on startup
       async function loadSavedSettings() {
         try {
-          console.log("Loading saved settings...");
+          // console.log("Loading saved settings...");
           const savedSettings = JSON.parse(
             localStorage.getItem("aiEnhancerSettings") || "{}"
           );
-          console.log("Saved settings:", savedSettings);
+          // console.log("Saved settings:", savedSettings);
 
           if (!savedSettings || Object.keys(savedSettings).length === 0) {
-            console.log("No saved settings found");
+            // console.log("No saved settings found");
             return;
           }
 
@@ -241,16 +241,16 @@ Features include durability and ease of use. Good value for money.
 
           // Update component attributes with retry mechanism
           const enhancer = document.getElementById("enhancer");
-          console.log("Enhancer component:", enhancer);
+          // console.log("Enhancer component:", enhancer);
 
           if (enhancer) {
             let retryCount = 0;
             const maxRetries = 10;
 
             const tryUpdateAttributes = () => {
-              console.log("Attempt to update attributes:", retryCount);
+              // console.log("Attempt to update attributes:", retryCount);
               if (enhancer.isConnected) {
-                console.log("Component is connected, updating attributes");
+                // console.log("Component is connected, updating attributes");
                 updateEnhancerAttributes(savedSettings);
                 return true;
               }
@@ -276,7 +276,7 @@ Features include durability and ease of use. Good value for money.
       document.addEventListener("DOMContentLoaded", loadSavedSettings);
 
       window.addEventListener("load", () => {
-        console.log("Window load event fired");
+        // console.log("Window load event fired");
         loadSavedSettings();
       });
 
