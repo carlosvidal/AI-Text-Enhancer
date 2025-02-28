@@ -391,6 +391,11 @@ class AITextEnhancer extends HTMLElement {
     if (this.isInitialized) return;
 
     try {
+      // Definir configuración local
+      const config = {
+        proxyEndpoint: "http://llmproxy.test:8080/api/llm-proxy",
+      };
+
       // Inicializar markdown handler
       await this.markdownHandler.initialize();
       console.log("[AITextEnhancer] Markdown handler initialized");
@@ -402,13 +407,46 @@ class AITextEnhancer extends HTMLElement {
         systemPrompt: this.prompt,
         temperature: 0.7,
         // Configurar proxy endpoint
-        proxyEndpoint: "http://llmproxy.test:8080/llm-proxy", // Sin "api/"
+        proxyEndpoint: config.proxyEndpoint,
         tenantId: this.getAttribute("tenant-id") || "default",
         userId: this.getAttribute("user-id") || "default",
       });
 
-      // Resto del código...
+      // Inicializar markdown handler
+      await this.markdownHandler.initialize();
+      console.log("[AITextEnhancer] Markdown handler initialized");
+
+      // Inicializar API client con proxy
+      this.apiClient = createAPIClient({
+        provider: this.apiProvider,
+        model: this.apiModel,
+        systemPrompt: this.prompt,
+        temperature: 0.7,
+        // Configurar proxy endpoint
+        proxyEndpoint:
+          config.proxyEndpoint || "http://llmproxy.test:8080/api/llm-proxy", // Sin "api/"
+        tenantId: this.getAttribute("tenant-id") || "default",
+        userId: this.getAttribute("user-id") || "default",
+      });
+
+      // Inicializar editor adapter si editor ID es proporcionado
+      if (this.editorId) {
+        this.editorAdapter = new EditorAdapter(this.editorId);
+      }
+
+      // Pasar markdown handler a response history
+      const responseHistory = this.shadowRoot.querySelector("response-history");
+      if (responseHistory) {
+        responseHistory.markdownHandler = this.markdownHandler;
+        console.log(
+          "[AITextEnhancer] Markdown handler passed to response history"
+        );
+      }
+
+      // Establecer estado inicial - usando directamente la propiedad
       this.isInitialized = true;
+
+      // Actualizar herramientas visibles basadas en contenido
       this.updateVisibleTools();
     } catch (error) {
       console.error("Error in initializeComponents:", error);
@@ -419,6 +457,7 @@ class AITextEnhancer extends HTMLElement {
       throw error;
     }
   }
+
   isModalOpen() {
     return this.shadowRoot.querySelector(".modal").classList.contains("open");
   }

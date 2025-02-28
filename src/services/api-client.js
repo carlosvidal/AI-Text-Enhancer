@@ -9,7 +9,7 @@ class APIClient {
       provider: config.provider || "openai",
       // Punto de entrada al proxy CodeIgniter 3
       proxyEndpoint:
-        config.proxyEndpoint || "http://llmproxy.test:8080/llm-proxy", // Sin "api/"
+        config.proxyEndpoint || "http://llmproxy.test:8080/api/llm-proxy", // Sin "api/"
       models: {
         openai: config.model || "gpt-4-turbo",
         deepseek: "deepseek-chat",
