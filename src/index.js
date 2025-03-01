@@ -108,6 +108,7 @@ class AITextEnhancer extends HTMLElement {
       "tenant-id",
       "user-id",
       "quota-endpoint",
+      "proxy-endpoint",
     ];
   }
 
@@ -159,6 +160,10 @@ class AITextEnhancer extends HTMLElement {
     return this.getAttribute("context") || "";
   }
 
+  get proxyEndpoint() {
+    return this.getAttribute("proxy-endpoint");
+  }
+
   // Lifecycle methods
   async connectedCallback() {
     try {
@@ -205,10 +210,12 @@ class AITextEnhancer extends HTMLElement {
         break;
       case "api-provider":
       case "api-model":
+      case "proxy-endpoint":
         if (this.isInitialized && this.apiClient) {
           this.apiClient.updateConfig({
             provider: this.apiProvider,
             model: this.apiModel,
+            proxyEndpoint: this.proxyEndpoint,
           });
         }
         break;
@@ -391,14 +398,13 @@ class AITextEnhancer extends HTMLElement {
     if (this.isInitialized) return;
 
     try {
-      // Definir configuración local
-      const config = {
-        proxyEndpoint: "http://llmproxy.test:8080/api/llm-proxy",
-      };
-
       // Inicializar markdown handler
       await this.markdownHandler.initialize();
       console.log("[AITextEnhancer] Markdown handler initialized");
+
+      // Obtener el endpoint del proxy del atributo o usar el valor predeterminado
+      const proxyEndpoint =
+        this.proxyEndpoint || "http://llmproxy.test:8080/api/llm-proxy";
 
       // Inicializar API client con proxy
       this.apiClient = createAPIClient({
@@ -406,25 +412,7 @@ class AITextEnhancer extends HTMLElement {
         model: this.apiModel,
         systemPrompt: this.prompt,
         temperature: 0.7,
-        // Configurar proxy endpoint
-        proxyEndpoint: config.proxyEndpoint,
-        tenantId: this.getAttribute("tenant-id") || "default",
-        userId: this.getAttribute("user-id") || "default",
-      });
-
-      // Inicializar markdown handler
-      await this.markdownHandler.initialize();
-      console.log("[AITextEnhancer] Markdown handler initialized");
-
-      // Inicializar API client con proxy
-      this.apiClient = createAPIClient({
-        provider: this.apiProvider,
-        model: this.apiModel,
-        systemPrompt: this.prompt,
-        temperature: 0.7,
-        // Configurar proxy endpoint
-        proxyEndpoint:
-          config.proxyEndpoint || "http://llmproxy.test:8080/api/llm-proxy", // Sin "api/"
+        proxyEndpoint: proxyEndpoint,
         tenantId: this.getAttribute("tenant-id") || "default",
         userId: this.getAttribute("user-id") || "default",
       });
@@ -443,7 +431,7 @@ class AITextEnhancer extends HTMLElement {
         );
       }
 
-      // Establecer estado inicial - usando directamente la propiedad
+      // Establecer estado inicial
       this.isInitialized = true;
 
       // Actualizar herramientas visibles basadas en contenido

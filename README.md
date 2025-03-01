@@ -1,231 +1,236 @@
 # AI Text Enhancer
 
-A powerful web component for enhancing product descriptions using AI. This component integrates seamlessly with multiple rich text editors and provides real-time AI-powered text enhancement capabilities.
+A powerful web component for enhancing product descriptions using AI. This component integrates seamlessly with multiple rich text editors and provides real-time AI-powered text enhancement capabilities through a secure proxy middleware architecture.
 
 ## Features
 
-- 🎨 Multiple enhancement modes:
-  - Improve: Makes descriptions more professional and engaging
-  - Summarize: Creates concise versions while maintaining key points
-  - Expand: Adds more details and benefits
-  - Paraphrase: Rewrites content while preserving the message
-  - Style: Adjusts tone for better persuasion
+- 🤖 **Multiple AI Provider Support**:
+  - OpenAI (GPT-4 Turbo, GPT-4, GPT-3.5 Turbo)
+  - Anthropic (Claude 3 Opus, Claude 3 Sonnet)
+  - Google (Gemini Pro)
+  - Mistral AI
+  - DeepSeek
+  - Cohere
+  
+- 🎨 **Multiple Enhancement Modes**:
+  - **Improve**: Makes descriptions more professional and engaging
+  - **Summarize**: Creates concise versions while maintaining key points
+  - **Expand**: Adds more details and benefits
+  - **Paraphrase**: Rewrites content while preserving the message
+  - **More Formal**: Elevates the tone for a professional audience
+  - **More Casual**: Makes text more approachable and conversational
 
-- 💬 Interactive chat interface for specific content queries
-- 🔄 Smart caching system for improved performance
-- 📝 Markdown support with live preview
-- 🔌 Multiple editor integrations:
-  - Plain textarea
-  - TinyMCE
-  - CKEditor 5
-  - Quill
-  - Froala Editor
-- 🌐 Multiple AI provider support (OpenAI, Deepseek)
-- 🔒 Shadow DOM encapsulation for style isolation
-- 🤖 Customizable AI system prompt
-- 📊 Optional usage control and quota management
-- 🏢 Multi-tenant support
+- 🖼️ **Image Analysis Support**:
+  - AI providers like OpenAI and Anthropic can analyze product images
+  - Enriches product descriptions with visual details
+  - Supports file uploads and image URLs
+
+- 💬 **Interactive Chat Interface**:
+  - Ask specific questions about product descriptions
+  - Upload images for AI to reference in responses
+  - Smart context management
+
+- 🔄 **Real-time Streaming Responses**:
+  - See AI responses appear as they're generated
+  - Smooth typing animation without flickering
+  - Responsive interface during processing
+
+- 🔌 **Secure Proxy Architecture**:
+  - API calls routed through secure middleware
+  - No API keys exposed in client-side code
+  - Optional direct API key mode for testing
+
+- 🌐 **Multi-language Support**:
+  - Interface in English, Spanish, French, German, Italian, Portuguese
+  - Content generation in multiple languages
+  - Language-specific prompts
+
+- 🏢 **Multi-tenant & User Management**:
+  - Tenant and user tracking capabilities
+  - Usage statistics and quotas (optional)
+  - Enterprise-ready implementation
+
+- ⚡ **Performance Optimizations**:
+  - Smart caching system for improved response times
+  - Efficient rendering with minimal DOM updates
+  - Resource-conscious implementation
 
 ## Installation
 
-```html
-<!-- Include the web component -->
-<script type="module" src="path/to/ai-text-enhancer.js"></script>
+### Option 1: Via NPM
+
+```bash
+npm install ai-text-enhancer
 ```
 
-## Usage
+```javascript
+// Import in your JavaScript
+import 'ai-text-enhancer';
+```
 
-### Basic Implementation (Textarea)
+### Option 2: Via CDN
+
+```html
+<!-- Include the web component -->
+<script type="module" src="https://cdn.example.com/ai-text-enhancer.js"></script>
+```
+
+## Implementation
+
+### Basic Integration (With Proxy Middleware)
+
+This is the recommended approach for production environments:
 
 ```html
 <!-- Add the component to your HTML -->
 <ai-text-enhancer
   editor-id="my-editor"
-  api-key="your-api-key"
   api-provider="openai"
-  api-model="gpt-4">
+  api-model="gpt-4-turbo"
+  language="en">
 </ai-text-enhancer>
 
 <!-- Reference text editor -->
 <textarea id="my-editor">Your product description here</textarea>
 ```
 
-### With Usage Control
+### With Direct API Key (Testing Only)
+
+**⚠️ Not recommended for production use! ⚠️**
 
 ```html
 <ai-text-enhancer
   editor-id="my-editor"
   api-key="your-api-key"
-  quota-endpoint="/api/quota"
+  api-provider="openai"
+  api-model="gpt-4-turbo">
+</ai-text-enhancer>
+```
+
+### Multi-tenant Implementation
+
+```html
+<ai-text-enhancer
+  editor-id="my-editor"
+  api-provider="openai"
   tenant-id="123"
-  user-id="456">
+  user-id="456"
+  quota-endpoint="/api/quota">
 </ai-text-enhancer>
 ```
 
-### TinyMCE Integration
+### With Language Selection
 
 ```html
 <ai-text-enhancer
-  editor-id="tinymce-editor"
-  api-key="your-api-key">
+  editor-id="my-editor"
+  api-provider="anthropic"
+  api-model="claude-3-opus-20240229"
+  language="es">
 </ai-text-enhancer>
-
-<div id="tinymce-editor"></div>
-
-<script>
-  tinymce.init({
-    selector: '#tinymce-editor',
-    height: 300
-    // Your TinyMCE configuration...
-  });
-</script>
 ```
 
-### CKEditor 5 Integration
+## Server-side Proxy Setup
 
-```html
-<ai-text-enhancer
-  editor-id="ckeditor-container"
-  api-key="your-api-key">
-</ai-text-enhancer>
+The component works optimally with a server-side proxy to handle API calls. This proxy should:
 
-<div id="ckeditor-container"></div>
+1. Authenticate the client request
+2. Add the API key to the outgoing request
+3. Forward to the appropriate AI provider
+4. Return the streamed response
 
-<script>
-  ClassicEditor.create(document.querySelector('#ckeditor-container'))
-    .then(editor => {
-      editor.editing.view.change(writer => {
-        writer.setStyle('min-height', '300px', editor.editing.view.document.getRoot());
-      });
-    });
-</script>
-```
-
-### Quill Integration
-
-```html
-<ai-text-enhancer
-  editor-id="quill-editor"
-  api-key="your-api-key">
-</ai-text-enhancer>
-
-<div id="quill-editor"></div>
-
-<script>
-  const quill = new Quill('#quill-editor', {
-    theme: 'snow',
-    modules: {
-      toolbar: [/* your toolbar config */]
-    }
-  });
-</script>
-```
-
-### Froala Integration
-
-```html
-<ai-text-enhancer
-  editor-id="froala-editor"
-  api-key="your-api-key">
-</ai-text-enhancer>
-
-<div id="froala-editor"></div>
-
-<script>
-  new FroalaEditor('#froala-editor', {
-    height: 300
-    // Your Froala configuration...
-  });
-</script>
-```
+Example proxy endpoints:
+- Default expected endpoint: `http://your-server/api/llm-proxy`
+- Can be configured with the `proxy-endpoint` attribute
 
 ## Configuration Options
 
 | Attribute | Description | Default |
 |-----------|-------------|---------|
-| editor-id | ID of the target editor element | Required |
-| api-key | Your AI provider API key | Required |
-| api-provider | AI service provider (openai/deepseek) | "openai" |
-| api-model | Model to use for text generation | Provider default |
-| language | Interface language (en/es/fr/de/pt) | "en" |
-| prompt | Custom system prompt for the AI | Default marketing expert prompt |
-| quota-endpoint | Endpoint for quota checking | Optional |
-| tenant-id | Tenant identifier for multi-tenant setups | Optional |
-| user-id | User identifier for usage tracking | Optional |
+| `editor-id` | ID of the target editor element | Required |
+| `api-provider` | AI service provider (openai/anthropic/deepseek/cohere/google/mistral) | "openai" |
+| `api-model` | Model to use for text generation | Provider default |
+| `language` | Interface language (en/es/fr/de/it/pt) | "en" |
+| `proxy-endpoint` | URL for your proxy service | "http://llmproxy.test:8080/api/llm-proxy" |
+| `prompt` | Custom system prompt for the AI | Default marketing expert prompt |
+| `tenant-id` | Tenant identifier for multi-tenant setups | "default" |
+| `user-id` | User identifier for usage tracking | "default" |
+| `quota-endpoint` | Endpoint for quota checking | Optional |
+| `image-url` | URL of an image to analyze | Optional |
+| `context` | Additional context for the AI | Optional |
 
-### Usage Control Options
+### Provider-specific Models
 
-The component supports three usage modes:
+#### OpenAI
+- `gpt-4-turbo` (default)
+- `gpt-4`
+- `gpt-3.5-turbo`
 
-1. **Basic Mode** (No usage control):
-```html
-<ai-text-enhancer editor-id="editor" api-key="key">
+#### Anthropic
+- `claude-3-opus-20240229` (default)
+- `claude-3-sonnet-20240229`
+
+#### DeepSeek
+- `deepseek-chat` (default)
+- `deepseek-coder`
+
+#### Google
+- `gemini-pro` (default)
+- `gemini-pro-vision` (for images)
+
+#### Mistral AI
+- `mistral-large-latest` (default)
+- `mistral-medium-latest`
+- `mistral-small-latest`
+
+## Events
+
+| Event Name | Description | Detail |
+|------------|-------------|--------|
+| `toolaction` | Fired when a tool button is clicked | `{ action, responseId, content }` |
+| `chatMessage` | Fired when a chat message is sent | `{ message, image }` |
+| `responseCopy` | Fired when a response is copied | `{ responseId }` |
+| `responseUse` | Fired when a response is used | `{ responseId }` |
+| `responseRetry` | Fired when a response action is retried | `{ responseId, action }` |
+| `stateChange` | Fired when component state changes | `{ property, oldValue, newValue }` |
+| `configurationUpdated` | Fired when configuration is updated | Configuration object |
+
+## Setup for Local Development
+
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/ai-text-enhancer.git
+cd ai-text-enhancer
 ```
 
-2. **Simple Quota Mode** (Only quota verification):
-```html
-<ai-text-enhancer 
-  editor-id="editor" 
-  api-key="key" 
-  quota-endpoint="/quota.json">
+2. Install dependencies
+```bash
+npm install
 ```
 
-3. **Full Control Mode** (Complete usage tracking):
-```html
-<ai-text-enhancer 
-  editor-id="editor" 
-  api-key="key"
-  quota-endpoint="/api/quota"
-  tenant-id="123"
-  user-id="456">
+3. Start development server
+```bash
+npm run dev
 ```
 
-### Editor Support
-
-The component automatically detects and adapts to different editor types:
-
-| Editor | Support Level | Notes |
-|--------|--------------|-------|
-| Textarea | Full | Default fallback |
-| TinyMCE | Full | Versions 5.x and 6.x |
-| CKEditor 5 | Full | Classic build |
-| Quill | Full | Version 1.3.6+ |
-| Froala | Full | Requires license |
-
-### Language Support
-
-The component supports multiple languages for its interface:
-
-- English (en)
-- Spanish (es)
-- French (fr)
-- German (de)
-- Portuguese (pt)
-
-## Component Architecture
-
-```
-/ai-text-enhancer
-  ├── src/
-  │   ├── ai-text-enhancer.js       # Main component
-  │   ├── editor-adapter.js         # Editor integration layer
-  │   ├── styles.js                 # Encapsulated styles
-  │   ├── markdown-handler.js       # Markdown processing
-  │   ├── cache-manager.js          # Caching system
-  │   └── api-client.js             # API client
-  ├── demo/
-  │   ├── index.html               # Demo page
-  │   └── editor-demo.html         # Rich text editors demo
-  └── README.md                    # Documentation
+4. Build for production
+```bash
+npm run build
 ```
 
-## Development
+## Security Considerations
 
-### Prerequisites
+- **DO NOT** use the `api-key` attribute in production environments
+- Always implement a secure proxy middleware for production
+- Consider implementing rate limiting and usage quotas
+- Validate user permissions before processing requests
 
-- Modern web browser with Web Components support
-- API key from supported providers (OpenAI/Deepseek)
-- Editor dependencies as needed (TinyMCE, CKEditor, etc.)
+## Browser Compatibility
+
+- Chrome/Edge (latest 2 versions)
+- Firefox (latest 2 versions)
+- Safari (latest 2 versions)
+- Uses standard Web Components technology
 
 ## Contributing
 
@@ -239,14 +244,8 @@ The component supports multiple languages for its interface:
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Support
-
-For support, please open an issue in the GitHub repository or contact the maintainers.
-
 ## Acknowledgments
 
-- OpenAI for GPT API
-- Deepseek for their API service
-- TinyMCE, CKEditor, Quill, and Froala teams for their editors
+- OpenAI, Anthropic, Google, Mistral, DeepSeek, and Cohere for their APIs
 - marked.js for Markdown processing
-- Lucide for icons
+- The Web Components standards community

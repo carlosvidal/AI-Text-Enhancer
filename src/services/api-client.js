@@ -25,14 +25,15 @@ class APIClient {
       temperature: config.temperature || 0.7,
       // Ya no necesitas almacenar el API key en el cliente
       sessionToken: config.sessionToken || "",
-      systemPrompt: config.systemPrompt  ||
-      "Actúa como un experto en redacción de descripciones de productos para tiendas en línea.\n\n" +
-        "Tu tarea es generar o mejorar la descripción de un producto con un enfoque atractivo y persuasivo, destacando sus características principales, beneficios y posibles usos.\n\n" +
-        "Si el usuario ya ha escrito una descripción: Mejórala manteniendo su esencia, pero haciéndola más clara, persuasiva y optimizada para ventas.\n\n" +
-        "Si la descripción está vacía: Genera una nueva descripción atractiva, destacando características y beneficios. Usa un tono profesional y cercano, adaptado a una tienda en línea.\n\n" +
-        "Si hay una imagen del producto, aprovecha los detalles visuales para enriquecer la descripción.\n\n" +
-        "Si aplica, menciona información relevante del comercio para reforzar la confianza del comprador (envíos, garantía, atención al cliente, etc.).\n\n" +
-        "Mantén el texto claro, sin repeticiones innecesarias, y optimizado para SEO si es posible.",,
+      systemPrompt:
+        config.systemPrompt ||
+        "Actúa como un experto en redacción de descripciones de productos para tiendas en línea.\n\n" +
+          "Tu tarea es generar o mejorar la descripción de un producto con un enfoque atractivo y persuasivo, destacando sus características principales, beneficios y posibles usos.\n\n" +
+          "Si el usuario ya ha escrito una descripción: Mejórala manteniendo su esencia, pero haciéndola más clara, persuasiva y optimizada para ventas.\n\n" +
+          "Si la descripción está vacía: Genera una nueva descripción atractiva, destacando características y beneficios. Usa un tono profesional y cercano, adaptado a una tienda en línea.\n\n" +
+          "Si hay una imagen del producto, aprovecha los detalles visuales para enriquecer la descripción.\n\n" +
+          "Si aplica, menciona información relevante del comercio para reforzar la confianza del comprador (envíos, garantía, atención al cliente, etc.).\n\n" +
+          "Mantén el texto claro, sin repeticiones innecesarias, y optimizado para SEO si es posible.",
       // Parámetros adicionales para el proxy
       tenantId: config.tenantId || "",
       userId: config.userId || "",
@@ -115,7 +116,7 @@ class APIClient {
               console.log("Fin de stream detectado");
               continue;
             }
-            
+
             // Skip empty chunks
             if (!chunk) {
               console.log("Skipping empty chunk");
@@ -150,12 +151,15 @@ class APIClient {
               } else if (data.delta && data.delta.text) {
                 // Anthropic format
                 completeText += data.delta.text;
-                console.log("Contenido nuevo añadido (Anthropic):", data.delta.text);
+                console.log(
+                  "Contenido nuevo añadido (Anthropic):",
+                  data.delta.text
+                );
                 onProgress(data.delta.text);
               }
             } catch (e) {
               console.error("Error procesando chunk:", e, "Texto:", chunk);
-              
+
               // If it's not valid JSON but contains text, try to extract directly
               if (chunk.includes('"text":"') || chunk.includes('"content":"')) {
                 try {
@@ -163,11 +167,17 @@ class APIClient {
                   if (textMatch && textMatch[2]) {
                     const extractedText = textMatch[2];
                     completeText += extractedText;
-                    console.log("Contenido extraído de texto malformado:", extractedText);
+                    console.log(
+                      "Contenido extraído de texto malformado:",
+                      extractedText
+                    );
                     onProgress(extractedText);
                   }
                 } catch (extractError) {
-                  console.error("Error extracting text from malformed JSON:", extractError);
+                  console.error(
+                    "Error extracting text from malformed JSON:",
+                    extractError
+                  );
                 }
               }
             }
@@ -324,16 +334,18 @@ class APIClient {
             {
               inline_data: {
                 mime_type: mimeType,
-                data: imageData
-              }
-            }
-          ]
+                data: imageData,
+              },
+            },
+          ],
         });
       }
 
       // Get the appropriate vision model
-      const visionModel = this.modelManager.getVisionModelForProvider(this.config.provider);
-      
+      const visionModel = this.modelManager.getVisionModelForProvider(
+        this.config.provider
+      );
+
       const payload = {
         provider: this.config.provider,
         model: visionModel || this.config.models[this.config.provider],
@@ -350,7 +362,7 @@ class APIClient {
         provider: this.config.provider,
         model: payload.model,
         hasImage: true,
-        imageType: mimeType
+        imageType: mimeType,
       });
 
       const response = await fetch(this.config.proxyEndpoint, {
@@ -364,7 +376,11 @@ class APIClient {
         body: JSON.stringify(payload),
       });
 
-      console.log("Image request response status:", response.status, response.statusText);
+      console.log(
+        "Image request response status:",
+        response.status,
+        response.statusText
+      );
 
       if (!response.ok) {
         try {
@@ -378,7 +394,9 @@ class APIClient {
           console.error("Failed to parse error response:", parseError);
           const rawText = await response.text().catch(() => "");
           console.error("Raw error response:", rawText);
-          throw new Error(`API Error: ${response.status} ${response.statusText}`);
+          throw new Error(
+            `API Error: ${response.status} ${response.statusText}`
+          );
         }
       }
 
@@ -479,7 +497,7 @@ class APIClient {
             const imageData = await this.imageToBase64(image);
             const mimeType = image.type || "image/jpeg"; // Default to jpeg if type is not available
             console.log("Chat with image - file type:", mimeType);
-            
+
             hasImage = true;
 
             if (this.config.provider === "openai") {
@@ -520,10 +538,10 @@ class APIClient {
                   {
                     inline_data: {
                       mime_type: mimeType,
-                      data: imageData
-                    }
-                  }
-                ]
+                      data: imageData,
+                    },
+                  },
+                ],
               });
             } else {
               // Para proveedores que no soportan imágenes, enviar solo texto
@@ -546,7 +564,7 @@ class APIClient {
       const model = hasImage
         ? this.modelManager.getVisionModelForProvider(this.config.provider)
         : this.config.models[this.config.provider];
-        
+
       const payload = {
         provider: this.config.provider,
         model: model,
@@ -562,7 +580,7 @@ class APIClient {
         endpoint: this.config.proxyEndpoint,
         provider: this.config.provider,
         model: payload.model,
-        hasImage: hasImage
+        hasImage: hasImage,
       });
 
       const response = await fetch(this.config.proxyEndpoint, {
@@ -576,7 +594,11 @@ class APIClient {
         body: JSON.stringify(payload),
       });
 
-      console.log("Chat response status:", response.status, response.statusText);
+      console.log(
+        "Chat response status:",
+        response.status,
+        response.statusText
+      );
 
       if (!response.ok) {
         try {
@@ -590,7 +612,9 @@ class APIClient {
           console.error("Failed to parse error response:", parseError);
           const rawText = await response.text().catch(() => "");
           console.error("Raw error response:", rawText);
-          throw new Error(`API Error: ${response.status} ${response.statusText}`);
+          throw new Error(
+            `API Error: ${response.status} ${response.statusText}`
+          );
         }
       }
 
