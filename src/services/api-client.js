@@ -25,7 +25,14 @@ class APIClient {
       temperature: config.temperature || 0.7,
       // Ya no necesitas almacenar el API key en el cliente
       sessionToken: config.sessionToken || "",
-      systemPrompt: config.systemPrompt,
+      systemPrompt: config.systemPrompt  ||
+      "Actúa como un experto en redacción de descripciones de productos para tiendas en línea.\n\n" +
+        "Tu tarea es generar o mejorar la descripción de un producto con un enfoque atractivo y persuasivo, destacando sus características principales, beneficios y posibles usos.\n\n" +
+        "Si el usuario ya ha escrito una descripción: Mejórala manteniendo su esencia, pero haciéndola más clara, persuasiva y optimizada para ventas.\n\n" +
+        "Si la descripción está vacía: Genera una nueva descripción atractiva, destacando características y beneficios. Usa un tono profesional y cercano, adaptado a una tienda en línea.\n\n" +
+        "Si hay una imagen del producto, aprovecha los detalles visuales para enriquecer la descripción.\n\n" +
+        "Si aplica, menciona información relevante del comercio para reforzar la confianza del comprador (envíos, garantía, atención al cliente, etc.).\n\n" +
+        "Mantén el texto claro, sin repeticiones innecesarias, y optimizado para SEO si es posible.",,
       // Parámetros adicionales para el proxy
       tenantId: config.tenantId || "",
       userId: config.userId || "",
