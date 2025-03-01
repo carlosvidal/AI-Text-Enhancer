@@ -87,7 +87,8 @@ This is the recommended approach for production environments:
   editor-id="my-editor"
   api-provider="openai"
   api-model="gpt-4-turbo"
-  language="en">
+  language="en"
+  proxy-endpoint="https://your-server.com/api/llm-proxy">
 </ai-text-enhancer>
 
 <!-- Reference text editor -->
@@ -139,9 +140,25 @@ The component works optimally with a server-side proxy to handle API calls. This
 3. Forward to the appropriate AI provider
 4. Return the streamed response
 
-Example proxy endpoints:
-- Default expected endpoint: `http://your-server/api/llm-proxy`
-- Can be configured with the `proxy-endpoint` attribute
+You can dynamically configure which proxy endpoint to use with the `proxy-endpoint` attribute. This is especially useful for:
+- Different environments (development, staging, production)
+- Multi-region deployments
+- Custom backend implementations
+- Testing with different proxy configurations
+
+### Configuring the Proxy Endpoint
+
+You can specify your custom proxy endpoint using the `proxy-endpoint` attribute:
+
+```html
+<ai-text-enhancer
+  editor-id="my-editor"
+  api-provider="openai"
+  proxy-endpoint="https://your-custom-server.com/api/llm-proxy">
+</ai-text-enhancer>
+```
+
+If not specified, the component will use the default endpoint: `http://llmproxy.test:8080/api/llm-proxy`
 
 ## Configuration Options
 
@@ -151,7 +168,7 @@ Example proxy endpoints:
 | `api-provider` | AI service provider (openai/anthropic/deepseek/cohere/google/mistral) | "openai" |
 | `api-model` | Model to use for text generation | Provider default |
 | `language` | Interface language (en/es/fr/de/it/pt) | "en" |
-| `proxy-endpoint` | URL for your proxy service | "http://llmproxy.test:8080/api/llm-proxy" |
+| `proxy-endpoint` | Custom URL for your proxy service | "http://llmproxy.test:8080/api/llm-proxy" |
 | `prompt` | Custom system prompt for the AI | Default marketing expert prompt |
 | `tenant-id` | Tenant identifier for multi-tenant setups | "default" |
 | `user-id` | User identifier for usage tracking | "default" |
