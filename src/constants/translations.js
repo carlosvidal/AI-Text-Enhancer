@@ -1,6 +1,5 @@
-// translations.js
+// translations.js with added prompt templates
 
-// Verificar que el archivo de traducciones existe y tiene el formato correcto
 export const TRANSLATIONS = {
   en: {
     modalTrigger: "Enhance with AI (Beta)",
@@ -31,6 +30,10 @@ export const TRANSLATIONS = {
     chat: {
       placeholder: "Ask a question about the product description...",
       question: "Question",
+      contentPrompt: "Could you improve the text I have in the editor?",
+      contextPrompt:
+        "Please create a professional description based on the following context.",
+      emptyPrompt: "What type of content would you like me to help you create?",
     },
     errors: {
       apiKey: "Error: API key not configured. Please provide a valid API key.",
@@ -67,6 +70,10 @@ export const TRANSLATIONS = {
     chat: {
       placeholder: "Haz una pregunta sobre la descripción del producto...",
       question: "Pregunta",
+      contentPrompt: "¿Podrías mejorar el texto que tengo en el editor?",
+      contextPrompt:
+        "Por favor, crea una descripción profesional basada en el siguiente contexto.",
+      emptyPrompt: "¿Qué tipo de contenido te gustaría que te ayude a crear?",
     },
     errors: {
       apiKey:
@@ -104,6 +111,12 @@ export const TRANSLATIONS = {
     chat: {
       placeholder: "Posez une question sur la description du produit...",
       question: "Question",
+      contentPrompt:
+        "Pourriez-vous améliorer le texte que j'ai dans l'éditeur ?",
+      contextPrompt:
+        "Veuillez créer une description professionnelle basée sur le contexte suivant.",
+      emptyPrompt:
+        "Quel type de contenu souhaitez-vous que je vous aide à créer ?",
     },
     errors: {
       apiKey:
@@ -141,6 +154,11 @@ export const TRANSLATIONS = {
     chat: {
       placeholder: "Stellen Sie eine Frage zur Produktbeschreibung...",
       question: "Frage",
+      contentPrompt: "Könnten Sie den Text in meinem Editor verbessern?",
+      contextPrompt:
+        "Bitte erstellen Sie eine professionelle Beschreibung basierend auf dem folgenden Kontext.",
+      emptyPrompt:
+        "Welche Art von Inhalt möchten Sie, dass ich Ihnen erstellen helfe?",
     },
     errors: {
       apiKey:
@@ -178,6 +196,11 @@ export const TRANSLATIONS = {
     chat: {
       placeholder: "Faça uma pergunta sobre a descrição do produto...",
       question: "Pergunta",
+      contentPrompt: "Você poderia melhorar o texto que tenho no editor?",
+      contextPrompt:
+        "Por favor, crie uma descrição profissional com base no seguinte contexto.",
+      emptyPrompt:
+        "Que tipo de conteúdo você gostaria que eu ajudasse a criar?",
     },
     errors: {
       apiKey:
@@ -215,6 +238,10 @@ export const TRANSLATIONS = {
     chat: {
       placeholder: "Fai una domanda sulla descrizione del prodotto...",
       question: "Domanda",
+      contentPrompt: "Potresti migliorare il testo che ho nell'editor?",
+      contextPrompt:
+        "Per favore, crea una descrizione professionale basata sul seguente contesto.",
+      emptyPrompt: "Che tipo di contenuto vorresti che ti aiutassi a creare?",
     },
     errors: {
       apiKey:

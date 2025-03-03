@@ -1,4 +1,4 @@
-// src/components/ChatWithImage.js
+// Enhanced ChatWithImage.js
 import { TRANSLATIONS } from "../constants/translations.js";
 import { variables } from "../styles/base/variables.js";
 import { animations } from "../styles/base/animations.js";
@@ -10,10 +10,18 @@ export class ChatWithImage extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this.tempImage = null;
+    // Don't initialize initialPrompt here since it's a getter
   }
 
   static get observedAttributes() {
-    return ["language", "image-url", "api-provider"];
+    return [
+      "language",
+      "image-url",
+      "api-provider",
+      "initial-prompt",
+      "has-content",
+      "has-context",
+    ];
   }
 
   get language() {
@@ -36,6 +44,18 @@ export class ChatWithImage extends HTMLElement {
     return ["openai", "anthropic"].includes(this.apiProvider);
   }
 
+  get initialPrompt() {
+    return this.getAttribute("initial-prompt") || "";
+  }
+
+  get hasContent() {
+    return this.getAttribute("has-content") === "true";
+  }
+
+  get hasContext() {
+    return this.getAttribute("has-context") === "true";
+  }
+
   async connectedCallback() {
     this.render();
     this.setupEventListeners();
@@ -43,6 +63,9 @@ export class ChatWithImage extends HTMLElement {
     if (this.imageUrl) {
       await this.handleImageUrl(this.imageUrl);
     }
+
+    // Set initial prompt if available
+    this.setInitialPrompt();
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -60,6 +83,56 @@ export class ChatWithImage extends HTMLElement {
       case "api-provider":
         this.updateUploadVisibility();
         break;
+      case "initial-prompt":
+      case "has-content":
+      case "has-context":
+        this.updateInitialPrompt();
+        break;
+    }
+  }
+
+  setInitialPrompt() {
+    if (!this.shadowRoot) return;
+
+    const chatInput = this.shadowRoot.querySelector(".chat-input");
+    if (!chatInput) return;
+
+    // Determine which initial prompt to use
+    let prompt = "";
+
+    if (this.hasContent) {
+      prompt =
+        this.translations?.chat?.contentPrompt ||
+        "Could you improve the text in the editor?";
+    } else if (this.hasContext) {
+      prompt =
+        this.translations?.chat?.contextPrompt ||
+        "Can you create a professional description based on this context?";
+    } else if (this.initialPrompt) {
+      prompt = this.initialPrompt;
+    }
+
+    // Set the prompt in the input
+    if (prompt && chatInput.innerText.trim() === "") {
+      chatInput.innerText = prompt;
+
+      // Place cursor at end of text
+      if (document.activeElement === chatInput) {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(chatInput);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }
+  }
+
+  updateInitialPrompt() {
+    // Check if the input is empty before updating to avoid overwriting user input
+    const chatInput = this.shadowRoot?.querySelector(".chat-input");
+    if (chatInput && chatInput.innerText.trim() === "") {
+      this.setInitialPrompt();
     }
   }
 
@@ -133,16 +206,15 @@ export class ChatWithImage extends HTMLElement {
         display: inline-flex;
         cursor: pointer;
         color: var(--ai-text-light);
-
-            width: 32px;
-    height: 32px;
-    background: lightgray;
-    padding: 0;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--ai-radius);
-    border: 0;
-    flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        background: lightgray;
+        padding: 0;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--ai-radius);
+        border: 0;
+        flex-shrink: 0;
       }
       
       .chat-upload-button:hover {
@@ -160,7 +232,9 @@ export class ChatWithImage extends HTMLElement {
           <div class="chat-input-container">
             <div class="chat-input" 
                  contenteditable="true" 
-                 data-placeholder="${this.translations.chat.placeholder}"
+                 data-placeholder="${
+                   this.translations?.chat?.placeholder || "Ask a question..."
+                 }"
                  role="textbox"
                  aria-multiline="true"></div>
           </div>
@@ -208,6 +282,13 @@ export class ChatWithImage extends HTMLElement {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         form.dispatchEvent(new Event("submit"));
+      }
+    });
+
+    // Focus event to set initial prompt if input is empty
+    input.addEventListener("focus", () => {
+      if (input.innerText.trim() === "") {
+        this.setInitialPrompt();
       }
     });
 
@@ -259,7 +340,7 @@ export class ChatWithImage extends HTMLElement {
     if (input && submitButton) {
       input.setAttribute(
         "data-placeholder",
-        this.translations.chat.placeholder
+        this.translations?.chat?.placeholder || "Ask a question..."
       );
       submitButton.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -268,6 +349,9 @@ export class ChatWithImage extends HTMLElement {
         </svg>
       `;
     }
+
+    // Update initial prompt based on new language
+    this.updateInitialPrompt();
   }
 
   updateUploadVisibility() {

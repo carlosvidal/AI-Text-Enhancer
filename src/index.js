@@ -165,6 +165,10 @@ class AITextEnhancer extends HTMLElement {
   }
 
   // Lifecycle methods
+  /**
+   * Add this to the connectedCallback to ensure all methods are set up properly
+   */
+  // Add this code inside the connectedCallback method
   async connectedCallback() {
     try {
       const template = createTemplate(this);
@@ -174,8 +178,13 @@ class AITextEnhancer extends HTMLElement {
       this.setupEventListeners();
       setupKeyboardNavigation(this);
 
-      // Ya no es necesario verificar la API key
       await this.initializeComponents();
+
+      // Set up editor change listener
+      this.setupEditorListener();
+
+      // Initial update of chat state
+      this.updateChatState();
     } catch (error) {
       console.error("Error initializing component:", error);
       if (this.notificationManager) {
@@ -186,6 +195,9 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
+  /**
+   * Override the attributeChangedCallback to handle context changes
+   */
   attributeChangedCallback(name, oldValue, newValue) {
     console.log(
       "[AITextEnhancer] Attribute changed:",
@@ -208,6 +220,10 @@ class AITextEnhancer extends HTMLElement {
       case "language":
         this.updateLanguageForChildren(newValue);
         break;
+      case "context":
+        // Update chat state when context changes
+        setTimeout(() => this.updateChatState(), 100);
+        break;
       case "api-provider":
       case "api-model":
       case "proxy-endpoint":
@@ -229,6 +245,37 @@ class AITextEnhancer extends HTMLElement {
         }
         break;
     }
+  }
+
+  /**
+   * Add editor content change listener to update chat state
+   */
+  setupEditorListener() {
+    if (!this.editorId) return;
+
+    const editorElement = document.getElementById(this.editorId);
+    if (!editorElement) {
+      console.warn(
+        `[AITextEnhancer] Editor element with ID "${this.editorId}" not found`
+      );
+      return;
+    }
+
+    // Listen for input events on the editor
+    const updateChatOnChange = () => {
+      // Update only if modal is open to avoid unnecessary updates
+      if (this.isModalOpen()) {
+        this.updateChatState();
+      }
+    };
+
+    // Add event listeners for different types of editors
+    editorElement.addEventListener("input", updateChatOnChange);
+    editorElement.addEventListener("change", updateChatOnChange);
+
+    console.log(
+      `[AITextEnhancer] Editor listener set up for "${this.editorId}"`
+    );
   }
 
   updateLanguageForChildren(language) {
@@ -302,6 +349,32 @@ class AITextEnhancer extends HTMLElement {
     });
   }
 
+  /**
+   * Handler for modal trigger button click
+   */
+  modalTriggerHandler() {
+    const modal = this.shadowRoot.querySelector(".modal");
+    if (!modal) return;
+
+    console.log("[AITextEnhancer] Opening modal with current state:", {
+      apiProvider: this.apiProvider,
+      model: this.apiModel,
+      language: this.language,
+      context:
+        this.context?.substring(0, 50) +
+        (this.context?.length > 50 ? "..." : ""),
+      imageUrl: this.imageUrl,
+      hasContent: Boolean(this.currentContent?.trim()),
+      hasContext: Boolean(this.context?.trim()),
+    });
+
+    modal.classList.add("open");
+    this.updateVisibleTools();
+
+    // Update chat state when modal opens to reflect current editor content
+    this.updateChatState();
+  }
+
   // Core functionality
   setupEventListeners() {
     const chatComponent = this.shadowRoot.querySelector("chat-with-image");
@@ -355,20 +428,8 @@ class AITextEnhancer extends HTMLElement {
       return;
     }
 
-    // Store the event handler as a property so we can reuse it
-    this.modalTriggerHandler = () => {
-      console.log("[AITextEnhancer] Current attributes when modal opens:", {
-        apiKey: this.apiKey,
-        provider: this.apiProvider,
-        model: this.apiModel,
-        language: this.language,
-        prompt: this.prompt,
-        context: this.context,
-        imageUrl: this.imageUrl,
-      });
-      modal.classList.add("open");
-      this.updateVisibleTools();
-    };
+    // Define the handler as a bound method
+    this.modalTriggerHandler = this.modalTriggerHandler.bind(this);
 
     // Remove any existing event listener before adding new one
     modalTrigger.removeEventListener("click", this.modalTriggerHandler);
@@ -392,6 +453,9 @@ class AITextEnhancer extends HTMLElement {
     if (toolbar) {
       toolbar.addEventListener("toolaction", this.handleToolAction);
     }
+
+    // Set up editor listener
+    this.setupEditorListener();
   }
 
   async initializeComponents() {
@@ -528,23 +592,51 @@ class AITextEnhancer extends HTMLElement {
     return this.stateManager.triggerUpdate(part);
   }
 
+  /**
+   * Updates the ChatWithImage component with current content and context state
+   * This should be called whenever editor content or context changes
+   */
+  updateChatState() {
+    if (!this.shadowRoot) return;
+
+    const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+    if (!chatComponent) return;
+
+    const hasContent = Boolean(this.currentContent?.trim());
+    const hasContext = Boolean(this.context?.trim());
+
+    // Update attributes
+    chatComponent.setAttribute("has-content", hasContent.toString());
+    chatComponent.setAttribute("has-context", hasContext.toString());
+
+    // Log for debugging
+    console.log("[AITextEnhancer] Updated chat state:", {
+      hasContent,
+      hasContext,
+      contentLength: this.currentContent?.length || 0,
+      contextLength: this.context?.length || 0,
+    });
+  }
+
+  /**
+   * Override the original handleToolAction method to update chat state after content changes
+   */
   async handleToolAction(event) {
     const { action, responseId, content } = event.detail;
 
     let tempResponse = null;
     try {
-      // Verificar si hay respuesta en caché
       const cachedResponse = this.cacheManager.get(action, content);
+
       if (cachedResponse) {
         this.addResponseToHistory(action, cachedResponse);
         return;
       }
 
-      // Crear respuesta inicial vacía
       tempResponse = {
         id: Date.now(),
         action,
-        content: "", // Empezamos con contenido vacío en lugar de placeholder
+        content: '<span class="typing">|</span>',
         timestamp: new Date(),
       };
       this.responseHistory.addResponse(tempResponse);
@@ -553,21 +645,13 @@ class AITextEnhancer extends HTMLElement {
         await this.initializeComponents();
       }
 
-      // Manejador de streaming mejorado
-      let isFirstChunk = true;
+      // Manejador de streaming
       const onProgress = (chunk) => {
-        if (!chunk) return; // Ignorar chunks vacíos
-
-        // Actualizar el contenido con el nuevo fragmento
-        this.responseHistory.updateResponse(tempResponse.id, (prevContent) => {
-          // Si es el primer fragmento, asegurar que se muestre correctamente
-          if (isFirstChunk) {
-            isFirstChunk = false;
-            return chunk; // Reemplazar completamente para evitar problemas
-          }
-          // Para fragmentos posteriores, concatenar normalmente
-          return prevContent + chunk;
-        });
+        this.responseHistory.updateResponse(
+          tempResponse.id,
+          (prevContent) =>
+            prevContent.replace('<span class="typing">|</span>', "") + chunk
+        );
       };
 
       // Hacer la petición real al proxy
@@ -579,19 +663,61 @@ class AITextEnhancer extends HTMLElement {
         onProgress
       );
 
-      // Asegurar que se muestra el texto completo al final
-      if (completeText) {
-        this.responseHistory.updateResponse(tempResponse.id, completeText);
+      // Si no usamos streaming, necesitamos actualizar la respuesta completa
+      if (!completeText.includes('<span class="typing">|</span>')) {
+        this.responseHistory.removeResponse(tempResponse.id);
+        this.addResponseToHistory(action, completeText);
       }
 
       // Guardar en caché
       this.cacheManager.set(action, content, completeText);
+
+      // Update chat state since content might have changed
+      this.updateChatState();
     } catch (error) {
       console.error("Error in handleToolAction:", error);
       if (tempResponse) {
         this.responseHistory.removeResponse(tempResponse.id);
       }
       this.addResponseToHistory("error", error.message || "An error occurred");
+    }
+  }
+
+  handleResponseUse(event) {
+    console.log("[ResponseHandlers] Use event received:", event.detail);
+    const { responseId } = event.detail;
+
+    if (!this.responseHistory) {
+      console.error("[ResponseHandlers] No response history available");
+      return;
+    }
+
+    if (!this.editorAdapter) {
+      console.error("[ResponseHandlers] No editor adapter available");
+      return;
+    }
+
+    const response = this.responseHistory.getResponse(responseId);
+    console.log("[ResponseHandlers] Found response:", response);
+
+    if (!response) {
+      console.warn("[ResponseHandlers] No response found for ID:", responseId);
+      return;
+    }
+
+    try {
+      console.log(
+        "[ResponseHandlers] Setting content to editor:",
+        response.content
+      );
+      this.editorAdapter.setContent(response.content);
+
+      // Update chat state since the editor content has changed
+      setTimeout(() => {
+        this.updateChatState();
+      }, 100); // Small delay to ensure editor content is updated
+    } catch (error) {
+      console.error("[ResponseHandlers] Error setting content:", error);
     }
   }
 

@@ -1,3 +1,4 @@
+// Updated template.js with chat state handling
 import { variables } from "./styles/base/variables.js";
 import { animations } from "./styles/base/animations.js";
 import { modalTriggerStyles } from "./styles/components/modal-trigger.js";
@@ -7,6 +8,10 @@ import { imagePreviewStyles } from "./styles/components/image-preview.js";
 
 export function createTemplate(component) {
   const t = component.translations;
+
+  // Determine chat attributes based on content and context
+  const hasContent = Boolean(component.currentContent?.trim());
+  const hasContext = Boolean(component.context?.trim());
 
   return `
     <style>
@@ -64,7 +69,7 @@ export function createTemplate(component) {
       <div class="modal-content">
         <button class="close-button">×</button>
         <div class="modal-header">
-          <h2>${t?.modalTrigger || "Enhance Text"}</h2>
+          <h2>${t?.modalTitle || "Enhance Text"}</h2>
         </div>
         
         <div class="modal-body">
@@ -77,7 +82,9 @@ export function createTemplate(component) {
             <chat-with-image
               language="${component.language}"
               image-url="${component.imageUrl || ""}"
-              api-provider="${component.apiProvider}">
+              api-provider="${component.apiProvider}"
+              has-content="${hasContent}"
+              has-context="${hasContext}">
             </chat-with-image>
           </div>
         </div>
