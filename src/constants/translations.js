@@ -3,7 +3,7 @@
 // Verificar que el archivo de traducciones existe y tiene el formato correcto
 export const TRANSLATIONS = {
   en: {
-    modalTrigger: "Enhance with AI",
+    modalTrigger: "Enhance with AI (Beta)",
     modalTitle: "Enhance your text",
     tools: {
       improve: "Improve",
@@ -39,7 +39,7 @@ export const TRANSLATIONS = {
     },
   },
   es: {
-    modalTrigger: "Mejorar con IA",
+    modalTrigger: "Mejorar con IA (Beta)",
     modalTitle: "Mejora tu texto",
     tools: {
       improve: "Mejorar",
@@ -76,7 +76,7 @@ export const TRANSLATIONS = {
     },
   },
   fr: {
-    modalTrigger: "Améliorer avec IA",
+    modalTrigger: "Améliorer avec IA (Beta)",
     modalTitle: "Améliorez votre texte",
     tools: {
       improve: "Améliorer",
@@ -113,7 +113,7 @@ export const TRANSLATIONS = {
     },
   },
   de: {
-    modalTrigger: "Beschreibung Verbessern",
+    modalTrigger: "Beschreibung Verbessern mit KI (Beta)",
     modalTitle: "Verbessern Sie Ihre Beschreibung",
     tools: {
       improve: "Verbessern",
@@ -150,7 +150,7 @@ export const TRANSLATIONS = {
     },
   },
   pt: {
-    modalTrigger: "Melhorar com IA",
+    modalTrigger: "Melhorar com IA (Beta)",
     modalTitle: "Melhore sua texto",
     tools: {
       improve: "Melhorar",
@@ -187,7 +187,7 @@ export const TRANSLATIONS = {
     },
   },
   it: {
-    modalTrigger: "Migliorare con IA",
+    modalTrigger: "Migliorare con IA (Beta)",
     modalTitle: "Migliorare il tuo testo",
     tools: {
       improve: "Migliorare",
