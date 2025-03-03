@@ -171,30 +171,83 @@ class AITextEnhancer extends HTMLElement {
   // Add this code inside the connectedCallback method
   async connectedCallback() {
     try {
+      console.log("[AITextEnhancer] Component connected, initializing...");
+
+      // Crear el template y adjuntarlo al shadowRoot
       const template = createTemplate(this);
       attachShadowTemplate(this, template);
+      console.log("[AITextEnhancer] Shadow DOM created");
 
+      // Asegurar que el modal exista y esté configurado correctamente
+      this.ensureModalExists();
+
+      // Configurar idioma para los hijos
       this.updateLanguageForChildren(this.language);
+
+      // Configurar eventos
       this.setupEventListeners();
       setupKeyboardNavigation(this);
 
+      // Inicializar componentes - esperar a que completen
       await this.initializeComponents();
+      console.log("[AITextEnhancer] Components initialized");
 
-      // Set up editor change listener
+      // Configurar listener del editor
       this.setupEditorListener();
 
-      // Initial update of chat state
+      // Actualizar estado inicial del chat
       this.updateChatState();
+
+      // Reforzar la vinculación de eventos después de la inicialización
+      setTimeout(() => {
+        console.log("[AITextEnhancer] Re-binding events after initialization");
+        this.bindEvents();
+
+        // Verificación final
+        const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
+        if (modalTrigger) {
+          console.log("[AITextEnhancer] Modal trigger element:", modalTrigger);
+          console.log(
+            "[AITextEnhancer] Modal trigger listeners:",
+            modalTrigger.onclick
+          );
+        } else {
+          console.warn(
+            "[AITextEnhancer] Modal trigger still not found after initialization"
+          );
+        }
+      }, 200);
+
+      console.log("[AITextEnhancer] Component fully initialized");
     } catch (error) {
-      console.error("Error initializing component:", error);
-      if (this.notificationManager) {
-        this.notificationManager.error(
-          `Initialization error: ${error.message}`
+      console.error("[AITextEnhancer] Error initializing component:", error);
+
+      // Intentar mostrar notificación de error
+      try {
+        if (this.notificationManager) {
+          this.notificationManager.error(
+            `Initialization error: ${error.message}`
+          );
+        } else {
+          // Fallback: mostrar error en el shadowRoot si está disponible
+          if (this.shadowRoot) {
+            const errorElement = document.createElement("div");
+            errorElement.style.color = "red";
+            errorElement.style.padding = "10px";
+            errorElement.style.margin = "10px 0";
+            errorElement.style.border = "1px solid red";
+            errorElement.textContent = `Error initializing component: ${error.message}`;
+            this.shadowRoot.appendChild(errorElement);
+          }
+        }
+      } catch (notifError) {
+        console.error(
+          "[AITextEnhancer] Error showing notification:",
+          notifError
         );
       }
     }
   }
-
   /**
    * Override the attributeChangedCallback to handle context changes
    */
@@ -353,8 +406,18 @@ class AITextEnhancer extends HTMLElement {
    * Handler for modal trigger button click
    */
   modalTriggerHandler() {
+    console.log("[AITextEnhancer] Modal trigger clicked, checking shadowRoot");
+
+    if (!this.shadowRoot) {
+      console.error("[AITextEnhancer] Shadow root not available");
+      return;
+    }
+
     const modal = this.shadowRoot.querySelector(".modal");
-    if (!modal) return;
+    if (!modal) {
+      console.error("[AITextEnhancer] Modal element not found in shadowRoot");
+      return;
+    }
 
     console.log("[AITextEnhancer] Opening modal with current state:", {
       apiProvider: this.apiProvider,
@@ -369,10 +432,67 @@ class AITextEnhancer extends HTMLElement {
     });
 
     modal.classList.add("open");
-    this.updateVisibleTools();
 
-    // Update chat state when modal opens to reflect current editor content
-    this.updateChatState();
+    // Asegurar que se actualice el estado de las herramientas
+    setTimeout(() => {
+      this.updateVisibleTools();
+      this.updateChatState();
+
+      // Enfocar el primer elemento interactivo para mejorar la accesibilidad
+      const firstFocusable = modal.querySelector(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (firstFocusable) {
+        firstFocusable.focus();
+      }
+    }, 100);
+  }
+
+  // Mejora adicional: Reforzar la inicialización del componente en connectedCallback
+  // Agrega esta función de ayuda a la clase AITextEnhancer
+
+  ensureModalExists() {
+    // Esta función garantiza que el modal esté presente en el DOM
+    if (!this.shadowRoot) {
+      console.error("[AITextEnhancer] No shadowRoot available for modal check");
+      return false;
+    }
+
+    let modal = this.shadowRoot.querySelector(".modal");
+    if (!modal) {
+      console.warn("[AITextEnhancer] Modal not found, attempting to recreate");
+
+      // Intentar recrear el modal desde la plantilla
+      const template = createTemplate(this);
+      const fragment = document
+        .createRange()
+        .createContextualFragment(template);
+      const newModal = fragment.querySelector(".modal");
+
+      if (newModal) {
+        this.shadowRoot.appendChild(newModal);
+        console.log("[AITextEnhancer] Modal recreated successfully");
+
+        // Asegurar que los eventos estén vinculados
+        const closeButton = newModal.querySelector(".close-button");
+        if (closeButton) {
+          closeButton.onclick = () => newModal.classList.remove("open");
+        }
+
+        newModal.onclick = (e) => {
+          if (e.target === newModal) {
+            newModal.classList.remove("open");
+          }
+        };
+
+        modal = newModal;
+      } else {
+        console.error("[AITextEnhancer] Failed to recreate modal");
+        return false;
+      }
+    }
+
+    return true;
   }
 
   // Core functionality
@@ -419,43 +539,123 @@ class AITextEnhancer extends HTMLElement {
   }
 
   bindEvents() {
+    // Verificar que el shadowRoot exista
+    if (!this.shadowRoot) {
+      console.error("[AITextEnhancer] No shadowRoot available in bindEvents");
+      return;
+    }
+
     // Modal events
     const modal = this.shadowRoot.querySelector(".modal");
     const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
 
-    if (!modal || !modalTrigger) {
-      console.warn("[AITextEnhancer] Modal elements not found in bindEvents");
-      return;
-    }
-
-    // Define the handler as a bound method
-    this.modalTriggerHandler = this.modalTriggerHandler.bind(this);
-
-    // Remove any existing event listener before adding new one
-    modalTrigger.removeEventListener("click", this.modalTriggerHandler);
-    modalTrigger.addEventListener("click", this.modalTriggerHandler);
-
-    // Close button
-    const closeButton = this.shadowRoot.querySelector(".close-button");
-    if (closeButton) {
-      closeButton.onclick = () => modal.classList.remove("open");
-    }
-
-    // Click outside modal
-    modal.onclick = (e) => {
-      if (e.target === modal) {
-        modal.classList.remove("open");
+    if (modalTrigger) {
+      // Define the handler as a bound method if not already bound
+      if (!this.modalTriggerHandler) {
+        this.modalTriggerHandler = this.modalTriggerHandler.bind(this);
       }
-    };
+
+      // Remove any existing event listener before adding new one
+      modalTrigger.removeEventListener("click", this.modalTriggerHandler);
+      modalTrigger.addEventListener("click", this.modalTriggerHandler);
+      console.log("[AITextEnhancer] Modal trigger event bound");
+    } else {
+      console.warn("[AITextEnhancer] Modal trigger not found in bindEvents");
+    }
+
+    // Modal and close button
+    if (modal) {
+      // Set up click outside to close
+      modal.onclick = (e) => {
+        if (e.target === modal) {
+          modal.classList.remove("open");
+        }
+      };
+
+      // Close button
+      const closeButton = modal.querySelector(".close-button");
+      if (closeButton) {
+        closeButton.onclick = () => modal.classList.remove("open");
+        console.log("[AITextEnhancer] Close button event bound");
+      } else {
+        console.warn("[AITextEnhancer] Close button not found in modal");
+      }
+    } else {
+      console.warn("[AITextEnhancer] Modal element not found in bindEvents");
+    }
 
     // Tool buttons
     const toolbar = this.shadowRoot.querySelector("ai-toolbar");
     if (toolbar) {
+      // Remove previous listener if it exists
+      toolbar.removeEventListener("toolaction", this.handleToolAction);
       toolbar.addEventListener("toolaction", this.handleToolAction);
+      console.log("[AITextEnhancer] Toolbar events bound");
+    } else {
+      console.warn("[AITextEnhancer] Toolbar not found in bindEvents");
+    }
+
+    // Chat component
+    const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+    if (chatComponent) {
+      // Remove previous listener if it exists
+      chatComponent.removeEventListener("chatMessage", this.handleChatMessage);
+      chatComponent.addEventListener("chatMessage", this.handleChatMessage);
+      console.log("[AITextEnhancer] Chat component events bound");
+    }
+
+    // Response history
+    if (this.responseHistory) {
+      // Remove previous listeners
+      this.responseHistory.removeEventListener(
+        "responseCopy",
+        this.handleResponseCopy
+      );
+      this.responseHistory.removeEventListener(
+        "responseUse",
+        this.handleResponseUse
+      );
+      this.responseHistory.removeEventListener(
+        "responseRetry",
+        this.handleResponseRetry
+      );
+      this.responseHistory.removeEventListener(
+        "responseEdit",
+        this.handleResponseEdit
+      );
+      this.responseHistory.removeEventListener(
+        "toolaction",
+        this.handleToolAction
+      );
+
+      // Add new listeners
+      this.responseHistory.addEventListener(
+        "responseCopy",
+        this.handleResponseCopy
+      );
+      this.responseHistory.addEventListener(
+        "responseUse",
+        this.handleResponseUse
+      );
+      this.responseHistory.addEventListener(
+        "responseRetry",
+        this.handleResponseRetry
+      );
+      this.responseHistory.addEventListener(
+        "responseEdit",
+        this.handleResponseEdit
+      );
+      this.responseHistory.addEventListener(
+        "toolaction",
+        this.handleToolAction
+      );
+      console.log("[AITextEnhancer] Response history events bound");
     }
 
     // Set up editor listener
     this.setupEditorListener();
+
+    console.log("[AITextEnhancer] All events bound successfully");
   }
 
   async initializeComponents() {
