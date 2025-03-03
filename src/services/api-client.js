@@ -82,11 +82,13 @@ class APIClient {
     }
   }
 
+  // Método mejorado para processStream en api-client.js
   async processStream(response, onProgress) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
     let completeText = "";
+    let firstChunkSent = false;
 
     try {
       console.log("Iniciando procesamiento de stream");
@@ -95,93 +97,97 @@ class APIClient {
         const { done, value } = await reader.read();
         if (done) {
           console.log("Stream completado");
+          // Enviar cualquier fragmento restante antes de finalizar
+          if (buffer.trim()) {
+            completeText += buffer.trim();
+            onProgress(buffer.trim());
+          }
           break;
         }
 
-        // Log para depuración
-        console.log("Fragmento raw recibido:", new TextDecoder().decode(value));
+        // Decodificar el chunk actual
+        const chunk = decoder.decode(value, { stream: true });
+        console.log("Fragmento raw recibido:", chunk);
 
-        buffer += decoder.decode(value, { stream: true });
-        console.log("Buffer acumulado:", buffer);
+        buffer += chunk;
 
+        // Procesamos líneas completas
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
         for (const line of lines) {
-          console.log("Procesando línea:", line);
-
           if (line.startsWith("data: ")) {
-            const chunk = line.slice(5).trim();
-            if (chunk === "[DONE]") {
-              console.log("Fin de stream detectado");
-              continue;
-            }
-
-            // Skip empty chunks
-            if (!chunk) {
-              console.log("Skipping empty chunk");
-              continue;
-            }
+            const content = line.slice(5).trim();
+            if (content === "[DONE]") continue;
 
             try {
-              const data = JSON.parse(chunk);
-              console.log("Chunk JSON parseado:", data);
+              // Intentamos parsear como JSON
+              const data = JSON.parse(content);
+              let textContent = "";
 
-              // Handle different response formats based on provider
+              // Extraer el texto según diferentes formatos de API
               if (
                 data.choices &&
                 data.choices[0].delta &&
                 data.choices[0].delta.content
               ) {
-                // OpenAI format
-                const newContent = data.choices[0].delta.content;
-                completeText += newContent;
-                console.log("Contenido nuevo añadido (OpenAI):", newContent);
-                onProgress(newContent);
+                textContent = data.choices[0].delta.content;
               } else if (data.text) {
-                // Simple text format (used by some proxies)
-                completeText += data.text;
-                console.log("Contenido nuevo añadido (text):", data.text);
-                onProgress(data.text);
+                textContent = data.text;
               } else if (data.content) {
-                // Direct content field
-                completeText += data.content;
-                console.log("Contenido nuevo añadido (content):", data.content);
-                onProgress(data.content);
+                textContent = data.content;
               } else if (data.delta && data.delta.text) {
-                // Anthropic format
-                completeText += data.delta.text;
-                console.log(
-                  "Contenido nuevo añadido (Anthropic):",
-                  data.delta.text
-                );
-                onProgress(data.delta.text);
+                textContent = data.delta.text;
+              }
+
+              if (textContent) {
+                completeText += textContent;
+                onProgress(textContent);
+                firstChunkSent = true;
               }
             } catch (e) {
-              console.error("Error procesando chunk:", e, "Texto:", chunk);
+              console.error("Error procesando JSON:", e);
 
-              // If it's not valid JSON but contains text, try to extract directly
-              if (chunk.includes('"text":"') || chunk.includes('"content":"')) {
+              // Si no es JSON válido, intentamos extraer el texto directamente
+              if (
+                content.includes('"text":"') ||
+                content.includes('"content":"')
+              ) {
                 try {
-                  const textMatch = chunk.match(/"(text|content)":"([^"]*)"/);
+                  const textMatch = content.match(/"(text|content)":"([^"]*)"/);
                   if (textMatch && textMatch[2]) {
-                    const extractedText = textMatch[2];
-                    completeText += extractedText;
-                    console.log(
-                      "Contenido extraído de texto malformado:",
-                      extractedText
-                    );
-                    onProgress(extractedText);
+                    const textContent = textMatch[2];
+                    completeText += textContent;
+                    onProgress(textContent);
+                    firstChunkSent = true;
                   }
                 } catch (extractError) {
-                  console.error(
-                    "Error extracting text from malformed JSON:",
-                    extractError
-                  );
+                  console.error("Error extrayendo texto:", extractError);
                 }
               }
             }
           }
+        }
+
+        // Importante: Si después de procesar todas las líneas aún no hemos enviado
+        // ningún fragmento y hay contenido en el buffer, enviamos lo que tenemos
+        if (!firstChunkSent && buffer.trim()) {
+          // Intentar extraer contenido del buffer si parece contener datos
+          let extractedText = buffer.trim();
+          try {
+            // Intentar extraer solo la parte de texto
+            const textMatch = buffer.match(/"(text|content)":"([^"]*)"/);
+            if (textMatch && textMatch[2]) {
+              extractedText = textMatch[2];
+            }
+          } catch (e) {
+            // Si falla, usamos el buffer completo
+            console.log("Error extrayendo texto del buffer:", e);
+          }
+
+          completeText += extractedText;
+          onProgress(extractedText);
+          firstChunkSent = true;
         }
       }
 
@@ -454,26 +460,31 @@ class APIClient {
 
     const prompt = prompts[action] || prompts.improve;
 
-    if (
-      imageFile &&
-      this.modelManager.isImageSupportedForProvider(this.config.provider)
-    ) {
-      try {
+    // Función wrapper para el manejo de progreso (evita perder el texto inicial)
+    const progressHandler = (chunk) => {
+      // Asegurar que el chunk no sea undefined o null
+      if (chunk) {
+        onProgress(chunk);
+      }
+    };
+
+    try {
+      if (
+        imageFile &&
+        this.modelManager.isImageSupportedForProvider(this.config.provider)
+      ) {
         return await this.makeRequestWithImage(
           prompt,
           content,
           imageFile,
-          onProgress
+          progressHandler
         );
-      } catch (error) {
-        console.warn(
-          "Image analysis failed, falling back to text-only analysis:",
-          error
-        );
-        return await this.makeRequest(prompt, content, onProgress);
+      } else {
+        return await this.makeRequest(prompt, content, progressHandler);
       }
-    } else {
-      return await this.makeRequest(prompt, content, onProgress);
+    } catch (error) {
+      console.error("Error in enhanceText:", error);
+      throw new Error(`Error al mejorar el texto: ${error.message}`);
     }
   }
 

@@ -530,21 +530,21 @@ class AITextEnhancer extends HTMLElement {
 
   async handleToolAction(event) {
     const { action, responseId, content } = event.detail;
-    // Ya no necesitamos verificar la API key
 
     let tempResponse = null;
     try {
+      // Verificar si hay respuesta en caché
       const cachedResponse = this.cacheManager.get(action, content);
-
       if (cachedResponse) {
         this.addResponseToHistory(action, cachedResponse);
         return;
       }
 
+      // Crear respuesta inicial vacía
       tempResponse = {
         id: Date.now(),
         action,
-        content: '<span class="typing">|</span>',
+        content: "", // Empezamos con contenido vacío en lugar de placeholder
         timestamp: new Date(),
       };
       this.responseHistory.addResponse(tempResponse);
@@ -553,13 +553,21 @@ class AITextEnhancer extends HTMLElement {
         await this.initializeComponents();
       }
 
-      // Manejador de streaming
+      // Manejador de streaming mejorado
+      let isFirstChunk = true;
       const onProgress = (chunk) => {
-        this.responseHistory.updateResponse(
-          tempResponse.id,
-          (prevContent) =>
-            prevContent.replace('<span class="typing">|</span>', "") + chunk
-        );
+        if (!chunk) return; // Ignorar chunks vacíos
+
+        // Actualizar el contenido con el nuevo fragmento
+        this.responseHistory.updateResponse(tempResponse.id, (prevContent) => {
+          // Si es el primer fragmento, asegurar que se muestre correctamente
+          if (isFirstChunk) {
+            isFirstChunk = false;
+            return chunk; // Reemplazar completamente para evitar problemas
+          }
+          // Para fragmentos posteriores, concatenar normalmente
+          return prevContent + chunk;
+        });
       };
 
       // Hacer la petición real al proxy
@@ -571,10 +579,9 @@ class AITextEnhancer extends HTMLElement {
         onProgress
       );
 
-      // Si no usamos streaming, necesitamos actualizar la respuesta completa
-      if (!completeText.includes('<span class="typing">|</span>')) {
-        this.responseHistory.removeResponse(tempResponse.id);
-        this.addResponseToHistory(action, completeText);
+      // Asegurar que se muestra el texto completo al final
+      if (completeText) {
+        this.responseHistory.updateResponse(tempResponse.id, completeText);
       }
 
       // Guardar en caché
