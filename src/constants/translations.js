@@ -3,7 +3,7 @@
 export const TRANSLATIONS = {
   en: {
     modalTrigger: "Enhance with AI (Beta)",
-    modalTitle: "Enhance your text",
+    modalTitle: "Enhance your text with AI",
     tools: {
       improve: "Improve",
       summarize: "Summarize",
@@ -43,7 +43,7 @@ export const TRANSLATIONS = {
   },
   es: {
     modalTrigger: "Mejorar con IA (Beta)",
-    modalTitle: "Mejora tu texto",
+    modalTitle: "Mejora tu texto con IA",
     tools: {
       improve: "Mejorar",
       summarize: "Resumir",
@@ -84,7 +84,7 @@ export const TRANSLATIONS = {
   },
   fr: {
     modalTrigger: "Améliorer avec IA (Beta)",
-    modalTitle: "Améliorez votre texte",
+    modalTitle: "Améliorez votre texte avec IA",
     tools: {
       improve: "Améliorer",
       summarize: "Résumer",
@@ -127,7 +127,7 @@ export const TRANSLATIONS = {
   },
   de: {
     modalTrigger: "Beschreibung Verbessern mit KI (Beta)",
-    modalTitle: "Verbessern Sie Ihre Beschreibung",
+    modalTitle: "Verbessern Sie Ihre Beschreibun mit KI",
     tools: {
       improve: "Verbessern",
       summarize: "Zusammenfassen",
@@ -169,7 +169,7 @@ export const TRANSLATIONS = {
   },
   pt: {
     modalTrigger: "Melhorar com IA (Beta)",
-    modalTitle: "Melhore sua texto",
+    modalTitle: "Melhore sua texto com IA",
     tools: {
       improve: "Melhorar",
       summarize: "Resumir",
@@ -211,7 +211,7 @@ export const TRANSLATIONS = {
   },
   it: {
     modalTrigger: "Migliorare con IA (Beta)",
-    modalTitle: "Migliorare il tuo testo",
+    modalTitle: "Migliorare il tuo testo con IA",
     tools: {
       improve: "Migliorare",
       summarize: "Sommario",
