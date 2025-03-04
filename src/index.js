@@ -1,3 +1,5 @@
+// Versión mejorada del archivo index.js con todas las correcciones integradas
+
 import { ResponseHistory } from "./components/ResponseHistory.js";
 import { ChatWithImage } from "./components/ChatWithImage.js";
 import { ToolBar } from "./components/ToolBar.js";
@@ -10,6 +12,7 @@ import { EditorAdapter } from "./services/editor-adapter.js";
 import { createEventEmitter } from "./utils/event-utils.js";
 import { attachShadowTemplate } from "./utils/dom-utils.js";
 import { TRANSLATIONS } from "./constants/translations.js";
+import { createNotificationManager } from "./services/notification-manager.js";
 
 // Feature imports
 import {
@@ -18,7 +21,6 @@ import {
 } from "./features/keyboard-navigation.js";
 import { responseHandlerMixin } from "./features/response-handlers.js";
 import { imageHandlerMixin } from "./features/image-handlers.js";
-// Nuevo import
 import { stateManagementMixin } from "./features/state-integration.js";
 import { createTemplate } from "./template.js";
 
@@ -32,7 +34,7 @@ class AITextEnhancer extends HTMLElement {
       keyboardNavigationMixin,
       responseHandlerMixin,
       imageHandlerMixin,
-      stateManagementMixin // Agregar el nuevo mixin
+      stateManagementMixin
     );
 
     // Register required components
@@ -92,6 +94,9 @@ class AITextEnhancer extends HTMLElement {
     // Keyboard navigation methods
     this.handleKeyboard = this.handleKeyboard?.bind(this);
     this.handleModalKeyboard = this.handleModalKeyboard?.bind(this);
+
+    // Modal trigger handler
+    this.modalTriggerHandler = this.modalTriggerHandler?.bind(this);
   }
 
   // Getters
@@ -164,11 +169,7 @@ class AITextEnhancer extends HTMLElement {
     return this.getAttribute("proxy-endpoint");
   }
 
-  // Lifecycle methods
-  /**
-   * Add this to the connectedCallback to ensure all methods are set up properly
-   */
-  // Add this code inside the connectedCallback method
+  // Método mejorado para connectedCallback
   async connectedCallback() {
     try {
       console.log("[AITextEnhancer] Component connected, initializing...");
@@ -177,6 +178,17 @@ class AITextEnhancer extends HTMLElement {
       const template = createTemplate(this);
       attachShadowTemplate(this, template);
       console.log("[AITextEnhancer] Shadow DOM created");
+
+      // Inicializar el NotificationManager
+      const notificationsContainer = this.shadowRoot.querySelector(
+        ".notifications-container"
+      );
+      if (notificationsContainer) {
+        this.notificationManager = createNotificationManager(
+          notificationsContainer
+        );
+        console.log("[AITextEnhancer] Notification manager initialized");
+      }
 
       // Asegurar que el modal exista y esté configurado correctamente
       this.ensureModalExists();
@@ -207,10 +219,6 @@ class AITextEnhancer extends HTMLElement {
         const modalTrigger = this.shadowRoot.querySelector(".modal-trigger");
         if (modalTrigger) {
           console.log("[AITextEnhancer] Modal trigger element:", modalTrigger);
-          console.log(
-            "[AITextEnhancer] Modal trigger listeners:",
-            modalTrigger.onclick
-          );
         } else {
           console.warn(
             "[AITextEnhancer] Modal trigger still not found after initialization"
@@ -248,9 +256,8 @@ class AITextEnhancer extends HTMLElement {
       }
     }
   }
-  /**
-   * Override the attributeChangedCallback to handle context changes
-   */
+
+  // Método mejorado para attributeChangedCallback
   attributeChangedCallback(name, oldValue, newValue) {
     console.log(
       "[AITextEnhancer] Attribute changed:",
@@ -300,37 +307,57 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
-  /**
-   * Add editor content change listener to update chat state
-   */
+  // Método mejorado para setupEditorListener
   setupEditorListener() {
-    if (!this.editorId) return;
+    if (!this.editorId) {
+      console.warn("[AITextEnhancer] No editor ID provided");
+      return;
+    }
 
     const editorElement = document.getElementById(this.editorId);
     if (!editorElement) {
       console.warn(
         `[AITextEnhancer] Editor element with ID "${this.editorId}" not found`
       );
+
+      if (this.notificationManager) {
+        this.notificationManager.warning(
+          `Editor element "${this.editorId}" not found. Text enhancement functionality may be limited.`
+        );
+      }
       return;
     }
 
-    // Listen for input events on the editor
+    // Función para actualizar el estado del chat cuando cambia el contenido del editor
     const updateChatOnChange = () => {
       // Update only if modal is open to avoid unnecessary updates
       if (this.isModalOpen()) {
         this.updateChatState();
+
+        // También actualizar las herramientas visibles basado en el contenido
+        this.updateVisibleTools();
       }
     };
 
-    // Add event listeners for different types of editors
-    editorElement.addEventListener("input", updateChatOnChange);
-    editorElement.addEventListener("change", updateChatOnChange);
+    // Eliminar listeners anteriores si existen
+    if (this._editorChangeListener) {
+      editorElement.removeEventListener("input", this._editorChangeListener);
+      editorElement.removeEventListener("change", this._editorChangeListener);
+    }
+
+    // Guardar referencia al listener para poder eliminarlo después
+    this._editorChangeListener = updateChatOnChange;
+
+    // Añadir listeners para diferentes tipos de editores
+    editorElement.addEventListener("input", this._editorChangeListener);
+    editorElement.addEventListener("change", this._editorChangeListener);
 
     console.log(
       `[AITextEnhancer] Editor listener set up for "${this.editorId}"`
     );
   }
 
+  // Método mejorado para updateLanguageForChildren
   updateLanguageForChildren(language) {
     console.log("[AITextEnhancer] Updating language for children:", language);
 
@@ -360,7 +387,7 @@ class AITextEnhancer extends HTMLElement {
       );
     }
 
-    // Ensure event listener is still working
+    // Asegurar que el manejador de eventos siga funcionando
     if (this.modalTriggerHandler) {
       const trigger = this.shadowRoot.querySelector(".modal-trigger");
       if (trigger) {
@@ -369,7 +396,7 @@ class AITextEnhancer extends HTMLElement {
       }
     }
 
-    // Update components with language attribute
+    // Actualizar componentes con el atributo de language
     const components = this.shadowRoot.querySelectorAll("[language]");
     console.log(
       "[AITextEnhancer] Found components to update:",
@@ -386,7 +413,7 @@ class AITextEnhancer extends HTMLElement {
       });
     });
 
-    // Force update on specific components
+    // Forzar la actualización en componentes específicos
     const toolbar = this.shadowRoot.querySelector("ai-toolbar");
     const chatComponent = this.shadowRoot.querySelector("chat-with-image");
     const responseHistory = this.shadowRoot.querySelector("response-history");
@@ -402,9 +429,7 @@ class AITextEnhancer extends HTMLElement {
     });
   }
 
-  /**
-   * Handler for modal trigger button click
-   */
+  // Método mejorado para modalTriggerHandler
   modalTriggerHandler() {
     console.log("[AITextEnhancer] Modal trigger clicked, checking shadowRoot");
 
@@ -416,7 +441,27 @@ class AITextEnhancer extends HTMLElement {
     const modal = this.shadowRoot.querySelector(".modal");
     if (!modal) {
       console.error("[AITextEnhancer] Modal element not found in shadowRoot");
-      return;
+
+      // Intentar recrear el modal
+      if (this.notificationManager) {
+        this.notificationManager.warning(
+          "Modal not found, trying to recreate it..."
+        );
+      }
+
+      if (this.ensureModalExists()) {
+        const newModal = this.shadowRoot.querySelector(".modal");
+        if (newModal) {
+          modal = newModal;
+        } else {
+          if (this.notificationManager) {
+            this.notificationManager.error("Failed to recreate modal");
+          }
+          return;
+        }
+      } else {
+        return;
+      }
     }
 
     console.log("[AITextEnhancer] Opening modal with current state:", {
@@ -448,9 +493,7 @@ class AITextEnhancer extends HTMLElement {
     }, 100);
   }
 
-  // Mejora adicional: Reforzar la inicialización del componente en connectedCallback
-  // Agrega esta función de ayuda a la clase AITextEnhancer
-
+  // Función para asegurar que el modal exista
   ensureModalExists() {
     // Esta función garantiza que el modal esté presente en el DOM
     if (!this.shadowRoot) {
@@ -495,15 +538,29 @@ class AITextEnhancer extends HTMLElement {
     return true;
   }
 
-  // Core functionality
+  // Método mejorado para setupEventListeners
   setupEventListeners() {
+    // Obtener el componente de chat
     const chatComponent = this.shadowRoot.querySelector("chat-with-image");
     if (chatComponent) {
+      // Eliminar listener anterior si existe
+      chatComponent.removeEventListener("chatMessage", this.handleChatMessage);
+      // Agregar nuevo listener
       chatComponent.addEventListener("chatMessage", this.handleChatMessage);
+      console.log("[AITextEnhancer] Chat message event listener set up");
+    } else {
+      console.warn("[AITextEnhancer] Chat component not found");
     }
 
+    // Obtener el componente de historial de respuestas
     this.responseHistory = this.shadowRoot.querySelector("response-history");
     if (this.responseHistory) {
+      // Configurar markdown handler
+      if (this.markdownHandler) {
+        this.responseHistory.markdownHandler = this.markdownHandler;
+      }
+
+      // Configurar eventos
       this.responseHistory.addEventListener(
         "responseCopy",
         this.handleResponseCopy
@@ -524,20 +581,32 @@ class AITextEnhancer extends HTMLElement {
         "toolaction",
         this.handleToolAction
       );
+
+      console.log("[AITextEnhancer] Response history events set up");
+    } else {
+      console.warn("[AITextEnhancer] Response history component not found");
     }
 
+    // Configurar evento para actualización de configuración
     this.addEventListener("configurationUpdated", (event) => {
       console.log("[AITextEnhancer] Configuration updated:", event.detail);
       if (this.isInitialized) {
         this.initializeComponents().catch((error) => {
           console.error("Error reinitializing components:", error);
+          if (this.notificationManager) {
+            this.notificationManager.error(
+              `Failed to update configuration: ${error.message}`
+            );
+          }
         });
       }
     });
 
+    // Vincular eventos UI
     this.bindEvents();
   }
 
+  // Método mejorado para bindEvents
   bindEvents() {
     // Verificar que el shadowRoot exista
     if (!this.shadowRoot) {
@@ -658,10 +727,16 @@ class AITextEnhancer extends HTMLElement {
     console.log("[AITextEnhancer] All events bound successfully");
   }
 
+  // Método actualizado para initializeComponents
   async initializeComponents() {
-    if (this.isInitialized) return;
+    if (this.isInitialized) {
+      console.log("[AITextEnhancer] Components already initialized, skipping");
+      return;
+    }
 
     try {
+      console.log("[AITextEnhancer] Initializing components...");
+
       // Inicializar markdown handler
       await this.markdownHandler.initialize();
       console.log("[AITextEnhancer] Markdown handler initialized");
@@ -681,9 +756,22 @@ class AITextEnhancer extends HTMLElement {
         userId: this.getAttribute("user-id") || "default",
       });
 
+      console.log(
+        "[AITextEnhancer] API client initialized with provider",
+        this.apiProvider
+      );
+
       // Inicializar editor adapter si editor ID es proporcionado
       if (this.editorId) {
         this.editorAdapter = new EditorAdapter(this.editorId);
+        console.log(
+          "[AITextEnhancer] Editor adapter initialized for",
+          this.editorId
+        );
+      } else {
+        console.warn(
+          "[AITextEnhancer] No editor ID provided, editor adapter not initialized"
+        );
       }
 
       // Pasar markdown handler a response history
@@ -698,34 +786,54 @@ class AITextEnhancer extends HTMLElement {
       // Establecer estado inicial
       this.isInitialized = true;
 
+      // Notificar éxito
+      if (this.notificationManager) {
+        this.notificationManager.success(
+          "AI Text Enhancer initialized successfully"
+        );
+      }
+
       // Actualizar herramientas visibles basadas en contenido
       this.updateVisibleTools();
+
+      return true;
     } catch (error) {
       console.error("Error in initializeComponents:", error);
+
+      // Notificar error
+      if (this.notificationManager) {
+        this.notificationManager.error(
+          `Initialization error: ${error.message}`
+        );
+      }
+
       this.addResponseToHistory(
         "error",
         `Initialization error: ${error.message}`
       );
+
       throw error;
     }
   }
 
   isModalOpen() {
-    return this.shadowRoot.querySelector(".modal").classList.contains("open");
+    const modal = this.shadowRoot?.querySelector(".modal");
+    return modal ? modal.classList.contains("open") : false;
   }
 
   updateVisibleTools() {
-    const hasContent = Boolean(this.currentContent.trim());
-    const toolbar = this.shadowRoot.querySelector("ai-toolbar");
+    const hasContent = Boolean(this.currentContent?.trim());
+    const toolbar = this.shadowRoot?.querySelector("ai-toolbar");
     if (toolbar) {
       toolbar.setAttribute("has-content", hasContent.toString());
+      console.log("[AITextEnhancer] Updated toolbar has-content:", hasContent);
     }
   }
 
+  // Manejador de mensajes de chat actualizado
   async handleChatMessage(event) {
     const { message, image } = event.detail;
 
-    // Ya no es necesario verificar la API key
     try {
       // Validar mensaje
       if (!message?.trim() && !image) {
@@ -778,18 +886,37 @@ class AITextEnhancer extends HTMLElement {
           responseContainer.scrollTop = responseContainer.scrollHeight;
         }
       }, 200);
+
+      // Mostrar notificación de éxito sutil
+      if (this.notificationManager) {
+        this.notificationManager.success("Response received", 2000);
+      }
     } catch (error) {
       console.error("Chat Error:", error);
       const errorMessage = this.formatErrorMessage(error);
       this.addResponseToHistory("chat-error", errorMessage);
+
+      // Mostrar notificación de error
+      if (this.notificationManager) {
+        this.notificationManager.error(`Chat error: ${error.message}`);
+      }
     }
   }
 
   // Agrega este método para solicitar actualizaciones explícitas
   requestUpdate(part = null) {
     // Este método delegará en el stateManager
-    // return this.requestUpdate(part); // ¡Esto es una llamada recursiva infinita!
-    return this.stateManager.triggerUpdate(part);
+    if (
+      this.stateManager &&
+      typeof this.stateManager.triggerUpdate === "function"
+    ) {
+      return this.stateManager.triggerUpdate(part);
+    } else {
+      console.warn(
+        "[AITextEnhancer] StateManager or triggerUpdate method not available"
+      );
+      return false;
+    }
   }
 
   /**
@@ -823,126 +950,112 @@ class AITextEnhancer extends HTMLElement {
    */
   async handleToolAction(event) {
     const { action, responseId, content } = event.detail;
+    console.log("[AITextEnhancer] Tool action received:", {
+      action,
+      responseId,
+    });
 
     let tempResponse = null;
     try {
-      const cachedResponse = this.cacheManager.get(action, content);
+      // Verificar si hay respuesta en caché
+      const textToProcess = content || this.currentContent;
+      const cachedResponse = this.cacheManager.get(action, textToProcess);
 
       if (cachedResponse) {
+        console.log("[AITextEnhancer] Using cached response for", action);
         this.addResponseToHistory(action, cachedResponse);
         return;
       }
 
+      // Crear respuesta temporal para mostrar progreso
       tempResponse = {
         id: Date.now(),
         action,
-        content: '<span class="typing">|</span>',
+        content: "", // Contenido vacío para comenzar
         timestamp: new Date(),
       };
+
       this.responseHistory.addResponse(tempResponse);
 
+      // Verificar si los componentes están inicializados
       if (!this.apiClient || !this.stateManager.get("isInitialized")) {
+        console.log(
+          "[AITextEnhancer] Components not initialized, initializing now..."
+        );
         await this.initializeComponents();
       }
 
       // Manejador de streaming
       const onProgress = (chunk) => {
-        this.responseHistory.updateResponse(
-          tempResponse.id,
-          (prevContent) =>
-            prevContent.replace('<span class="typing">|</span>', "") + chunk
-        );
+        // Asegurar que el chunk no sea undefined o null
+        if (chunk) {
+          this.responseHistory.updateResponse(
+            tempResponse.id,
+            (prevContent) => prevContent + chunk
+          );
+        }
       };
 
-      // Hacer la petición real al proxy
-      const completeText = await this.apiClient.enhanceText(
-        content,
-        action,
-        null,
-        this.context,
-        onProgress
-      );
+      try {
+        // Hacer la petición real al API
+        console.log("[AITextEnhancer] Making API request for action:", action);
+        const completeText = await this.apiClient.enhanceText(
+          textToProcess,
+          action,
+          null,
+          this.context,
+          onProgress
+        );
 
-      // Si no usamos streaming, necesitamos actualizar la respuesta completa
-      if (!completeText.includes('<span class="typing">|</span>')) {
-        this.responseHistory.removeResponse(tempResponse.id);
-        this.addResponseToHistory(action, completeText);
+        // Guardar en caché para futuras peticiones
+        this.cacheManager.set(action, textToProcess, completeText);
+
+        // Actualizar el estado del chat
+        this.updateChatState();
+
+        // Mostrar notificación de éxito sutil
+        if (this.notificationManager) {
+          this.notificationManager.success(
+            `Text ${action}d successfully`,
+            2000
+          );
+        }
+      } catch (error) {
+        console.error("[AITextEnhancer] API request error:", error);
+
+        // Eliminar respuesta temporal
+        if (tempResponse) {
+          this.responseHistory.removeResponse(tempResponse.id);
+        }
+
+        // Agregar mensaje de error
+        this.addResponseToHistory("error", this.formatErrorMessage(error));
+
+        // Mostrar notificación de error
+        if (this.notificationManager) {
+          this.notificationManager.error(`Error: ${error.message}`);
+        }
       }
-
-      // Guardar en caché
-      this.cacheManager.set(action, content, completeText);
-
-      // Update chat state since content might have changed
-      this.updateChatState();
     } catch (error) {
-      console.error("Error in handleToolAction:", error);
+      console.error("[AITextEnhancer] Error in handleToolAction:", error);
+
+      // Eliminar respuesta temporal si existe
       if (tempResponse) {
         this.responseHistory.removeResponse(tempResponse.id);
       }
-      this.addResponseToHistory("error", error.message || "An error occurred");
+
+      // Agregar mensaje de error
+      this.addResponseToHistory("error", `Error: ${error.message}`);
+
+      // Mostrar notificación
+      if (this.notificationManager) {
+        this.notificationManager.error(`Error: ${error.message}`);
+      }
     }
-  }
-
-  handleResponseUse(event) {
-    console.log("[ResponseHandlers] Use event received:", event.detail);
-    const { responseId } = event.detail;
-
-    if (!this.responseHistory) {
-      console.error("[ResponseHandlers] No response history available");
-      return;
-    }
-
-    if (!this.editorAdapter) {
-      console.error("[ResponseHandlers] No editor adapter available");
-      return;
-    }
-
-    const response = this.responseHistory.getResponse(responseId);
-    console.log("[ResponseHandlers] Found response:", response);
-
-    if (!response) {
-      console.warn("[ResponseHandlers] No response found for ID:", responseId);
-      return;
-    }
-
-    try {
-      console.log(
-        "[ResponseHandlers] Setting content to editor:",
-        response.content
-      );
-      this.editorAdapter.setContent(response.content);
-
-      // Update chat state since the editor content has changed
-      setTimeout(() => {
-        this.updateChatState();
-      }, 100); // Small delay to ensure editor content is updated
-    } catch (error) {
-      console.error("[ResponseHandlers] Error setting content:", error);
-    }
-  }
-
-  formatErrorMessage(error) {
-    if (error.message.includes("CORS")) {
-      return "Error: Unable to connect to AI service. Please check your API key and try again.";
-    }
-    if (error.message.includes("Failed to fetch")) {
-      return "Error: Network connection failed. Please check your internet connection.";
-    }
-    return `Error: ${error.message}`;
-  }
-
-  addResponseToHistory(action, content) {
-    const response = {
-      id: Date.now(),
-      action,
-      content,
-      timestamp: new Date(),
-    };
-
-    this.responseHistory.addResponse(response);
   }
 }
 
+// Registrar el componente
 customElements.define("ai-text-enhancer", AITextEnhancer);
 
 export default AITextEnhancer;
