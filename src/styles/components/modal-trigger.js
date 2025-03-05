@@ -17,6 +17,7 @@ export const modalTriggerStyles = `
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     white-space: nowrap;
     box-shadow: var(--ai-shadow);
+    margin-top: 15px;
   }
 
   .modal-trigger::before {
