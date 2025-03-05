@@ -471,6 +471,7 @@ export class ResponseHistory extends HTMLElement {
     this.render();
   }
 
+  // Método mejorado para updateResponse en ResponseHistory.js
   updateResponse(id, contentOrCallback) {
     const index = this.responses.findIndex((r) => r.id === id);
     if (index === -1) return;
@@ -512,8 +513,21 @@ export class ResponseHistory extends HTMLElement {
         "[ResponseHistory] Primera actualización, configurando streaming"
       );
 
+      // Verificar si hay texto de contenido
+      let firstChunk = response.content || "";
+
+      // Verificar si necesitamos reparar un inicio truncado
+      if (firstChunk.startsWith("aro,") || firstChunk.startsWith("laro,")) {
+        console.warn(
+          "[ResponseHistory] Detectado inicio truncado, reparando..."
+        );
+        firstChunk = "C" + firstChunk;
+        // Actualizar también el objeto de respuesta
+        response.content = firstChunk;
+      }
+
       // Crear un nodo de texto para actualizaciones incrementales
-      const textNode = document.createTextNode("");
+      const textNode = document.createTextNode(firstChunk);
 
       // Asegurarnos de que el contenedor esté limpio
       contentElement.innerHTML = "";

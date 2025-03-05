@@ -266,7 +266,7 @@ export const responseHistoryStyles = `
   .response-action:hover,
   .tool-button:hover {
     background: var(--ai-secondary);
-  color: white;
+  color: var(--ai-text);
   transform: translateY(-1px);
   }
 

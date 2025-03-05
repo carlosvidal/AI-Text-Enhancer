@@ -754,6 +754,7 @@ class AITextEnhancer extends HTMLElement {
         proxyEndpoint: proxyEndpoint,
         tenantId: this.getAttribute("tenant-id") || "default",
         userId: this.getAttribute("user-id") || "default",
+        debugMode: true,
       });
 
       console.log(
