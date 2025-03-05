@@ -139,12 +139,6 @@ export function createTemplate(component) {
         <div class="modal-body">
           <!-- Historial de respuestas -->
           <div class="editor-section">
-            <div class="tools-container">
-              <ai-toolbar 
-                language="${component.language || "en"}" 
-                has-content="${hasContent.toString()}">
-              </ai-toolbar>
-            </div>
             <response-history language="${
               component.language || "en"
             }"></response-history>

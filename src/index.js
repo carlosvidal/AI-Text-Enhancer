@@ -948,47 +948,72 @@ class AITextEnhancer extends HTMLElement {
   /**
    * Override the original handleToolAction method to update chat state after content changes
    */
+  /**
+   * Improved handleToolAction method for AITextEnhancer
+   * This implementation resolves issues with the retry functionality
+   * Replace this method in src/index.js
+   */
   async handleToolAction(event) {
-    const { action, responseId, content } = event.detail;
+    // Safely extract action details with fallbacks
+    const detail = event.detail || {};
+    const action = detail.action;
+    const responseId = detail.responseId;
+    const content = detail.content;
+
     console.log("[AITextEnhancer] Tool action received:", {
       action,
       responseId,
+      contentLength: content ? content.length : 0,
     });
+
+    if (!action) {
+      console.error("[AITextEnhancer] Tool action missing action parameter");
+      if (this.notificationManager) {
+        this.notificationManager.error("Invalid action request");
+      }
+      return;
+    }
 
     let tempResponse = null;
     try {
-      // Verificar si hay respuesta en caché
+      // Determine text to process - from response content, event content, or current editor content
       const textToProcess = content || this.currentContent;
-      const cachedResponse = this.cacheManager.get(action, textToProcess);
 
+      // Check for cached response
+      const cachedResponse = this.cacheManager?.get(action, textToProcess);
       if (cachedResponse) {
         console.log("[AITextEnhancer] Using cached response for", action);
         this.addResponseToHistory(action, cachedResponse);
         return;
       }
 
-      // Crear respuesta temporal para mostrar progreso
+      // Create temporary response for showing progress
       tempResponse = {
         id: Date.now(),
         action,
-        content: "", // Contenido vacío para comenzar
+        content: "", // Empty content to start with
         timestamp: new Date(),
       };
 
-      this.responseHistory.addResponse(tempResponse);
+      // Add response to history
+      if (this.responseHistory) {
+        this.responseHistory.addResponse(tempResponse);
+      } else {
+        console.error("[AITextEnhancer] Response history not available");
+        return;
+      }
 
-      // Verificar si los componentes están inicializados
-      if (!this.apiClient || !this.stateManager.get("isInitialized")) {
+      // Check if components are initialized
+      if (!this.apiClient || !this.isInitialized) {
         console.log(
           "[AITextEnhancer] Components not initialized, initializing now..."
         );
         await this.initializeComponents();
       }
 
-      // Manejador de streaming
+      // Handler for streaming updates
       const onProgress = (chunk) => {
-        // Asegurar que el chunk no sea undefined o null
-        if (chunk) {
+        if (chunk && this.responseHistory) {
           this.responseHistory.updateResponse(
             tempResponse.id,
             (prevContent) => prevContent + chunk
@@ -997,41 +1022,53 @@ class AITextEnhancer extends HTMLElement {
       };
 
       try {
-        // Hacer la petición real al API
+        // Make the actual API request
         console.log("[AITextEnhancer] Making API request for action:", action);
+
+        // Log if we're using an empty text
+        if (!textToProcess) {
+          console.warn(
+            "[AITextEnhancer] Processing empty text for action:",
+            action
+          );
+        }
+
         const completeText = await this.apiClient.enhanceText(
           textToProcess,
           action,
-          null,
+          null, // No image for tool actions
           this.context,
           onProgress
         );
 
-        // Guardar en caché para futuras peticiones
-        this.cacheManager.set(action, textToProcess, completeText);
+        // Cache for future requests if cache manager is available
+        if (this.cacheManager) {
+          this.cacheManager.set(action, textToProcess, completeText);
+        }
 
-        // Actualizar el estado del chat
+        // Update chat state
         this.updateChatState();
 
-        // Mostrar notificación de éxito sutil
+        // Show success notification
         if (this.notificationManager) {
+          const actionName = this.translations?.tools?.[action] || action;
           this.notificationManager.success(
-            `Text ${action}d successfully`,
+            `Text ${actionName} successfully`,
             2000
           );
         }
       } catch (error) {
         console.error("[AITextEnhancer] API request error:", error);
 
-        // Eliminar respuesta temporal
-        if (tempResponse) {
+        // Remove temporary response
+        if (tempResponse && this.responseHistory) {
           this.responseHistory.removeResponse(tempResponse.id);
         }
 
-        // Agregar mensaje de error
+        // Add error message
         this.addResponseToHistory("error", this.formatErrorMessage(error));
 
-        // Mostrar notificación de error
+        // Show error notification
         if (this.notificationManager) {
           this.notificationManager.error(`Error: ${error.message}`);
         }
@@ -1039,19 +1076,59 @@ class AITextEnhancer extends HTMLElement {
     } catch (error) {
       console.error("[AITextEnhancer] Error in handleToolAction:", error);
 
-      // Eliminar respuesta temporal si existe
-      if (tempResponse) {
+      // Remove temporary response if it exists
+      if (tempResponse && this.responseHistory) {
         this.responseHistory.removeResponse(tempResponse.id);
       }
 
-      // Agregar mensaje de error
+      // Add error message
       this.addResponseToHistory("error", `Error: ${error.message}`);
 
-      // Mostrar notificación
+      // Show notification
       if (this.notificationManager) {
         this.notificationManager.error(`Error: ${error.message}`);
       }
     }
+  }
+
+  /**
+   * Helper method to add responses to history
+   * Add this if it doesn't exist
+   */
+  addResponseToHistory(action, content) {
+    if (!this.responseHistory) {
+      console.error("[AITextEnhancer] No response history available");
+      return;
+    }
+
+    const response = {
+      id: Date.now(),
+      action,
+      content: content || "",
+      timestamp: new Date(),
+    };
+
+    this.responseHistory.addResponse(response);
+    return response;
+  }
+
+  /**
+   * Helper method to format error messages
+   * Add this if it doesn't exist
+   */
+  formatErrorMessage(error) {
+    if (!error) return "An unknown error occurred";
+
+    // Extract message from different error formats
+    let message = error.message || error.toString();
+
+    if (error.originalError) {
+      message += `\n${
+        error.originalError.message || error.originalError.toString()
+      }`;
+    }
+
+    return message;
   }
 }
 

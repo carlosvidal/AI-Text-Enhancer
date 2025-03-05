@@ -188,28 +188,35 @@ export const responseHistoryStyles = `
     color: var(--ai-text-secondary);
   }
 
-  .response-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 0 0;
-    gap: 1rem;
-    border-top: 1px solid var(--ai-border);
-  }
+.response-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.75rem !important;
+  margin-top: 0.5rem !important;
+  border-top: 1px solid var(--ai-border);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
 
   /* ===== BOTONES Y ACCIONES ===== */
   .response-actions {
     display: flex;
     gap: 0.5rem;
+    margin-left: auto;
   }
 
-  .response-tools {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding: 0 0.25rem;
-  }
+.response-tools {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0 0.25rem;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding: 0.5rem;
+  scroll-snap-type: x proximity;
+}
 
   .response-tools::-webkit-scrollbar {
     height: 4px;
@@ -226,29 +233,41 @@ export const responseHistoryStyles = `
   }
 
   .response-action,
-  .tool-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: var(--ai-radius);
-    background: var(--ai-surface-dark);
-    color: var(--ai-text);
-    cursor: pointer;
-    font-size: 0.875rem;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-  }
+.tool-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--ai-background);
+  border: none;
+  border-radius: var(--ai-radius);
+  color: var(--ai-text);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  scroll-snap-align: start;
+}
 
-  .response-action {
-    padding: 0.5rem;
-  }
+.response-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border: none;
+  border-radius: var(--ai-radius);
+  background: var(--ai-surface-dark, #f1f5f9);
+  color: var(--ai-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
 
   .response-action:hover,
   .tool-button:hover {
-    background: var(--ai-primary);
-    color: white;
+    background: var(--ai-secondary);
+  color: white;
+  transform: translateY(-1px);
   }
 
   .response-action svg,
@@ -412,5 +431,55 @@ export const responseHistoryStyles = `
 .response-entry[data-action="chat-question"] {
   padding: 0.5rem 0.75rem !important;
   max-height: none !important;
+}
+
+.action-text {
+  display: none;
+  margin-left: 0.25rem;
+  font-size: 0.8125rem;
+  opacity: 0;
+  transform: translateX(-0.5rem);
+  transition: all 0.2s ease;
+}
+
+.response-action:hover .action-text {
+  display: inline;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (min-width: 1024px) {
+  .response-action {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .action-text {
+    display: inline;
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+  /* Fix for question entries - no footer */
+.response-entry[data-action="chat-question"] .response-footer {
+  display: none !important;
+}
+
+/* Additional optimizations for mobile layout */
+@media (max-width: 640px) {
+  .response-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .response-tools {
+    width: 100%;
+    padding-bottom: 0.5rem;
+  }
+  
+  .response-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 `;
