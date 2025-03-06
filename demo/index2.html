@@ -328,14 +328,21 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
     </script>
 
     <!-- Importar el componente y inicializar editores -->
+    <!-- Sección de scripts - modificar esta parte -->
     <script type="module">
       // Esperar a que el DOM esté listo
       document.addEventListener("DOMContentLoaded", async () => {
         try {
-          // Importar el componente y los plugins
-          const { TinyMCEPlugin, CKEditorPlugin, QuillPlugin, FroalaPlugin } =
-            await import("../dist/ai-text-enhancer-plugins.umd.js");
+          // Importar el componente base
           await import("../dist/ai-text-enhancer.umd.js");
+
+          // Importar plugins
+          const pluginsModule = await import(
+            "../dist/ai-text-enhancer-plugins.es.js"
+          );
+
+          // Verificar qué plugins están disponibles
+          console.log("Plugins importados:", pluginsModule);
 
           // Inicializar TinyMCE con el plugin de IA
           tinymce.init({
@@ -367,14 +374,21 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
             content_style:
               "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
             setup: function (editor) {
-              // Inicializar plugin de IA
-              const aiPlugin = TinyMCEPlugin({
-                enhancerId: "tinymce-enhancer",
-                buttonTooltip: "Mejorar con IA",
-              });
+              // Verificar que TinyMCEPlugin es una función
+              if (typeof pluginsModule.TinyMCEPlugin === "function") {
+                // Inicializar plugin de IA
+                const aiPlugin = pluginsModule.TinyMCEPlugin({
+                  enhancerId: "tinymce-enhancer",
+                  buttonTooltip: "Mejorar con IA",
+                });
 
-              // Registrar plugin
-              aiPlugin(editor);
+                // Registrar plugin
+                aiPlugin(editor);
+              } else {
+                console.error(
+                  "TinyMCEPlugin no está disponible o no es una función"
+                );
+              }
 
               editor.on("init", function () {
                 editor.setContent(
@@ -401,24 +415,34 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
               "outdent",
               "indent",
               "|",
-              "aienhancer",
-              "|",
               "undo",
               "redo",
             ],
-            // Registrar plugin personalizado
+            // Inicializar después de que CKEditor esté listo
             extraPlugins: [
               function (editor) {
-                // Crear plugin
-                const aiPlugin = CKEditorPlugin({
-                  enhancerId: "ckeditor-enhancer",
-                  buttonTooltip: "Mejorar con IA",
-                });
-
-                // Aplicar plugin
-                if (typeof aiPlugin.init === "function") {
-                  aiPlugin.init(editor);
-                }
+                // Aplicar el plugin una vez que el editor está listo
+                setTimeout(() => {
+                  try {
+                    if (typeof pluginsModule.CKEditorPlugin === "function") {
+                      // Crear y aplicar plugin
+                      pluginsModule.CKEditorPlugin({
+                        enhancerId: "ckeditor-enhancer",
+                        buttonTooltip: "Mejorar con IA",
+                        editor: editor, // Pasa el editor como parámetro
+                      });
+                    } else {
+                      console.error(
+                        "CKEditorPlugin no está disponible o no es una función"
+                      );
+                    }
+                  } catch (err) {
+                    console.error(
+                      "Error al inicializar plugin de CKEditor:",
+                      err
+                    );
+                  }
+                }, 500);
               },
             ],
           })
@@ -438,7 +462,7 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
               );
             })
             .catch((error) => {
-              console.error(error);
+              console.error("Error al inicializar CKEditor:", error);
             });
 
           // Inicializar Quill con el plugin de IA
@@ -450,12 +474,7 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
                 ["bold", "italic", "underline", "strike"],
                 ["blockquote", "code-block"],
                 [{ list: "ordered" }, { list: "bullet" }],
-                [
-                  { script: "sub" },
-                  {
-                    script: "super",
-                  },
-                ],
+                [{ script: "sub" }, { script: "super" }],
                 [{ indent: "-1" }, { indent: "+1" }],
                 [{ direction: "rtl" }],
                 [{ size: ["small", false, "large", "huge"] }],
@@ -468,16 +487,7 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
             },
           });
 
-          // Agregar plugin de Quill
-          const quillPlugin = QuillPlugin({
-            enhancerId: "quill-enhancer",
-            buttonTooltip: "Mejorar con IA",
-          });
-
-          // Inicializar plugin
-          quillPlugin(quill);
-
-          // Usar contenido inicial
+          // Añadir contenido inicial a Quill
           quill.setContents([
             {
               insert:
@@ -485,17 +495,35 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
             },
           ]);
 
-          // Inicializar Froala (requiere licencia) con plugin de IA
-          const froalaPlugin = FroalaPlugin({
-            enhancerId: "froala-enhancer",
-            buttonTooltip: "Mejorar con IA",
-          });
+          // Inicializar el plugin de Quill después de un breve retraso
+          setTimeout(() => {
+            if (typeof pluginsModule.QuillPlugin === "function") {
+              try {
+                // Acceder directamente al contenedor
+                const quillContainer = document.querySelector("#quill-editor");
+                const toolbar = quillContainer.previousElementSibling; // La barra de herramientas suele estar justo antes del editor
 
-          // Registrar el plugin en Froala
-          if (!FroalaEditor.PLUGINS.aiEnhancer) {
-            FroalaEditor.PLUGINS.aiEnhancer = froalaPlugin;
-          }
+                if (toolbar && toolbar.classList.contains("ql-toolbar")) {
+                  console.log(
+                    "Encontrada barra de herramientas de Quill:",
+                    toolbar
+                  );
+                }
 
+                // Aplicar plugin con más información
+                pluginsModule.QuillPlugin({
+                  enhancerId: "quill-enhancer",
+                  buttonTooltip: "Mejorar con IA",
+                  quill: quill,
+                  container: quillContainer,
+                })(quill);
+              } catch (err) {
+                console.error("Error al inicializar QuillPlugin:", err);
+              }
+            }
+          }, 1000);
+
+          // Inicializar Froala
           new FroalaEditor("#froala-editor", {
             toolbarButtons: {
               moreText: {
@@ -543,7 +571,6 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
                   "embedly",
                   "insertFile",
                   "insertHR",
-                  "aiEnhancer",
                 ],
               },
               moreMisc: {
@@ -565,7 +592,32 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
             height: 300,
             placeholderText:
               "Este es un ejemplo de descripción en Froala que se puede mejorar con técnicas de e-commerce usando IA.",
-            pluginsEnabled: ["aiEnhancer"],
+            events: {
+              // Añadir nuestro botón cuando Froala esté inicializado
+              initialized: function () {
+                setTimeout(() => {
+                  try {
+                    if (typeof pluginsModule.FroalaPlugin === "function") {
+                      // Crear e inicializar el plugin manual
+                      pluginsModule.FroalaPlugin({
+                        enhancerId: "froala-enhancer",
+                        buttonTooltip: "Mejorar con IA",
+                        editor: this, // Froala almacena la referencia en 'this' para los eventos
+                      });
+                    } else {
+                      console.error(
+                        "FroalaPlugin no está disponible o no es una función"
+                      );
+                    }
+                  } catch (err) {
+                    console.error(
+                      "Error al inicializar plugin de Froala:",
+                      err
+                    );
+                  }
+                }, 500);
+              },
+            },
           });
         } catch (error) {
           console.error("Error inicializando los componentes:", error);

@@ -1,4 +1,4 @@
-// vite.config.js principal (para ai-text-enhancer)
+// vite.config.js
 import { defineConfig } from "vite";
 import { resolve } from "path";
 
@@ -15,12 +15,6 @@ export default defineConfig({
       output: {
         globals: {
           marked: "marked",
-        },
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name === "style.css") {
-            return "ai-text-enhancer.css";
-          }
-          return assetInfo.name;
         },
       },
     },

@@ -1,6 +1,10 @@
-// vite.plugins.config.js (para ai-text-enhancer-plugins)
+// vite.plugins.config.js
 import { defineConfig } from "vite";
 import { resolve } from "path";
+import fs from "fs";
+
+// Guardar lista de archivos existentes para no sobrescribirlos
+const existingFiles = fs.existsSync("dist") ? fs.readdirSync("dist") : [];
 
 export default defineConfig({
   build: {
@@ -16,11 +20,20 @@ export default defineConfig({
         globals: {
           marked: "marked",
         },
+        // Verificar que no se sobrescriban archivos existentes
+        assetFileNames: (assetInfo) => {
+          const fileName = assetInfo.name || "";
+          // Si ya existe un archivo con este nombre, añadir sufijo
+          if (existingFiles.includes(fileName)) {
+            return fileName.replace(".", "-plugins.");
+          }
+          return fileName;
+        },
       },
     },
     sourcemap: true,
     minify: "terser",
-    outDir: "dist", // Asegura que se guarde en el mismo directorio
+    emptyOutDir: false, // Importante: Esto evita que se eliminen archivos previos
   },
   resolve: {
     alias: {
