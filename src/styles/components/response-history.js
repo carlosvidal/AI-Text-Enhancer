@@ -431,6 +431,12 @@ export const responseHistoryStyles = `
 .response-entry[data-action="chat-question"] {
   padding: 0.5rem 0.75rem !important;
   max-height: none !important;
+  margin-right: 5rem;
+    background: aliceblue;
+}
+
+.response-entry[data-action="chat-response"] {
+    margin-left: 5rem;
 }
 
 .action-text {
