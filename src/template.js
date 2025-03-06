@@ -35,10 +35,15 @@ export function createTemplate(component) {
     const hasContent = Boolean(currentContent?.trim && currentContent.trim());
     const hasContext = Boolean(context?.trim && context.trim());
 
-    console.log("[createTemplate] Estado del contenido:", {
+    // Verificar si el botón modal-trigger debe ser ocultado
+    // Añadir esta línea para comprobar el atributo hide-trigger
+    const showTrigger = !component.hideTrigger;
+
+    console.log("[createTemplate] Estado del componente:", {
       hasContent,
       hasContext,
       language: component.language || "en",
+      showTrigger, // Añadir esta línea para mostrar el estado en logs
     });
 
     // HTML del componente con comentarios para facilitar la depuración
@@ -119,7 +124,10 @@ export function createTemplate(component) {
       }
     </style>
 
-    <!-- Botón para abrir el modal -->
+    <!-- Botón para abrir el modal (CONDICIONAL) -->
+    ${
+      showTrigger
+        ? `
     <button class="modal-trigger" id="modal-trigger-button">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/>
@@ -127,6 +135,9 @@ export function createTemplate(component) {
       </svg>
       <span>${t?.modalTrigger || "Enhance with AI"}</span>
     </button>
+    `
+        : ""
+    }
     
     <!-- Modal principal -->
     <div class="modal" id="ai-enhancer-modal">

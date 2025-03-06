@@ -149,6 +149,17 @@
         min-height: 300px !important;
         height: 300px !important;
       }
+
+      /* Estilo para botón AI en Quill */
+      .ql-ai-enhancer svg {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+      }
+
+      .ql-ai-enhancer:hover {
+        color: #2563eb;
+      }
     </style>
   </head>
   <body>
@@ -215,6 +226,7 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
           api-provider="openai"
           api-model="gpt-4"
           prompt="Eres un asistente experto en SEO, especializado en optimizar contenido para motores de búsqueda."
+          hide-trigger
         ></ai-text-enhancer>
       </div>
 
@@ -231,6 +243,7 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
           api-provider="openai"
           api-model="gpt-4"
           prompt="Eres un experto en copywriting, especializado en crear contenido persuasivo."
+          hide-trigger
         ></ai-text-enhancer>
       </div>
 
@@ -247,6 +260,7 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
           api-provider="openai"
           api-model="gpt-4"
           prompt="Eres un experto en marketing digital, especializado en crear contenido que conecta con la audiencia."
+          hide-trigger
         ></ai-text-enhancer>
       </div>
 
@@ -263,6 +277,7 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
           api-provider="openai"
           api-model="gpt-4"
           prompt="Eres un experto en e-commerce, especializado en descripciones de productos que venden."
+          hide-trigger
         ></ai-text-enhancer>
       </div>
     </div>
@@ -317,10 +332,12 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
       // Esperar a que el DOM esté listo
       document.addEventListener("DOMContentLoaded", async () => {
         try {
-          // Importar el componente
+          // Importar el componente y los plugins
+          const { TinyMCEPlugin, CKEditorPlugin, QuillPlugin, FroalaPlugin } =
+            await import("../dist/ai-text-enhancer-plugins.umd.js");
           await import("../dist/ai-text-enhancer.umd.js");
 
-          // Inicializar TinyMCE
+          // Inicializar TinyMCE con el plugin de IA
           tinymce.init({
             selector: "#tinymce-editor",
             height: 300,
@@ -346,10 +363,19 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
             ],
             toolbar:
               "undo redo | blocks | bold italic forecolor | alignleft aligncenter " +
-              "alignright alignjustify | bullist numlist outdent indent | removeformat | help",
+              "alignright alignjustify | bullist numlist outdent indent | removeformat | aienhancer | help",
             content_style:
               "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
             setup: function (editor) {
+              // Inicializar plugin de IA
+              const aiPlugin = TinyMCEPlugin({
+                enhancerId: "tinymce-enhancer",
+                buttonTooltip: "Mejorar con IA",
+              });
+
+              // Registrar plugin
+              aiPlugin(editor);
+
               editor.on("init", function () {
                 editor.setContent(
                   "Este es un ejemplo de descripción en TinyMCE que se puede optimizar para SEO usando IA."
@@ -358,9 +384,47 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
             },
           });
 
-          // Inicializar CKEditor 5
-          ClassicEditor.create(document.querySelector("#ckeditor-container"))
+          // Variable para guardar la instancia de CKEditor
+          let ckeditorInstance;
+
+          // Inicializar CKEditor 5 con el plugin de IA
+          ClassicEditor.create(document.querySelector("#ckeditor-container"), {
+            toolbar: [
+              "heading",
+              "|",
+              "bold",
+              "italic",
+              "link",
+              "bulletedList",
+              "numberedList",
+              "|",
+              "outdent",
+              "indent",
+              "|",
+              "aienhancer",
+              "|",
+              "undo",
+              "redo",
+            ],
+            // Registrar plugin personalizado
+            extraPlugins: [
+              function (editor) {
+                // Crear plugin
+                const aiPlugin = CKEditorPlugin({
+                  enhancerId: "ckeditor-enhancer",
+                  buttonTooltip: "Mejorar con IA",
+                });
+
+                // Aplicar plugin
+                if (typeof aiPlugin.init === "function") {
+                  aiPlugin.init(editor);
+                }
+              },
+            ],
+          })
             .then((editor) => {
+              ckeditorInstance = editor;
+
               editor.editing.view.change((writer) => {
                 writer.setStyle(
                   "min-height",
@@ -368,6 +432,7 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
                   editor.editing.view.document.getRoot()
                 );
               });
+
               editor.setData(
                 "Este es un ejemplo de descripción en CKEditor que se puede mejorar con técnicas de copywriting usando IA."
               );
@@ -376,16 +441,21 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
               console.error(error);
             });
 
-          // Inicializar Quill
+          // Inicializar Quill con el plugin de IA
           const quill = new Quill("#quill-editor", {
             theme: "snow",
             modules: {
               toolbar: [
+                [{ header: [1, 2, false] }],
                 ["bold", "italic", "underline", "strike"],
                 ["blockquote", "code-block"],
-                [{ header: 1 }, { header: 2 }],
                 [{ list: "ordered" }, { list: "bullet" }],
-                [{ script: "sub" }, { script: "super" }],
+                [
+                  { script: "sub" },
+                  {
+                    script: "super",
+                  },
+                ],
                 [{ indent: "-1" }, { indent: "+1" }],
                 [{ direction: "rtl" }],
                 [{ size: ["small", false, "large", "huge"] }],
@@ -398,7 +468,16 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
             },
           });
 
-          // Usar contenido inicial y configurar el observer manualmente para evitar warnings
+          // Agregar plugin de Quill
+          const quillPlugin = QuillPlugin({
+            enhancerId: "quill-enhancer",
+            buttonTooltip: "Mejorar con IA",
+          });
+
+          // Inicializar plugin
+          quillPlugin(quill);
+
+          // Usar contenido inicial
           quill.setContents([
             {
               insert:
@@ -406,11 +485,87 @@ Es una buena opción para quien busque calidad a buen precio.</textarea
             },
           ]);
 
-          // Inicializar Froala (requiere licencia)
+          // Inicializar Froala (requiere licencia) con plugin de IA
+          const froalaPlugin = FroalaPlugin({
+            enhancerId: "froala-enhancer",
+            buttonTooltip: "Mejorar con IA",
+          });
+
+          // Registrar el plugin en Froala
+          if (!FroalaEditor.PLUGINS.aiEnhancer) {
+            FroalaEditor.PLUGINS.aiEnhancer = froalaPlugin;
+          }
+
           new FroalaEditor("#froala-editor", {
+            toolbarButtons: {
+              moreText: {
+                buttons: [
+                  "bold",
+                  "italic",
+                  "underline",
+                  "strikeThrough",
+                  "subscript",
+                  "superscript",
+                  "fontFamily",
+                  "fontSize",
+                  "textColor",
+                  "backgroundColor",
+                  "inlineClass",
+                  "inlineStyle",
+                  "clearFormatting",
+                ],
+              },
+              moreParagraph: {
+                buttons: [
+                  "alignLeft",
+                  "alignCenter",
+                  "alignRight",
+                  "alignJustify",
+                  "formatOL",
+                  "formatUL",
+                  "paragraphFormat",
+                  "paragraphStyle",
+                  "lineHeight",
+                  "outdent",
+                  "indent",
+                  "quote",
+                ],
+              },
+              moreRich: {
+                buttons: [
+                  "insertLink",
+                  "insertImage",
+                  "insertVideo",
+                  "insertTable",
+                  "emoticons",
+                  "fontAwesome",
+                  "specialCharacters",
+                  "embedly",
+                  "insertFile",
+                  "insertHR",
+                  "aiEnhancer",
+                ],
+              },
+              moreMisc: {
+                buttons: [
+                  "undo",
+                  "redo",
+                  "fullscreen",
+                  "print",
+                  "getPDF",
+                  "spellChecker",
+                  "selectAll",
+                  "html",
+                  "help",
+                ],
+                align: "right",
+                buttonsVisible: 2,
+              },
+            },
             height: 300,
             placeholderText:
               "Este es un ejemplo de descripción en Froala que se puede mejorar con técnicas de e-commerce usando IA.",
+            pluginsEnabled: ["aiEnhancer"],
           });
         } catch (error) {
           console.error("Error inicializando los componentes:", error);

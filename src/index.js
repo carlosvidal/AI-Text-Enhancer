@@ -114,6 +114,7 @@ class AITextEnhancer extends HTMLElement {
       "user-id",
       "quota-endpoint",
       "proxy-endpoint",
+      "hide-trigger",
     ];
   }
 
@@ -167,6 +168,10 @@ class AITextEnhancer extends HTMLElement {
 
   get proxyEndpoint() {
     return this.getAttribute("proxy-endpoint");
+  }
+
+  get hideTrigger() {
+    return this.hasAttribute("hide-trigger");
   }
 
   // Método mejorado para connectedCallback
@@ -491,6 +496,28 @@ class AITextEnhancer extends HTMLElement {
         firstFocusable.focus();
       }
     }, 100);
+  }
+
+  // Método público para abrir el modal programáticamente
+  openModal() {
+    const modal = this.shadowRoot.querySelector(".modal");
+    if (modal) {
+      modal.classList.add("open");
+
+      // Asegurar que se actualice el estado de las herramientas
+      setTimeout(() => {
+        this.updateVisibleTools();
+        this.updateChatState();
+
+        // Enfocar el primer elemento interactivo para mejorar la accesibilidad
+        const firstFocusable = modal.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (firstFocusable) {
+          firstFocusable.focus();
+        }
+      }, 100);
+    }
   }
 
   // Función para asegurar que el modal exista

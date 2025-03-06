@@ -2,10 +2,23 @@
   "name": "ai-text-enhancer",
   "version": "1.0.0",
   "description": "A powerful web component for enhancing product descriptions using AI. This component integrates seamlessly with existing text editors and provides real-time AI-powered text enhancement capabilities.",
-  "main": "index.js",
+  "main": "dist/ai-text-enhancer.umd.js",
+  "module": "dist/ai-text-enhancer.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/ai-text-enhancer.es.js",
+      "require": "./dist/ai-text-enhancer.umd.js"
+    },
+    "./plugins": {
+      "import": "./dist/ai-text-enhancer-plugins.es.js",
+      "require": "./dist/ai-text-enhancer-plugins.umd.js"
+    }
+  },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run build:main && npm run build:plugins",
+    "build:main": "vite build --config vite.config.js",
+    "build:plugins": "vite build --config vite.plugins.config.js",
     "preview": "vite preview",
     "watch": "vite build --watch"
   },
