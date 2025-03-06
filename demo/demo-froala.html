@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Text Enhancer - Demo Froala</title>
+    <link rel="stylesheet" href="css/common-styles.css" />
+
+    <!-- Froala (requiere licencia) -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/froala-editor@latest/css/froala_editor.pkgd.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/froala-editor@latest/js/froala_editor.pkgd.min.js"></script>
+
+    <style>
+      /* Froala ajustes */
+      .fr-box.fr-basic .fr-element {
+        min-height: 300px !important;
+        height: 300px !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AI Text Enhancer - Demo Froala</h1>
+
+    <div class="api-key-form">
+      <label for="api-key">OpenAI API Key:</label>
+      <input type="password" id="api-key" placeholder="sk-..." />
+      <button id="update-api-key">Actualizar API Key</button>
+    </div>
+
+    <div class="demo-navigation">
+      <a href="index.html">Inicio</a>
+      <a href="demo-simple.html">Textarea Simple</a>
+      <a href="demo-tinymce.html">TinyMCE</a>
+      <a href="demo-ckeditor.html">CKEditor 5</a>
+      <a href="demo-quill.html">Quill</a>
+      <a href="demo-froala.html" class="active">Froala</a>
+    </div>
+
+    <!-- Froala Editor -->
+    <div class="editor-container">
+      <h2>
+        <img src="https://froala.com/favicon.ico" alt="Froala Logo" />
+        Froala Editor
+      </h2>
+      <div id="froala-editor"></div>
+      <ai-text-enhancer
+        id="froala-enhancer"
+        editor-id="froala-editor"
+        api-provider="openai"
+        api-model="gpt-4"
+        prompt="Eres un experto en e-commerce, especializado en descripciones de productos que venden."
+        hide-trigger
+      ></ai-text-enhancer>
+    </div>
+
+    <!-- Script para importar el componente y configurar Froala -->
+    <script type="module">
+      // Esperar a que el DOM esté listo
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          // Importar componente base
+          await import("../dist/ai-text-enhancer.umd.js");
+
+          // Importar plugins
+          const pluginsModule = await import(
+            "../dist/ai-text-enhancer-plugins.es.js"
+          );
+
+          // Verificar si los plugins se han cargado correctamente
+          console.log("Plugins importados:", pluginsModule);
+
+          // Inicializar Froala
+          new FroalaEditor("#froala-editor", {
+            toolbarButtons: {
+              moreText: {
+                buttons: [
+                  "bold",
+                  "italic",
+                  "underline",
+                  "strikeThrough",
+                  "subscript",
+                  "superscript",
+                  "fontFamily",
+                  "fontSize",
+                  "textColor",
+                  "backgroundColor",
+                  "inlineClass",
+                  "inlineStyle",
+                  "clearFormatting",
+                ],
+              },
+              moreParagraph: {
+                buttons: [
+                  "alignLeft",
+                  "alignCenter",
+                  "alignRight",
+                  "alignJustify",
+                  "formatOL",
+                  "formatUL",
+                  "paragraphFormat",
+                  "paragraphStyle",
+                  "lineHeight",
+                  "outdent",
+                  "indent",
+                  "quote",
+                ],
+              },
+              moreRich: {
+                buttons: [
+                  "insertLink",
+                  "insertImage",
+                  "insertVideo",
+                  "insertTable",
+                  "emoticons",
+                  "fontAwesome",
+                  "specialCharacters",
+                  "embedly",
+                  "insertFile",
+                  "insertHR",
+                ],
+              },
+              moreMisc: {
+                buttons: [
+                  "undo",
+                  "redo",
+                  "fullscreen",
+                  "print",
+                  "getPDF",
+                  "spellChecker",
+                  "selectAll",
+                  "html",
+                  "help",
+                ],
+                align: "right",
+                buttonsVisible: 2,
+              },
+            },
+            height: 300,
+            placeholderText:
+              "Este es un ejemplo de descripción en Froala que se puede mejorar con técnicas de e-commerce usando IA.",
+            events: {
+              // Añadir nuestro botón cuando Froala esté inicializado
+              initialized: function () {
+                setTimeout(() => {
+                  try {
+                    if (typeof pluginsModule.FroalaPlugin === "function") {
+                      // Crear e inicializar el plugin manual
+                      pluginsModule.FroalaPlugin({
+                        enhancerId: "froala-enhancer",
+                        buttonTooltip: "Mejorar con IA",
+                        editor: this, // Froala almacena la referencia en 'this' para los eventos
+                      });
+                    } else {
+                      console.error(
+                        "FroalaPlugin no está disponible o no es una función"
+                      );
+                    }
+                  } catch (err) {
+                    console.error(
+                      "Error al inicializar plugin de Froala:",
+                      err
+                    );
+                  }
+                }, 500);
+              },
+              // Establecer contenido inicial después de inicialización
+              initialized: function () {
+                this.html.set(
+                  "<p>Este es un ejemplo de descripción en Froala que se puede mejorar con técnicas de e-commerce usando IA.</p>" +
+                    "<p>El producto actual necesita una descripción que impulse más las ventas. Debería incluir " +
+                    "características clave, beneficios para el usuario, y elementos persuasivos que motiven " +
+                    "la compra del producto.</p>"
+                );
+              },
+            },
+          });
+        } catch (error) {
+          console.error("Error inicializando el demo de Froala:", error);
+        }
+      });
+    </script>
+
+    <script src="js/common.js"></script>
+  </body>
+</html>

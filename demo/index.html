@@ -1,318 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Text Enhancer - Test Page</title>
-
-    <!-- Styles -->
-    <style>
-      /* General Styles */
-      body {
-        font-family: system-ui, -apple-system, sans-serif;
-        max-width: 800px;
-        margin: 20px auto;
-        padding: 20px;
-      }
-
-      /* Container Styles */
-      .container {
-        padding: 20px;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        background: white;
-      }
-
-      /* Form Styles */
-      .api-key-form {
-        margin-bottom: 20px;
-        padding: 20px;
-        background: #f9fafb;
-        border-radius: 8px;
-      }
-
-      .form-group {
-        margin-bottom: 15px;
-      }
-
-      .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: 500;
-      }
-
-      .api-key-form input,
-      .api-key-form select {
-        padding: 8px 12px;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        width: 300px;
-        margin-right: 10px;
-        background-color: white;
-      }
-
-      /* Button Styles */
-      button {
-        padding: 8px 16px;
-        background: #3b82f6;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-      }
-
-      button:hover {
-        background: #2563eb;
-      }
-
-      .api-key-form button {
-        margin-top: 10px;
-      }
-    </style>
+    <title>AI Text Enhancer Demos</title>
+    <link rel="stylesheet" href="css/common-styles.css" />
   </head>
   <body>
-    <h1>AI Text Enhancer Test Page</h1>
+    <h1>AI Text Enhancer Demos</h1>
 
-    <!-- API Key Form -->
     <div class="api-key-form">
-      <div class="form-group">
-        <label for="api-key">OpenAI API Key:</label>
-        <input type="password" id="api-key" placeholder="sk-..." />
-      </div>
-
-      <div class="form-group">
-        <label for="api-provider">Provider:</label>
-        <select id="api-provider">
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic</option>
-          <option value="deepseek">DeepSeek</option>
-          <option value="cohere">Cohere</option>
-          <option value="google">Google</option>
-          <option value="mistral">Mistral</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="api-model">Model:</label>
-        <select id="api-model">
-          <option value="gpt-4-turbo">GPT-4 Turbo</option>
-          <option value="gpt-4">GPT-4</option>
-          <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="language">Language:</label>
-        <select id="language">
-          <option value="en">English</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-          <option value="it">Italian</option>
-          <option value="pt">Portuguese</option>
-        </select>
-      </div>
-
-      <button onclick="updateEnhancerConfig()">Update Configuration</button>
+      <label for="api-key">OpenAI API Key:</label>
+      <input type="password" id="api-key" placeholder="sk-..." />
+      <button id="update-api-key">Guardar API Key para todos los demos</button>
+      <p>
+        <small
+          >La API key se guardará en localStorage para todos los demos.</small
+        >
+      </p>
     </div>
 
-    <!-- Editor Container -->
+    <div class="demo-navigation">
+      <a href="demo-simple.html">Textarea Simple</a>
+      <a href="demo-tinymce.html">TinyMCE</a>
+      <a href="demo-ckeditor.html">CKEditor 5</a>
+      <a href="demo-quill.html">Quill</a>
+      <a href="demo-froala.html">Froala</a>
+    </div>
+
     <div class="container">
       <div class="editor-container">
-        <textarea
-          name="editor2"
-          id="editor2"
-          style="width: 100%; height: 300px"
-        >
-This is a sample product description that can be enhanced using AI.
-It's made with quality materials and comes in different sizes.
-Features include durability and ease of use. Good value for money.
-        </textarea>
-      </div>
+        <h2>🚀 Demos disponibles</h2>
+        <p>
+          Este proyecto demuestra la integración de AI Text Enhancer con varios
+          editores WYSIWYG populares:
+        </p>
 
-      <ai-text-enhancer
-        id="enhancer"
-        editor-id="editor2"
-        api-provider="openai"
-        api-model="gpt-4-turbo"
-        language="es"
-        tenant-id="1"
-        user-id="mt0001"
-        proxy-endpoint="http://llmproxy2.test:8080/api/llm-proxy"
-      >
-      </ai-text-enhancer>
+        <ul>
+          <li>
+            <strong>Textarea Simple</strong> - Implementación básica con un
+            textarea estándar
+          </li>
+          <li>
+            <strong>TinyMCE</strong> - Integración con TinyMCE incluyendo un
+            botón en la barra de herramientas
+          </li>
+          <li>
+            <strong>CKEditor 5</strong> - Integración con CKEditor con plugin
+            personalizado
+          </li>
+          <li><strong>Quill</strong> - Integración con Quill editor</li>
+          <li>
+            <strong>Froala</strong> - Integración con Froala WYSIWYG editor
+            (requiere licencia)
+          </li>
+        </ul>
+
+        <p>
+          Cada demo muestra cómo integrar el componente AI Text Enhancer tanto
+          externo (fuera del editor) como interno (dentro de la barra de
+          herramientas del editor).
+        </p>
+
+        <h3>Para comenzar:</h3>
+        <ol>
+          <li>Introduce tu API key de OpenAI en el campo superior</li>
+          <li>Haz clic en "Guardar API Key para todos los demos"</li>
+          <li>Navega a cualquier demo usando los enlaces de arriba</li>
+        </ol>
+      </div>
     </div>
 
-    <!-- Scripts -->
-    <script>
-      // Model configurations
-      const providerModels = {
-        openai: [
-          { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
-          { value: "gpt-4", label: "GPT-4" },
-          { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
-        ],
-        anthropic: [
-          { value: "claude-3-opus-20240229", label: "Claude 3 Opus" },
-          { value: "claude-3-sonnet-20240229", label: "Claude 3 Sonnet" },
-        ],
-        deepseek: [{ value: "deepseek-chat", label: "DeepSeek Chat" }],
-        cohere: [{ value: "command", label: "Command" }],
-        google: [{ value: "gemini-pro", label: "Gemini Pro" }],
-        mistral: [
-          { value: "mistral-large-latest", label: "Mistral Large" },
-          { value: "mistral-medium-latest", label: "Mistral Medium" },
-        ],
-      };
-
-      // Helper Functions
-      function updateEnhancerAttributes(settings) {
-        const enhancer = document.getElementById("enhancer");
-        // console.log("Updating attributes:", { settings, enhancer });
-
-        if (enhancer && settings) {
-          // Force a small delay to ensure proper update sequence
-          setTimeout(() => {
-            if (settings.apiKey) {
-              enhancer.setAttribute("api-key", settings.apiKey);
-            }
-            if (settings.provider) {
-              enhancer.setAttribute("api-provider", settings.provider);
-            }
-            if (settings.model) {
-              enhancer.setAttribute("api-model", settings.model);
-            }
-            if (settings.language) {
-              enhancer.setAttribute("language", settings.language);
-            }
-
-            // Dispatch a custom event to ensure the component knows about the changes
-            enhancer.dispatchEvent(
-              new CustomEvent("configurationUpdated", {
-                detail: settings,
-                bubbles: true,
-                composed: true,
-              })
-            );
-          }, 0);
-        }
-      }
-
-      // Load saved settings on startup
-      async function loadSavedSettings() {
-        try {
-          // console.log("Loading saved settings...");
-          const savedSettings = JSON.parse(
-            localStorage.getItem("aiEnhancerSettings") || "{}"
-          );
-          // console.log("Saved settings:", savedSettings);
-
-          if (!savedSettings || Object.keys(savedSettings).length === 0) {
-            // console.log("No saved settings found");
-            return;
-          }
-
-          // Update form fields first
-          if (savedSettings.apiKey) {
-            document.getElementById("api-key").value = savedSettings.apiKey;
-          }
-          if (savedSettings.provider) {
-            const providerSelect = document.getElementById("api-provider");
-            providerSelect.value = savedSettings.provider;
-
-            const modelSelect = document.getElementById("api-model");
-            const models = providerModels[savedSettings.provider] || [];
-            modelSelect.innerHTML = models
-              .map(
-                (model) =>
-                  `<option value="${model.value}">${model.label}</option>`
-              )
-              .join("");
-
-            if (savedSettings.model) {
-              modelSelect.value = savedSettings.model;
-            }
-          }
-          if (savedSettings.language) {
-            document.getElementById("language").value = savedSettings.language;
-          }
-
-          // Update component attributes with retry mechanism
-          const enhancer = document.getElementById("enhancer");
-          // console.log("Enhancer component:", enhancer);
-
-          if (enhancer) {
-            let retryCount = 0;
-            const maxRetries = 10;
-
-            const tryUpdateAttributes = () => {
-              // console.log("Attempt to update attributes:", retryCount);
-              if (enhancer.isConnected) {
-                // console.log("Component is connected, updating attributes");
-                updateEnhancerAttributes(savedSettings);
-                return true;
-              }
-
-              if (retryCount < maxRetries) {
-                retryCount++;
-                setTimeout(tryUpdateAttributes, 100);
-                return false;
-              }
-
-              console.warn("Max retries reached, component might not be ready");
-              return false;
-            };
-
-            tryUpdateAttributes();
-          }
-        } catch (error) {
-          console.error("Error loading settings:", error);
-        }
-      }
-
-      // Event Listeners
-      document.addEventListener("DOMContentLoaded", loadSavedSettings);
-
-      window.addEventListener("load", () => {
-        // console.log("Window load event fired");
-        loadSavedSettings();
-      });
-
-      // Configuration Functions
-      window.updateEnhancerConfig = async function () {
-        const settings = {
-          apiKey: document.getElementById("api-key").value,
-          provider: document.getElementById("api-provider").value,
-          model: document.getElementById("api-model").value,
-          language: document.getElementById("language").value,
-        };
-
-        localStorage.setItem("aiEnhancerSettings", JSON.stringify(settings));
-        updateEnhancerAttributes(settings);
-
-        if (settings.language) {
-          const enhancer = document.getElementById("enhancer");
-          if (enhancer) {
-            const existingModal = enhancer.shadowRoot?.querySelector(".modal");
-            if (existingModal) {
-              existingModal.remove();
-            }
-
-            enhancer.dispatchEvent(
-              new CustomEvent("languageChange", {
-                detail: { language: settings.language },
-                bubbles: true,
-                composed: true,
-              })
-            );
-          }
-        }
-      };
-    </script>
-
-    <!-- Import AI Text Enhancer Component -->
-    <script type="module">
-      import "../src/index.js";
-    </script>
+    <script src="js/common.js"></script>
   </body>
 </html>

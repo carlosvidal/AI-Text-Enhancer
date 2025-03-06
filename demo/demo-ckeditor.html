@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Text Enhancer - Demo CKEditor</title>
+    <link rel="stylesheet" href="css/common-styles.css" />
+
+    <!-- CKEditor 5 -->
+    <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
+
+    <style>
+      /* CKEditor necesita estos ajustes adicionales */
+      .ck-editor__editable {
+        min-height: 300px !important;
+        max-height: 300px !important;
+        overflow-y: auto !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AI Text Enhancer - Demo CKEditor</h1>
+
+    <div class="api-key-form">
+      <label for="api-key">OpenAI API Key:</label>
+      <input type="password" id="api-key" placeholder="sk-..." />
+      <button id="update-api-key">Actualizar API Key</button>
+    </div>
+
+    <div class="demo-navigation">
+      <a href="index.html">Inicio</a>
+      <a href="demo-simple.html">Textarea Simple</a>
+      <a href="demo-tinymce.html">TinyMCE</a>
+      <a href="demo-ckeditor.html" class="active">CKEditor 5</a>
+      <a href="demo-quill.html">Quill</a>
+      <a href="demo-froala.html">Froala</a>
+    </div>
+
+    <!-- CKEditor -->
+    <div class="editor-container">
+      <h2>
+        <img src="https://ckeditor.com/favicon.ico" alt="CKEditor Logo" />
+        CKEditor 5
+      </h2>
+      <div id="ckeditor-container"></div>
+      <ai-text-enhancer
+        id="ckeditor-enhancer"
+        editor-id="ckeditor-container"
+        api-provider="openai"
+        api-model="gpt-4"
+        prompt="Eres un experto en copywriting, especializado en crear contenido persuasivo."
+        hide-trigger
+      ></ai-text-enhancer>
+    </div>
+
+    <!-- Script para importar el componente y configurar CKEditor -->
+    <script type="module">
+      // Esperar a que el DOM esté listo
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          // Importar componente base
+          await import("../dist/ai-text-enhancer.umd.js");
+
+          // Importar plugins
+          const pluginsModule = await import(
+            "../dist/ai-text-enhancer-plugins.es.js"
+          );
+
+          // Verificar si los plugins se han cargado correctamente
+          console.log("Plugins importados:", pluginsModule);
+
+          // Variable para guardar la instancia de CKEditor
+          let ckeditorInstance;
+
+          // Inicializar CKEditor 5 con el plugin de IA
+          ClassicEditor.create(document.querySelector("#ckeditor-container"), {
+            toolbar: [
+              "heading",
+              "|",
+              "bold",
+              "italic",
+              "link",
+              "bulletedList",
+              "numberedList",
+              "|",
+              "outdent",
+              "indent",
+              "|",
+              "undo",
+              "redo",
+            ],
+            // Inicializar después de que CKEditor esté listo
+            extraPlugins: [
+              function (editor) {
+                // Aplicar el plugin una vez que el editor está listo
+                setTimeout(() => {
+                  try {
+                    if (typeof pluginsModule.CKEditorPlugin === "function") {
+                      // Crear y aplicar plugin
+                      pluginsModule.CKEditorPlugin({
+                        enhancerId: "ckeditor-enhancer",
+                        buttonTooltip: "Mejorar con IA",
+                        editor: editor, // Pasa el editor como parámetro
+                      });
+                    } else {
+                      console.error(
+                        "CKEditorPlugin no está disponible o no es una función"
+                      );
+                    }
+                  } catch (err) {
+                    console.error(
+                      "Error al inicializar plugin de CKEditor:",
+                      err
+                    );
+                  }
+                }, 500);
+              },
+            ],
+          })
+            .then((editor) => {
+              ckeditorInstance = editor;
+
+              editor.editing.view.change((writer) => {
+                writer.setStyle(
+                  "min-height",
+                  "300px",
+                  editor.editing.view.document.getRoot()
+                );
+              });
+
+              editor.setData(
+                "Este es un ejemplo de descripción en CKEditor que se puede mejorar con técnicas de copywriting usando IA. " +
+                  "El texto actual es bastante básico y carece de elementos persuasivos. " +
+                  "Necesita llamadas a la acción más fuertes y un lenguaje que conecte emocionalmente con el lector."
+              );
+            })
+            .catch((error) => {
+              console.error("Error al inicializar CKEditor:", error);
+            });
+        } catch (error) {
+          console.error("Error inicializando el demo de CKEditor:", error);
+        }
+      });
+    </script>
+
+    <script src="js/common.js"></script>
+  </body>
+</html>

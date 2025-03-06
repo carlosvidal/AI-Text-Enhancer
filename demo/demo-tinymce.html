@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Text Enhancer - Demo TinyMCE</title>
+    <link rel="stylesheet" href="css/common-styles.css" />
+
+    <!-- TinyMCE -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.7.0/tinymce.min.js"></script>
+  </head>
+  <body>
+    <h1>AI Text Enhancer - Demo TinyMCE</h1>
+
+    <div class="api-key-form">
+      <label for="api-key">OpenAI API Key:</label>
+      <input type="password" id="api-key" placeholder="sk-..." />
+      <button id="update-api-key">Actualizar API Key</button>
+    </div>
+
+    <div class="demo-navigation">
+      <a href="index.html">Inicio</a>
+      <a href="demo-simple.html">Textarea Simple</a>
+      <a href="demo-tinymce.html" class="active">TinyMCE</a>
+      <a href="demo-ckeditor.html">CKEditor 5</a>
+      <a href="demo-quill.html">Quill</a>
+      <a href="demo-froala.html">Froala</a>
+    </div>
+
+    <!-- TinyMCE Editor -->
+    <div class="editor-container">
+      <h2>
+        <img src="https://www.tiny.cloud/favicon.ico" alt="TinyMCE Logo" />
+        Editor TinyMCE
+      </h2>
+      <div id="tinymce-editor"></div>
+      <ai-text-enhancer
+        id="tinymce-enhancer"
+        editor-id="tinymce-editor"
+        api-provider="openai"
+        api-model="gpt-4"
+        prompt="Eres un asistente experto en SEO, especializado en optimizar contenido para motores de búsqueda."
+        hide-trigger
+      ></ai-text-enhancer>
+    </div>
+
+    <!-- Script para importar el componente y configurar TinyMCE -->
+    <script type="module">
+      // Esperar a que el DOM esté listo
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          // Importar componente base
+          await import("../dist/ai-text-enhancer.umd.js");
+
+          // Importar plugins
+          const pluginsModule = await import(
+            "../dist/ai-text-enhancer-plugins.es.js"
+          );
+
+          // Verificar si los plugins se han cargado correctamente
+          console.log("Plugins importados:", pluginsModule);
+
+          // Inicializar TinyMCE con el plugin de IA
+          tinymce.init({
+            selector: "#tinymce-editor",
+            height: 300,
+            menubar: false,
+            plugins: [
+              "advlist",
+              "autolink",
+              "lists",
+              "link",
+              "image",
+              "charmap",
+              "preview",
+              "anchor",
+              "searchreplace",
+              "visualblocks",
+              "code",
+              "fullscreen",
+              "insertdatetime",
+              "media",
+              "table",
+              "help",
+              "wordcount",
+            ],
+            toolbar:
+              "undo redo | blocks | bold italic forecolor | alignleft aligncenter " +
+              "alignright alignjustify | bullist numlist outdent indent | removeformat | aienhancer | help",
+            content_style:
+              "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
+            setup: function (editor) {
+              // Verificar que TinyMCEPlugin está disponible
+              if (typeof pluginsModule.TinyMCEPlugin === "function") {
+                // Inicializar plugin de IA
+                const aiPlugin = pluginsModule.TinyMCEPlugin({
+                  enhancerId: "tinymce-enhancer",
+                  buttonTooltip: "Mejorar con IA",
+                });
+
+                // Registrar plugin
+                aiPlugin(editor);
+              } else {
+                console.error(
+                  "TinyMCEPlugin no está disponible o no es una función"
+                );
+              }
+
+              editor.on("init", function () {
+                editor.setContent(
+                  "Este es un ejemplo de descripción en TinyMCE que se puede optimizar para SEO usando IA. " +
+                    "Incluye algunas palabras clave pero necesita mejorar su estructura y relevancia. " +
+                    "El contenido debe ser más atractivo para los motores de búsqueda."
+                );
+              });
+            },
+          });
+        } catch (error) {
+          console.error("Error inicializando el demo de TinyMCE:", error);
+        }
+      });
+    </script>
+
+    <script src="js/common.js"></script>
+  </body>
+</html>
