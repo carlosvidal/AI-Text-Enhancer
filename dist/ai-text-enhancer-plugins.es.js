@@ -2,47 +2,133 @@ function TinyMCEPlugin(options = {}) {
   const {
     enhancerId,
     buttonTooltip = "Mejorar con IA",
-    buttonIcon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/></svg>'
+    buttonText = "IA",
+    buttonIcon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/></svg>',
+    debug = false
   } = options;
   return function(editor) {
     editor.ui.registry.addButton("aienhancer", {
       icon: "magic",
       // Icono predefinido o usar tu SVG personalizado
       tooltip: buttonTooltip,
+      text: buttonText,
       onAction: function() {
-        const currentSelection = editor.selection.getContent();
+        if (debug) {
+          console.log("[TinyMCEPlugin] AI enhancer button clicked");
+        }
+        editor.selection.getContent();
+        editor.getContent();
         const enhancer = document.getElementById(enhancerId);
-        if (enhancer && typeof enhancer.openModal === "function") {
-          const handleContentGenerated = (event) => {
-            const generatedContent = event.detail.content;
-            if (generatedContent) {
-              if (currentSelection) {
-                editor.selection.setContent(generatedContent);
-              } else {
-                editor.setContent(generatedContent);
-              }
+        if (!enhancer) {
+          console.error(
+            `[TinyMCEPlugin] AI Text Enhancer with ID "${enhancerId}" not found`
+          );
+          return;
+        }
+        if (!enhancer.isInitialized && typeof enhancer.initializeComponents === "function") {
+          console.log(
+            "[TinyMCEPlugin] Initializing AI Text Enhancer component"
+          );
+          enhancer.initializeComponents();
+        }
+        if (enhancer.editorAdapter) {
+          enhancer.editorAdapter.getContent = function() {
+            return editor.getContent();
+          };
+          enhancer.editorAdapter.setContent = function(content) {
+            if (content) {
+              editor.setContent(content);
               editor.undoManager.add();
+              return true;
             }
+            return false;
+          };
+          if (debug) {
+            console.log("[TinyMCEPlugin] Editor adapter methods overridden");
+          }
+        } else {
+          console.warn(
+            "[TinyMCEPlugin] Editor adapter not available in enhancer"
+          );
+        }
+        const handleResponseUse = (event) => {
+          const { responseId } = event.detail || {};
+          if (debug) {
+            console.log(
+              "[TinyMCEPlugin] Received responseUse event:",
+              event.detail
+            );
+          }
+          if (enhancer.responseHistory) {
+            const response = enhancer.responseHistory.getResponse(responseId);
+            if (response && response.content) {
+              if (debug) {
+                console.log("[TinyMCEPlugin] Setting content from response:", {
+                  id: responseId,
+                  contentLength: response.content.length
+                });
+              }
+              editor.setContent(response.content);
+              editor.undoManager.add();
+              setTimeout(() => {
+                const modal = enhancer.shadowRoot.querySelector(".modal");
+                if (modal) {
+                  modal.classList.remove("open");
+                }
+              }, 100);
+              enhancer.removeEventListener("responseUse", handleResponseUse);
+            } else {
+              console.warn(
+                "[TinyMCEPlugin] Response not found or content empty:",
+                responseId
+              );
+            }
+          } else {
+            console.warn(
+              "[TinyMCEPlugin] Response history not available in enhancer"
+            );
+          }
+        };
+        enhancer.addEventListener("responseUse", handleResponseUse);
+        const handleContentGenerated = (event) => {
+          var _a;
+          const generatedContent = (_a = event.detail) == null ? void 0 : _a.content;
+          if (debug) {
+            console.log(
+              "[TinyMCEPlugin] Received ai-content-generated event:",
+              event.detail
+            );
+          }
+          if (generatedContent) {
+            editor.setContent(generatedContent);
+            editor.undoManager.add();
             enhancer.removeEventListener(
               "ai-content-generated",
               handleContentGenerated
             );
-          };
-          enhancer.addEventListener(
-            "ai-content-generated",
-            handleContentGenerated
-          );
+          }
+        };
+        enhancer.addEventListener(
+          "ai-content-generated",
+          handleContentGenerated
+        );
+        if (typeof enhancer.openModal === "function") {
           enhancer.openModal();
         } else {
           console.error(
-            `AI Text Enhancer with ID "${enhancerId}" not found or not initialized`
+            "[TinyMCEPlugin] openModal method not available on enhancer"
           );
         }
       }
     });
     editor.addCommand("insertAIContent", function(content) {
-      editor.selection.setContent(content);
-      editor.undoManager.add();
+      if (content) {
+        editor.setContent(content);
+        editor.undoManager.add();
+        if (debug) {
+          console.log("[TinyMCEPlugin] Content inserted via command");
+        }
+      }
     });
     return {
       getMetadata: function() {

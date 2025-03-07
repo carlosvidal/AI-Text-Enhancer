@@ -3243,45 +3243,300 @@ class CacheManager {
 function createCacheManager(options = {}) {
   return new CacheManager(options);
 }
-class EditorAdapter {
-  constructor(editorId, editorType = "textarea") {
-    console.log(
-      "[EditorAdapter] Initializing with editor ID:",
-      editorId,
-      "and type:",
-      editorType
-    );
+class TinyMCEAdapter {
+  /**
+   * Crea un nuevo adaptador para TinyMCE
+   * @param {string} editorId - ID del elemento contenedor de TinyMCE
+   * @param {Object} options - Opciones adicionales
+   */
+  constructor(editorId, options = {}) {
     this.editorId = editorId;
-    this.editorType = editorType;
-    this.editor = document.getElementById(editorId);
-    if (!this.editor) {
-      console.error("[EditorAdapter] Editor element not found:", editorId);
+    this.options = {
+      debug: options.debug || false,
+      waitTimeout: options.waitTimeout || 2e3,
+      ...options
+    };
+    this.editorInstance = null;
+    this._initialized = false;
+    this._findEditorInstance();
+  }
+  /**
+   * Busca la instancia de TinyMCE ya sea por ID o en el objeto global
+   * @private
+   */
+  _findEditorInstance() {
+    try {
+      if (typeof window.tinymce !== "undefined") {
+        const instance = window.tinymce.get(this.editorId);
+        if (instance) {
+          this.editorInstance = instance;
+          this._initialized = true;
+          if (this.options.debug) {
+            console.log(
+              `[TinyMCEAdapter] Found editor instance for "${this.editorId}"`,
+              instance
+            );
+          }
+          return true;
+        }
+      }
+      if (this.options.debug) {
+        console.warn(
+          `[TinyMCEAdapter] TinyMCE instance not found for "${this.editorId}"`
+        );
+      }
+      return false;
+    } catch (error) {
+      console.error(`[TinyMCEAdapter] Error finding TinyMCE instance:`, error);
+      return false;
     }
   }
+  /**
+   * Espera a que TinyMCE esté inicializado
+   * @returns {Promise<boolean>} Promesa que se resuelve cuando el editor está listo
+   */
+  async waitForEditor() {
+    if (this._initialized && this.editorInstance) {
+      return true;
+    }
+    return new Promise((resolve) => {
+      if (this._findEditorInstance()) {
+        resolve(true);
+        return;
+      }
+      const startTime = Date.now();
+      const checkInterval = setInterval(() => {
+        if (this._findEditorInstance()) {
+          clearInterval(checkInterval);
+          resolve(true);
+          return;
+        }
+        if (Date.now() - startTime > this.options.waitTimeout) {
+          clearInterval(checkInterval);
+          console.warn(
+            `[TinyMCEAdapter] Timeout waiting for TinyMCE to initialize`
+          );
+          resolve(false);
+        }
+      }, 100);
+    });
+  }
+  /**
+   * Obtiene el contenido del editor
+   * @returns {string} El contenido HTML del editor o cadena vacía si no está disponible
+   */
+  async getContent() {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        const content = this.editorInstance.getContent();
+        if (this.options.debug) {
+          console.log(
+            `[TinyMCEAdapter] Retrieved content (${content.length} chars)`
+          );
+        }
+        return content;
+      }
+    } catch (error) {
+      console.error(`[TinyMCEAdapter] Error getting content:`, error);
+    }
+    return "";
+  }
+  /**
+   * Establece el contenido del editor
+   * @param {string} content - El contenido HTML a establecer
+   * @returns {boolean} true si se estableció correctamente, false en caso contrario
+   */
+  async setContent(content) {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        this.editorInstance.setContent(content);
+        this.editorInstance.undoManager.add();
+        if (this.options.debug) {
+          console.log(
+            `[TinyMCEAdapter] Content set successfully (${content.length} chars)`
+          );
+        }
+        return true;
+      }
+    } catch (error) {
+      console.error(`[TinyMCEAdapter] Error setting content:`, error);
+    }
+    return false;
+  }
+  /**
+   * Inserta contenido en la posición actual del cursor
+   * @param {string} content - El contenido HTML a insertar
+   * @returns {boolean} true si se insertó correctamente, false en caso contrario
+   */
+  async insertContent(content) {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        this.editorInstance.execCommand("mceInsertContent", false, content);
+        this.editorInstance.undoManager.add();
+        if (this.options.debug) {
+          console.log(`[TinyMCEAdapter] Content inserted successfully`);
+        }
+        return true;
+      }
+    } catch (error) {
+      console.error(`[TinyMCEAdapter] Error inserting content:`, error);
+    }
+    return false;
+  }
+  /**
+   * Registra un plugin personalizado en TinyMCE
+   * @param {Object} plugin - El plugin a registrar
+   * @param {Object} options - Opciones para el registro del plugin
+   * @returns {boolean} true si se registró correctamente, false en caso contrario
+   */
+  registerPlugin(plugin, options = {}) {
+    try {
+      if (typeof window.tinymce === "undefined") {
+        console.error(
+          `[TinyMCEAdapter] TinyMCE not available for plugin registration`
+        );
+        return false;
+      }
+      if (this.options.debug) {
+        console.log(`[TinyMCEAdapter] Registering plugin:`, plugin);
+      }
+      return true;
+    } catch (error) {
+      console.error(`[TinyMCEAdapter] Error registering plugin:`, error);
+      return false;
+    }
+  }
+  /**
+   * Verifica si el editor está inicializado
+   * @returns {boolean} true si el editor está inicializado, false en caso contrario
+   */
+  isInitialized() {
+    return this._initialized && this.editorInstance !== null;
+  }
+}
+function createTinyMCEAdapter(editorId, options = {}) {
+  return new TinyMCEAdapter(editorId, options);
+}
+class EditorAdapter {
+  /**
+   * Constructor del adaptador de editor
+   * @param {string} editorId - ID del elemento editor
+   * @param {string} editorType - Tipo de editor ('textarea', 'tinymce', etc.)
+   * @param {Object} options - Opciones adicionales
+   */
+  constructor(editorId, editorType = "textarea", options = {}) {
+    this.editorId = editorId;
+    this.editorType = (editorType == null ? void 0 : editorType.toLowerCase()) || "textarea";
+    this.options = {
+      debug: options.debug || false,
+      ...options
+    };
+    this.editor = document.getElementById(editorId);
+    this.specificAdapters = {};
+    if (this.options.debug) {
+      console.log("[EditorAdapter] Initializing with:", {
+        editorId,
+        editorType: this.editorType,
+        editorFound: !!this.editor
+      });
+    }
+    if (!this.editor) {
+      console.warn(`[EditorAdapter] Editor element not found: ${editorId}`);
+    }
+    this.initSpecificAdapter();
+  }
+  /**
+   * Inicializa adaptadores específicos según el tipo de editor
+   * @private
+   */
+  initSpecificAdapter() {
+    switch (this.editorType) {
+      case "tinymce":
+        try {
+          this.specificAdapters.tinymce = createTinyMCEAdapter(this.editorId, {
+            debug: this.options.debug
+          });
+          if (this.options.debug) {
+            console.log("[EditorAdapter] TinyMCE adapter initialized");
+          }
+        } catch (error) {
+          console.error(
+            "[EditorAdapter] Failed to initialize TinyMCE adapter:",
+            error
+          );
+        }
+        break;
+    }
+  }
+  /**
+   * Obtiene el contenido del editor
+   * @returns {string} Contenido del editor
+   */
   getContent() {
     try {
-      const editorType = (this.editorType || "textarea").toLowerCase();
+      const editorType = this.editorType.toLowerCase();
       switch (editorType) {
         case "tinymce":
+          if (this.specificAdapters.tinymce) {
+            return this.specificAdapters.tinymce.getContent() || "";
+          }
+          if (typeof window.tinymce !== "undefined") {
+            const tinyEditor = window.tinymce.get(this.editorId);
+            if (tinyEditor) {
+              return tinyEditor.getContent() || "";
+            }
+          }
+          console.warn("[EditorAdapter] TinyMCE not initialized properly");
           return "";
         case "textarea":
         default:
           const editorElement = document.getElementById(this.editorId);
           if (editorElement) {
-            return editorElement.value || editorElement.innerHTML || "";
+            if (typeof editorElement.value !== "undefined") {
+              return editorElement.value || "";
+            } else if (typeof editorElement.innerHTML !== "undefined") {
+              return editorElement.innerHTML || "";
+            }
           }
           return "";
       }
     } catch (error) {
-      console.error("❌ Error getting editor content:", error);
+      console.error("[EditorAdapter] Error getting editor content:", error);
       return "";
     }
   }
+  /**
+   * Establece el contenido del editor
+   * @param {string} content - Contenido a establecer
+   * @returns {boolean} true si se estableció correctamente, false en caso contrario
+   */
   setContent(content) {
+    if (!content && content !== "") {
+      console.warn("[EditorAdapter] Attempt to set null/undefined content");
+      return false;
+    }
     try {
-      const editorType = (this.editorType || "textarea").toLowerCase();
+      const editorType = this.editorType.toLowerCase();
       switch (editorType) {
         case "tinymce":
+          if (this.specificAdapters.tinymce) {
+            return this.specificAdapters.tinymce.setContent(content);
+          }
+          if (typeof window.tinymce !== "undefined") {
+            const tinyEditor = window.tinymce.get(this.editorId);
+            if (tinyEditor) {
+              tinyEditor.setContent(content);
+              tinyEditor.undoManager.add();
+              if (this.options.debug) {
+                console.log("[EditorAdapter] Content set in TinyMCE");
+              }
+              return true;
+            }
+          }
+          console.warn("[EditorAdapter] TinyMCE not initialized properly");
           return false;
         case "textarea":
         default:
@@ -3298,14 +3553,155 @@ class EditorAdapter {
           return false;
       }
     } catch (error) {
-      console.error("❌ Error setting editor content:", error);
+      console.error("[EditorAdapter] Error setting editor content:", error);
       return false;
     }
   }
-  // Método para actualizar el tipo de editor
+  /**
+   * Actualiza el tipo de editor
+   * @param {string} type - Nuevo tipo de editor
+   */
   setEditorType(type) {
-    this.editorType = type;
-    console.log("[EditorAdapter] Editor type updated to:", type);
+    if (!type) return;
+    const oldType = this.editorType;
+    this.editorType = type.toLowerCase();
+    if (this.options.debug) {
+      console.log("[EditorAdapter] Editor type updated:", {
+        from: oldType,
+        to: this.editorType
+      });
+    }
+    if (oldType !== this.editorType) {
+      this.initSpecificAdapter();
+    }
+  }
+  /**
+   * Verifica si el editor tiene contenido
+   * @returns {boolean} true si el editor tiene contenido, false en caso contrario
+   */
+  hasContent() {
+    const content = this.getContent();
+    return content !== null && content !== void 0 && content.trim() !== "";
+  }
+  /**
+   * Inserta contenido en la posición actual del cursor (solo disponible en algunos editores)
+   * @param {string} content - Contenido a insertar
+   * @returns {boolean} true si se insertó correctamente, false en caso contrario
+   */
+  insertContent(content) {
+    if (!content) {
+      console.warn("[EditorAdapter] Attempt to insert null/undefined content");
+      return false;
+    }
+    try {
+      const editorType = this.editorType.toLowerCase();
+      switch (editorType) {
+        case "tinymce":
+          if (this.specificAdapters.tinymce) {
+            return this.specificAdapters.tinymce.insertContent(content);
+          }
+          if (typeof window.tinymce !== "undefined") {
+            const tinyEditor = window.tinymce.get(this.editorId);
+            if (tinyEditor) {
+              tinyEditor.execCommand("mceInsertContent", false, content);
+              tinyEditor.undoManager.add();
+              return true;
+            }
+          }
+          return false;
+        // Se pueden agregar otros editores que soporten inserción de contenido
+        case "textarea":
+        default:
+          const editorElement = document.getElementById(this.editorId);
+          if (editorElement) {
+            if (typeof editorElement.value !== "undefined") {
+              editorElement.value += content;
+              return true;
+            } else if (typeof editorElement.innerHTML !== "undefined") {
+              editorElement.innerHTML += content;
+              return true;
+            }
+          }
+          return false;
+      }
+    } catch (error) {
+      console.error("[EditorAdapter] Error inserting content:", error);
+      return false;
+    }
+  }
+  /**
+   * Obtiene la selección actual en el editor
+   * @returns {string} Texto seleccionado o cadena vacía si no hay selección
+   */
+  getSelection() {
+    try {
+      const editorType = this.editorType.toLowerCase();
+      switch (editorType) {
+        case "tinymce":
+          if (typeof window.tinymce !== "undefined") {
+            const tinyEditor = window.tinymce.get(this.editorId);
+            if (tinyEditor) {
+              return tinyEditor.selection.getContent() || "";
+            }
+          }
+          return "";
+        case "textarea":
+        default:
+          const editorElement = document.getElementById(this.editorId);
+          if (editorElement && typeof editorElement.selectionStart !== "undefined") {
+            return editorElement.value.substring(
+              editorElement.selectionStart,
+              editorElement.selectionEnd
+            ) || "";
+          }
+          return "";
+      }
+    } catch (error) {
+      console.error("[EditorAdapter] Error getting selection:", error);
+      return "";
+    }
+  }
+  /**
+   * Reemplaza la selección actual con el contenido proporcionado
+   * @param {string} content - Contenido para reemplazar la selección
+   * @returns {boolean} true si se reemplazó correctamente, false en caso contrario
+   */
+  replaceSelection(content) {
+    if (!content && content !== "") {
+      console.warn(
+        "[EditorAdapter] Attempt to replace selection with null/undefined content"
+      );
+      return false;
+    }
+    try {
+      const editorType = this.editorType.toLowerCase();
+      switch (editorType) {
+        case "tinymce":
+          if (typeof window.tinymce !== "undefined") {
+            const tinyEditor = window.tinymce.get(this.editorId);
+            if (tinyEditor) {
+              tinyEditor.selection.setContent(content);
+              tinyEditor.undoManager.add();
+              return true;
+            }
+          }
+          return false;
+        case "textarea":
+        default:
+          const editorElement = document.getElementById(this.editorId);
+          if (editorElement && typeof editorElement.selectionStart !== "undefined") {
+            const start = editorElement.selectionStart;
+            const end = editorElement.selectionEnd;
+            editorElement.value = editorElement.value.substring(0, start) + content + editorElement.value.substring(end);
+            editorElement.selectionStart = editorElement.selectionEnd = start + content.length;
+            return true;
+          }
+          return false;
+      }
+    } catch (error) {
+      console.error("[EditorAdapter] Error replacing selection:", error);
+      return false;
+    }
   }
 }
 const createEventEmitter = (element) => {
@@ -3630,38 +4026,82 @@ const keyboardNavigationMixin = {
   }
 };
 const responseHandlerMixin = {
+  /**
+   * Maneja el evento responseCopy para copiar el contenido al portapapeles
+   * @param {CustomEvent} event - El evento con el ID de la respuesta
+   */
   handleResponseCopy(event) {
     var _a;
     console.log("[ResponseHandlers] Copy event received:", event.detail);
     const { responseId } = event.detail;
+    if (!responseId) {
+      console.warn("[ResponseHandlers] No responseId provided in copy event");
+      return;
+    }
     const response = (_a = this.responseHistory) == null ? void 0 : _a.getResponse(responseId);
     if (!response) {
       console.warn("[ResponseHandlers] No response found for ID:", responseId);
       return;
     }
-    navigator.clipboard.writeText(response.content).then(() => console.log("[ResponseHandlers] Content copied to clipboard")).catch((err) => console.error("[ResponseHandlers] Copy failed:", err));
+    navigator.clipboard.writeText(response.content).then(() => {
+      console.log("[ResponseHandlers] Content copied to clipboard");
+      if (this.notificationManager) {
+        this.notificationManager.success("Content copied to clipboard", 2e3);
+      }
+    }).catch((err) => {
+      console.error("[ResponseHandlers] Copy failed:", err);
+      if (this.notificationManager) {
+        this.notificationManager.error("Failed to copy to clipboard");
+      }
+    });
   },
   /**
    * Maneja el evento responseUse para utilizar una respuesta generada
+   * Versión mejorada con mejor manejo de errores y diagnóstico
    * @param {CustomEvent} event - El evento con la respuesta
    */
   handleResponseUse(event) {
-    var _a;
     try {
-      const content = (_a = event.detail) == null ? void 0 : _a.content;
-      if (!content) {
-        console.warn(
-          "[AITextEnhancer] No content provided in response use event"
-        );
-        return;
+      console.log("[ResponseHandlers] Use event received:", event.detail);
+      if (!event.detail || !event.detail.responseId) {
+        console.warn("[ResponseHandlers] Invalid event data:", event.detail);
+        throw new Error("Invalid response data");
       }
+      const { responseId } = event.detail;
+      if (!this.responseHistory) {
+        console.error("[ResponseHandlers] No response history available");
+        throw new Error("Response history not available");
+      }
+      const response = this.responseHistory.getResponse(responseId);
+      if (!response) {
+        console.warn(
+          "[ResponseHandlers] No response found for ID:",
+          responseId
+        );
+        throw new Error("Response not found");
+      }
+      if (!response.content || typeof response.content !== "string" || response.content.trim() === "") {
+        console.warn(
+          "[ResponseHandlers] Empty content in response:",
+          responseId
+        );
+        throw new Error("Response content is empty");
+      }
+      console.log("[ResponseHandlers] Found response:", {
+        id: responseId,
+        action: response.action,
+        contentLength: response.content.length
+      });
       if (this.editorAdapter) {
-        const success = this.editorAdapter.setContent(content);
+        console.log("[ResponseHandlers] Applying content to editor");
+        const success = this.editorAdapter.setContent(response.content);
         if (success) {
-          console.log("[AITextEnhancer] Response content applied to editor");
+          console.log("[ResponseHandlers] Response content applied to editor");
           this.dispatchEvent(
             new CustomEvent("ai-content-generated", {
-              detail: { content }
+              detail: { content: response.content },
+              bubbles: true,
+              composed: true
             })
           );
           const modal = this.shadowRoot.querySelector(".modal");
@@ -3671,29 +4111,35 @@ const responseHandlerMixin = {
           if (this.notificationManager) {
             this.notificationManager.success("Content applied successfully");
           }
+          return true;
         } else {
-          console.error("[AITextEnhancer] Failed to apply content to editor");
-          if (this.notificationManager) {
-            this.notificationManager.error("Failed to apply content to editor");
-          }
+          console.error("[ResponseHandlers] Failed to apply content to editor");
+          throw new Error("Failed to apply content to editor");
         }
       } else {
-        console.error("[AITextEnhancer] No editor adapter available");
-        if (this.notificationManager) {
-          this.notificationManager.warning("No editor connected");
-        }
+        console.error("[ResponseHandlers] No editor adapter available");
+        throw new Error("No editor connected");
       }
     } catch (error) {
-      console.error("[AITextEnhancer] Error in handleResponseUse:", error);
+      console.error("[ResponseHandlers] Error in handleResponseUse:", error);
       if (this.notificationManager) {
         this.notificationManager.error(`Error: ${error.message}`);
       }
+      return false;
     }
   },
+  /**
+   * Maneja el evento responseRetry para volver a ejecutar una acción
+   * @param {CustomEvent} event - El evento con la información de la acción a reintentar
+   */
   handleResponseRetry(event) {
     var _a;
     console.log("[ResponseHandlers] Retry event received:", event.detail);
-    const { responseId } = event.detail;
+    const { responseId, action } = event.detail;
+    if (!responseId) {
+      console.warn("[ResponseHandlers] No responseId provided in retry event");
+      return;
+    }
     const response = (_a = this.responseHistory) == null ? void 0 : _a.getResponse(responseId);
     if (!response) {
       console.warn("[ResponseHandlers] No response found for ID:", responseId);
@@ -3702,12 +4148,34 @@ const responseHandlerMixin = {
     console.log("[ResponseHandlers] Retrying action:", response.action);
     const syntheticEvent = {
       detail: {
-        action: response.action,
+        action: action || response.action,
         responseId,
         content: response.content
       }
     };
     this.handleToolAction(syntheticEvent);
+  },
+  /**
+   * Maneja el evento responseEdit para editar una respuesta
+   * @param {CustomEvent} event - El evento con el ID de la respuesta a editar
+   */
+  handleResponseEdit(event) {
+    var _a;
+    console.log("[ResponseHandlers] Edit event received:", event.detail);
+    const { responseId } = event.detail;
+    if (!responseId) {
+      console.warn("[ResponseHandlers] No responseId provided in edit event");
+      return;
+    }
+    const response = (_a = this.responseHistory) == null ? void 0 : _a.getResponse(responseId);
+    if (!response) {
+      console.warn("[ResponseHandlers] No response found for ID:", responseId);
+      return;
+    }
+    console.log("[ResponseHandlers] Edit functionality not fully implemented");
+    if (this.notificationManager) {
+      this.notificationManager.info("Edit functionality coming soon");
+    }
   }
 };
 const imageHandlerMixin = {
