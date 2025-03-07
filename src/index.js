@@ -114,6 +114,7 @@ class AITextEnhancer extends HTMLElement {
       "user-id",
       "quota-endpoint",
       "proxy-endpoint",
+      "editor-type",
       "hide-trigger",
     ];
   }
@@ -128,6 +129,10 @@ class AITextEnhancer extends HTMLElement {
 
   get editorId() {
     return this.getAttribute("editor-id");
+  }
+
+  get editorType() {
+    return this.getAttribute("editor-type") || "textarea";
   }
 
   get apiKey() {
@@ -770,7 +775,7 @@ class AITextEnhancer extends HTMLElement {
 
       // Obtener el endpoint del proxy del atributo o usar el valor predeterminado
       const proxyEndpoint =
-        this.proxyEndpoint || "http://llmproxy.test:8080/api/llm-proxy";
+        this.proxyEndpoint || "http://llmproxy2.test:8080/api/llm-proxy";
 
       // Inicializar API client con proxy
       this.apiClient = createAPIClient({
@@ -791,10 +796,13 @@ class AITextEnhancer extends HTMLElement {
 
       // Inicializar editor adapter si editor ID es proporcionado
       if (this.editorId) {
-        this.editorAdapter = new EditorAdapter(this.editorId);
+        // Pasar el tipo de editor al crear EditorAdapter
+        this.editorAdapter = new EditorAdapter(this.editorId, this.editorType);
         console.log(
           "[AITextEnhancer] Editor adapter initialized for",
-          this.editorId
+          this.editorId,
+          "with type",
+          this.editorType
         );
       } else {
         console.warn(

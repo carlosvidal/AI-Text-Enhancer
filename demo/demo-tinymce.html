@@ -37,8 +37,11 @@
       <ai-text-enhancer
         id="tinymce-enhancer"
         editor-id="tinymce-editor"
+        editor-type="tinymce"
         api-provider="openai"
         api-model="gpt-4"
+        tenant-id="1"
+        user-id="12965"
         prompt="Eres un asistente experto en SEO, especializado en optimizar contenido para motores de búsqueda."
         hide-trigger
       ></ai-text-enhancer>
@@ -59,6 +62,9 @@
 
           // Verificar si los plugins se han cargado correctamente
           console.log("Plugins importados:", pluginsModule);
+
+          // Variable para almacenar la instancia del editor
+          let tinyMCEInstance = null;
 
           // Inicializar TinyMCE con el plugin de IA
           tinymce.init({
@@ -90,6 +96,9 @@
             content_style:
               "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
             setup: function (editor) {
+              // Guardar la instancia para uso posterior
+              tinyMCEInstance = editor;
+
               // Verificar que TinyMCEPlugin está disponible
               if (typeof pluginsModule.TinyMCEPlugin === "function") {
                 // Inicializar plugin de IA
@@ -112,11 +121,138 @@
                     "Incluye algunas palabras clave pero necesita mejorar su estructura y relevancia. " +
                     "El contenido debe ser más atractivo para los motores de búsqueda."
                 );
+
+                // Configurar el componente AI para trabajar con TinyMCE
+                setupAIEnhancer();
               });
             },
           });
+
+          // Función para configurar el componente AI Text Enhancer
+          function setupAIEnhancer() {
+            const enhancer = document.getElementById("tinymce-enhancer");
+
+            if (enhancer) {
+              // Sobreescribir el método getContent para obtener el contenido de TinyMCE
+              enhancer.getContent = function () {
+                return tinyMCEInstance ? tinyMCEInstance.getContent() : "";
+              };
+
+              // Sobreescribir el método setContent para actualizar el contenido de TinyMCE
+              enhancer.setContent = function (content) {
+                if (tinyMCEInstance) {
+                  tinyMCEInstance.setContent(content);
+                  tinyMCEInstance.undoManager.add();
+                  return true;
+                }
+                return false;
+              };
+
+              // Añadir un listener para el evento ai-content-ready
+              enhancer.addEventListener("ai-content-ready", (event) => {
+                const content = event.detail.content;
+                if (content && tinyMCEInstance) {
+                  tinyMCEInstance.setContent(content);
+                  tinyMCEInstance.undoManager.add();
+                }
+              });
+
+              console.log(
+                "AI Text Enhancer configurado para trabajar con TinyMCE"
+              );
+            }
+          }
         } catch (error) {
           console.error("Error inicializando el demo de TinyMCE:", error);
+        }
+
+        function setupAIEnhancer(tinyMCEInstance, enhancerId) {
+          const enhancer = document.getElementById(enhancerId);
+
+          if (!enhancer) {
+            console.error(`[Demo] AI enhancer with ID ${enhancerId} not found`);
+            return;
+          }
+
+          if (!tinyMCEInstance) {
+            console.error(`[Demo] TinyMCE instance not available`);
+            return;
+          }
+
+          console.log(`[Demo] Setting up AI enhancer for TinyMCE`, {
+            enhancerId,
+            tinyMCE: !!tinyMCEInstance,
+          });
+
+          // 1. Verificar si el componente ya está inicializado
+          if (!enhancer.isInitialized && enhancer.connectedCallback) {
+            console.log(`[Demo] Forcing AI enhancer initialization`);
+            enhancer.connectedCallback();
+          }
+
+          // 2. Establecer el tipo de editor explícitamente
+          if (enhancer.editorAdapter) {
+            enhancer.editorAdapter.setEditorType("tinymce");
+            console.log(`[Demo] Editor type set to 'tinymce' in adapter`);
+          } else {
+            console.warn(`[Demo] EditorAdapter not available yet`);
+          }
+
+          // 3. Sobreescribir los métodos getContent y setContent
+          enhancer.getContent = function () {
+            return tinyMCEInstance.getContent();
+          };
+
+          enhancer.setContent = function (content) {
+            tinyMCEInstance.setContent(content);
+            tinyMCEInstance.undoManager.add();
+
+            // Disparar evento de contenido generado para que TinyMCE lo capture
+            this.dispatchEvent(
+              new CustomEvent("ai-content-generated", {
+                detail: { content },
+              })
+            );
+
+            return true;
+          };
+
+          // 4. Sobreescribir también el método handleResponseUse
+          const originalHandleResponseUse = enhancer.handleResponseUse;
+          enhancer.handleResponseUse = function (event) {
+            const content = event.detail?.content;
+
+            if (content) {
+              // Actualizar TinyMCE directamente
+              tinyMCEInstance.setContent(content);
+              tinyMCEInstance.undoManager.add();
+
+              // Disparar evento para compatibilidad con plugin
+              this.dispatchEvent(
+                new CustomEvent("ai-content-generated", {
+                  detail: { content },
+                })
+              );
+
+              // Cerrar el modal
+              const modal = this.shadowRoot.querySelector(".modal");
+              if (modal) {
+                modal.classList.remove("open");
+              }
+
+              return true;
+            } else if (originalHandleResponseUse) {
+              // Llamar al método original como fallback
+              return originalHandleResponseUse.call(this, event);
+            }
+
+            return false;
+          };
+
+          console.log(`[Demo] AI enhancer successfully configured for TinyMCE`);
+
+          // Opcional: Disparar evento personalizado para indicar que está listo
+          enhancer.dispatchEvent(new CustomEvent("tinymce-integration-ready"));
         }
       });
     </script>

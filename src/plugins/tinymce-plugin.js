@@ -19,9 +19,41 @@ export function TinyMCEPlugin(options = {}) {
       icon: "magic", // Icono predefinido o usar tu SVG personalizado
       tooltip: buttonTooltip,
       onAction: function () {
-        // Buscar el componente enhancer y llamar a su método openModal
+        // Guardar la selección actual
+        const currentSelection = editor.selection.getContent();
+
+        // Buscar el componente enhancer
         const enhancer = document.getElementById(enhancerId);
         if (enhancer && typeof enhancer.openModal === "function") {
+          // Configurar un listener para el evento 'ai-content-generated'
+          const handleContentGenerated = (event) => {
+            const generatedContent = event.detail.content;
+
+            // Insertar el contenido en TinyMCE
+            if (generatedContent) {
+              // Si hay una selección, reemplazarla; si no, insertar al final
+              if (currentSelection) {
+                editor.selection.setContent(generatedContent);
+              } else {
+                editor.setContent(generatedContent);
+              }
+              editor.undoManager.add(); // Permitir deshacer
+            }
+
+            // Eliminar este listener después de usarlo
+            enhancer.removeEventListener(
+              "ai-content-generated",
+              handleContentGenerated
+            );
+          };
+
+          // Añadir el listener para capturar el contenido generado
+          enhancer.addEventListener(
+            "ai-content-generated",
+            handleContentGenerated
+          );
+
+          // Abrir el modal
           enhancer.openModal();
         } else {
           console.error(
@@ -29,6 +61,12 @@ export function TinyMCEPlugin(options = {}) {
           );
         }
       },
+    });
+
+    // También añadir un método para acceso directo desde el componente
+    editor.addCommand("insertAIContent", function (content) {
+      editor.selection.setContent(content);
+      editor.undoManager.add();
     });
 
     // Registrar el plugin (opcional)

@@ -2351,7 +2351,7 @@ class APIClient {
     this.config = {
       provider: config.provider || "openai",
       // Punto de entrada al proxy CodeIgniter 3
-      proxyEndpoint: config.proxyEndpoint || "http://llmproxy.test:8080/api/llm-proxy",
+      proxyEndpoint: config.proxyEndpoint || "http://llmproxy2.test:8080/api/llm-proxy",
       // Sin "api/"
       models: {
         openai: config.model || "gpt-4-turbo",
@@ -3244,31 +3244,68 @@ function createCacheManager(options = {}) {
   return new CacheManager(options);
 }
 class EditorAdapter {
-  constructor(editorId) {
-    console.log("[EditorAdapter] Initializing with editor ID:", editorId);
+  constructor(editorId, editorType = "textarea") {
+    console.log(
+      "[EditorAdapter] Initializing with editor ID:",
+      editorId,
+      "and type:",
+      editorType
+    );
     this.editorId = editorId;
+    this.editorType = editorType;
     this.editor = document.getElementById(editorId);
     if (!this.editor) {
       console.error("[EditorAdapter] Editor element not found:", editorId);
     }
   }
   getContent() {
-    console.log("[EditorAdapter] Getting content from editor");
-    if (!this.editor) return "";
-    return this.editor.value || this.editor.textContent || "";
+    try {
+      const editorType = (this.editorType || "textarea").toLowerCase();
+      switch (editorType) {
+        case "tinymce":
+          return "";
+        case "textarea":
+        default:
+          const editorElement = document.getElementById(this.editorId);
+          if (editorElement) {
+            return editorElement.value || editorElement.innerHTML || "";
+          }
+          return "";
+      }
+    } catch (error) {
+      console.error("❌ Error getting editor content:", error);
+      return "";
+    }
   }
   setContent(content) {
-    console.log("[EditorAdapter] Setting content to editor:", content);
-    if (!this.editor) {
-      console.error("[EditorAdapter] Editor not available");
-      return;
+    try {
+      const editorType = (this.editorType || "textarea").toLowerCase();
+      switch (editorType) {
+        case "tinymce":
+          return false;
+        case "textarea":
+        default:
+          const editorElement = document.getElementById(this.editorId);
+          if (editorElement) {
+            if (typeof editorElement.value !== "undefined") {
+              editorElement.value = content;
+              return true;
+            } else if (typeof editorElement.innerHTML !== "undefined") {
+              editorElement.innerHTML = content;
+              return true;
+            }
+          }
+          return false;
+      }
+    } catch (error) {
+      console.error("❌ Error setting editor content:", error);
+      return false;
     }
-    if (this.editor.value !== void 0) {
-      this.editor.value = content;
-    } else {
-      this.editor.textContent = content;
-    }
-    this.editor.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  // Método para actualizar el tipo de editor
+  setEditorType(type) {
+    this.editorType = type;
+    console.log("[EditorAdapter] Editor type updated to:", type);
   }
 }
 const createEventEmitter = (element) => {
@@ -3604,31 +3641,53 @@ const responseHandlerMixin = {
     }
     navigator.clipboard.writeText(response.content).then(() => console.log("[ResponseHandlers] Content copied to clipboard")).catch((err) => console.error("[ResponseHandlers] Copy failed:", err));
   },
+  /**
+   * Maneja el evento responseUse para utilizar una respuesta generada
+   * @param {CustomEvent} event - El evento con la respuesta
+   */
   handleResponseUse(event) {
-    console.log("[ResponseHandlers] Use event received:", event.detail);
-    const { responseId } = event.detail;
-    if (!this.responseHistory) {
-      console.error("[ResponseHandlers] No response history available");
-      return;
-    }
-    if (!this.editorAdapter) {
-      console.error("[ResponseHandlers] No editor adapter available");
-      return;
-    }
-    const response = this.responseHistory.getResponse(responseId);
-    console.log("[ResponseHandlers] Found response:", response);
-    if (!response) {
-      console.warn("[ResponseHandlers] No response found for ID:", responseId);
-      return;
-    }
+    var _a;
     try {
-      console.log(
-        "[ResponseHandlers] Setting content to editor:",
-        response.content
-      );
-      this.editorAdapter.setContent(response.content);
+      const content = (_a = event.detail) == null ? void 0 : _a.content;
+      if (!content) {
+        console.warn(
+          "[AITextEnhancer] No content provided in response use event"
+        );
+        return;
+      }
+      if (this.editorAdapter) {
+        const success = this.editorAdapter.setContent(content);
+        if (success) {
+          console.log("[AITextEnhancer] Response content applied to editor");
+          this.dispatchEvent(
+            new CustomEvent("ai-content-generated", {
+              detail: { content }
+            })
+          );
+          const modal = this.shadowRoot.querySelector(".modal");
+          if (modal) {
+            modal.classList.remove("open");
+          }
+          if (this.notificationManager) {
+            this.notificationManager.success("Content applied successfully");
+          }
+        } else {
+          console.error("[AITextEnhancer] Failed to apply content to editor");
+          if (this.notificationManager) {
+            this.notificationManager.error("Failed to apply content to editor");
+          }
+        }
+      } else {
+        console.error("[AITextEnhancer] No editor adapter available");
+        if (this.notificationManager) {
+          this.notificationManager.warning("No editor connected");
+        }
+      }
     } catch (error) {
-      console.error("[ResponseHandlers] Error setting content:", error);
+      console.error("[AITextEnhancer] Error in handleResponseUse:", error);
+      if (this.notificationManager) {
+        this.notificationManager.error(`Error: ${error.message}`);
+      }
     }
   },
   handleResponseRetry(event) {
@@ -4342,6 +4401,7 @@ class AITextEnhancer extends HTMLElement {
       "user-id",
       "quota-endpoint",
       "proxy-endpoint",
+      "editor-type",
       "hide-trigger"
     ];
   }
@@ -4353,6 +4413,9 @@ class AITextEnhancer extends HTMLElement {
   }
   get editorId() {
     return this.getAttribute("editor-id");
+  }
+  get editorType() {
+    return this.getAttribute("editor-type") || "textarea";
   }
   get apiKey() {
     return this.getAttribute("api-key");
@@ -4847,7 +4910,7 @@ class AITextEnhancer extends HTMLElement {
       console.log("[AITextEnhancer] Initializing components...");
       await this.markdownHandler.initialize();
       console.log("[AITextEnhancer] Markdown handler initialized");
-      const proxyEndpoint = this.proxyEndpoint || "http://llmproxy.test:8080/api/llm-proxy";
+      const proxyEndpoint = this.proxyEndpoint || "http://llmproxy2.test:8080/api/llm-proxy";
       this.apiClient = createAPIClient({
         provider: this.apiProvider,
         model: this.apiModel,
@@ -4863,10 +4926,12 @@ class AITextEnhancer extends HTMLElement {
         this.apiProvider
       );
       if (this.editorId) {
-        this.editorAdapter = new EditorAdapter(this.editorId);
+        this.editorAdapter = new EditorAdapter(this.editorId, this.editorType);
         console.log(
           "[AITextEnhancer] Editor adapter initialized for",
-          this.editorId
+          this.editorId,
+          "with type",
+          this.editorType
         );
       } else {
         console.warn(
