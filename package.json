@@ -8,17 +8,11 @@
     ".": {
       "import": "./dist/ai-text-enhancer.es.js",
       "require": "./dist/ai-text-enhancer.umd.js"
-    },
-    "./plugins": {
-      "import": "./dist/ai-text-enhancer-plugins.es.js",
-      "require": "./dist/ai-text-enhancer-plugins.umd.js"
     }
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:main && npm run build:plugins",
-    "build:main": "vite build --config vite.config.js",
-    "build:plugins": "vite build --config vite.plugins.config.js",
+    "build": "vite build",
     "preview": "vite preview",
     "watch": "vite build --watch"
   },
