@@ -4087,13 +4087,23 @@ const responseHandlerMixin = {
         );
         throw new Error("Response content is empty");
       }
-      console.log("[ResponseHandlers] Found response:", {
-        id: responseId,
-        action: response.action,
-        contentLength: response.content.length
-      });
+      if (window.tinymce && this.editorId && tinymce.get(this.editorId)) {
+        const editor = tinymce.get(this.editorId);
+        if (editor && editor.initialized) {
+          editor.setContent(response.content);
+          editor.undoManager.add();
+          console.log("[ResponseHandlers] Content applied directly to TinyMCE");
+          setTimeout(() => {
+            const modal = this.shadowRoot.querySelector(".modal");
+            if (modal) {
+              modal.classList.remove("open");
+            }
+          }, 100);
+          return true;
+        }
+      }
       if (this.editorAdapter) {
-        console.log("[ResponseHandlers] Applying content to editor");
+        console.log("[ResponseHandlers] Applying content via editor adapter");
         const success = this.editorAdapter.setContent(response.content);
         if (success) {
           console.log("[ResponseHandlers] Response content applied to editor");
@@ -5368,11 +5378,55 @@ class AITextEnhancer extends HTMLElement {
     this.setupEditorListener();
     console.log("[AITextEnhancer] All events bound successfully");
   }
+  setupTinyMCEIntegration(editorInstance) {
+    if (this.responseHistory) {
+      this.responseHistory.addEventListener("responseUse", (event) => {
+        try {
+          const { responseId } = event.detail || {};
+          if (!responseId) return;
+          const response = this.responseHistory.getResponse(responseId);
+          if (response && response.content) {
+            if (editorInstance && editorInstance.initialized) {
+              editorInstance.setContent(response.content);
+              editorInstance.undoManager.add();
+              setTimeout(() => {
+                const modal = this.shadowRoot.querySelector(".modal");
+                if (modal) {
+                  modal.classList.remove("open");
+                }
+              }, 100);
+            }
+          }
+        } catch (error) {
+          console.error(
+            "[AITextEnhancer] Error in direct responseUse handler:",
+            error
+          );
+        }
+      });
+    }
+  }
   // Método actualizado para initializeComponents
   async initializeComponents() {
     if (this.isInitialized) {
       console.log("[AITextEnhancer] Components already initialized, skipping");
       return;
+    }
+    if (this.editorType === "tinymce" && window.tinymce) {
+      try {
+        const tinyMceInstance = window.tinymce.get(this.editorId);
+        if (tinyMceInstance) {
+          console.log(
+            "[AITextEnhancer] TinyMCE detected, configuring special handling"
+          );
+          this.setupTinyMCEIntegration(tinyMceInstance);
+        }
+      } catch (error) {
+        console.warn(
+          "[AITextEnhancer] Error setting up TinyMCE integration:",
+          error
+        );
+      }
     }
     try {
       console.log("[AITextEnhancer] Initializing components...");
@@ -5440,13 +5494,45 @@ class AITextEnhancer extends HTMLElement {
     const modal = (_a = this.shadowRoot) == null ? void 0 : _a.querySelector(".modal");
     return modal ? modal.classList.contains("open") : false;
   }
+  // Método mejorado de updateVisibleTools
   updateVisibleTools() {
-    var _a, _b;
-    const hasContent = Boolean((_a = this.currentContent) == null ? void 0 : _a.trim());
-    const toolbar = (_b = this.shadowRoot) == null ? void 0 : _b.querySelector("ai-toolbar");
-    if (toolbar) {
-      toolbar.setAttribute("has-content", hasContent.toString());
-      console.log("[AITextEnhancer] Updated toolbar has-content:", hasContent);
+    var _a;
+    try {
+      let content = "";
+      if (this.editorAdapter && typeof this.editorAdapter.getContent === "function") {
+        try {
+          const rawContent = this.editorAdapter.getContent();
+          content = typeof rawContent === "string" ? rawContent : "";
+        } catch (error) {
+          console.warn(
+            "[AITextEnhancer] Error obteniendo contenido del editor:",
+            error
+          );
+        }
+      }
+      const hasContent = content.trim().length > 0;
+      const toolbar = (_a = this.shadowRoot) == null ? void 0 : _a.querySelector("ai-toolbar");
+      if (toolbar) {
+        toolbar.setAttribute("has-content", hasContent.toString());
+      }
+    } catch (error) {
+      console.warn("[AITextEnhancer] Error en updateVisibleTools:", error);
+    }
+  }
+  // Getter mejorado de currentContent
+  get currentContent() {
+    try {
+      if (this.editorAdapter && typeof this.editorAdapter.getContent === "function") {
+        const content = this.editorAdapter.getContent();
+        return typeof content === "string" ? content : "";
+      }
+      if (window.tinymce && this.editorId && tinymce.get(this.editorId)) {
+        return tinymce.get(this.editorId).getContent() || "";
+      }
+      return "";
+    } catch (error) {
+      console.warn("[AITextEnhancer] Error en getter currentContent:", error);
+      return "";
     }
   }
   // Manejador de mensajes de chat actualizado

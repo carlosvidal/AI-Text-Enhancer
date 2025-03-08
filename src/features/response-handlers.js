@@ -84,15 +84,29 @@ export const responseHandlerMixin = {
         throw new Error("Response content is empty");
       }
 
-      console.log("[ResponseHandlers] Found response:", {
-        id: responseId,
-        action: response.action,
-        contentLength: response.content.length,
-      });
+      // Primero intentar aplicar usando TinyMCE directamente (si está disponible)
+      if (window.tinymce && this.editorId && tinymce.get(this.editorId)) {
+        const editor = tinymce.get(this.editorId);
+        if (editor && editor.initialized) {
+          editor.setContent(response.content);
+          editor.undoManager.add();
+          console.log("[ResponseHandlers] Content applied directly to TinyMCE");
 
-      // Intentar aplicar el contenido al editor
+          // Cerrar el modal
+          setTimeout(() => {
+            const modal = this.shadowRoot.querySelector(".modal");
+            if (modal) {
+              modal.classList.remove("open");
+            }
+          }, 100);
+
+          return true;
+        }
+      }
+
+      // Intentar usar el adaptador del editor como fallback
       if (this.editorAdapter) {
-        console.log("[ResponseHandlers] Applying content to editor");
+        console.log("[ResponseHandlers] Applying content via editor adapter");
 
         // Usar el método setContent del adaptador del editor
         const success = this.editorAdapter.setContent(response.content);

@@ -759,11 +759,65 @@ class AITextEnhancer extends HTMLElement {
     console.log("[AITextEnhancer] All events bound successfully");
   }
 
+  setupTinyMCEIntegration(editorInstance) {
+    // Añadir un listener adicional directamente en response-history para mayor robustez
+    if (this.responseHistory) {
+      this.responseHistory.addEventListener("responseUse", (event) => {
+        try {
+          const { responseId } = event.detail || {};
+          if (!responseId) return;
+
+          // Obtener la respuesta
+          const response = this.responseHistory.getResponse(responseId);
+          if (response && response.content) {
+            // Aplicar directamente a TinyMCE
+            if (editorInstance && editorInstance.initialized) {
+              editorInstance.setContent(response.content);
+              editorInstance.undoManager.add();
+
+              // Cerrar el modal
+              setTimeout(() => {
+                const modal = this.shadowRoot.querySelector(".modal");
+                if (modal) {
+                  modal.classList.remove("open");
+                }
+              }, 100);
+            }
+          }
+        } catch (error) {
+          console.error(
+            "[AITextEnhancer] Error in direct responseUse handler:",
+            error
+          );
+        }
+      });
+    }
+  }
+
   // Método actualizado para initializeComponents
   async initializeComponents() {
     if (this.isInitialized) {
       console.log("[AITextEnhancer] Components already initialized, skipping");
       return;
+    }
+
+    if (this.editorType === "tinymce" && window.tinymce) {
+      try {
+        const tinyMceInstance = window.tinymce.get(this.editorId);
+        if (tinyMceInstance) {
+          console.log(
+            "[AITextEnhancer] TinyMCE detected, configuring special handling"
+          );
+
+          // Configuración especial para TinyMCE
+          this.setupTinyMCEIntegration(tinyMceInstance);
+        }
+      } catch (error) {
+        console.warn(
+          "[AITextEnhancer] Error setting up TinyMCE integration:",
+          error
+        );
+      }
     }
 
     try {
@@ -857,12 +911,63 @@ class AITextEnhancer extends HTMLElement {
     return modal ? modal.classList.contains("open") : false;
   }
 
+  // Método mejorado de updateVisibleTools
   updateVisibleTools() {
-    const hasContent = Boolean(this.currentContent?.trim());
-    const toolbar = this.shadowRoot?.querySelector("ai-toolbar");
-    if (toolbar) {
-      toolbar.setAttribute("has-content", hasContent.toString());
-      console.log("[AITextEnhancer] Updated toolbar has-content:", hasContent);
+    try {
+      // Implementación segura que evita errores con .trim()
+      let content = "";
+
+      // Intentar obtener el contenido de forma segura
+      if (
+        this.editorAdapter &&
+        typeof this.editorAdapter.getContent === "function"
+      ) {
+        try {
+          const rawContent = this.editorAdapter.getContent();
+          content = typeof rawContent === "string" ? rawContent : "";
+        } catch (error) {
+          console.warn(
+            "[AITextEnhancer] Error obteniendo contenido del editor:",
+            error
+          );
+        }
+      }
+
+      // Verificar si hay contenido de forma segura
+      const hasContent = content.trim().length > 0;
+
+      // Actualizar la barra de herramientas
+      const toolbar = this.shadowRoot?.querySelector("ai-toolbar");
+      if (toolbar) {
+        toolbar.setAttribute("has-content", hasContent.toString());
+      }
+    } catch (error) {
+      console.warn("[AITextEnhancer] Error en updateVisibleTools:", error);
+      // No propagar el error para no romper la inicialización
+    }
+  }
+
+  // Getter mejorado de currentContent
+  get currentContent() {
+    try {
+      // Primero intentar usando el editorAdapter
+      if (
+        this.editorAdapter &&
+        typeof this.editorAdapter.getContent === "function"
+      ) {
+        const content = this.editorAdapter.getContent();
+        return typeof content === "string" ? content : "";
+      }
+
+      // Fallback para TinyMCE (si está presente en la página)
+      if (window.tinymce && this.editorId && tinymce.get(this.editorId)) {
+        return tinymce.get(this.editorId).getContent() || "";
+      }
+
+      return "";
+    } catch (error) {
+      console.warn("[AITextEnhancer] Error en getter currentContent:", error);
+      return "";
     }
   }
 
