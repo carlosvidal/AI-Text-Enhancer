@@ -1,7 +1,9 @@
-// editor-adapter.js (Versión mejorada)
+// editor-adapter.js - Actualización para incorporar el adaptador de CKEditor
 
-// Importación para tipo específico de editor TinyMCE
+// Importar los adaptadores específicos
 import { createTinyMCEAdapter } from "../utils/tinymce-adapter.js";
+import { createCKEditorAdapter } from "../utils/ckeditor-adapter.js";
+import { createQuillAdapter } from "../utils/quill-adapter.js";
 
 /**
  * Clase adaptadora para diferentes tipos de editores
@@ -11,7 +13,7 @@ export class EditorAdapter {
   /**
    * Constructor del adaptador de editor
    * @param {string} editorId - ID del elemento editor
-   * @param {string} editorType - Tipo de editor ('textarea', 'tinymce', etc.)
+   * @param {string} editorType - Tipo de editor ('textarea', 'tinymce', 'ckeditor', etc.)
    * @param {Object} options - Opciones adicionales
    */
   constructor(editorId, editorType = "textarea", options = {}) {
@@ -67,6 +69,43 @@ export class EditorAdapter {
         }
         break;
 
+      case "ckeditor":
+        try {
+          this.specificAdapters.ckeditor = createCKEditorAdapter(
+            this.editorId,
+            {
+              debug: this.options.debug,
+            }
+          );
+
+          if (this.options.debug) {
+            console.log("[EditorAdapter] CKEditor adapter initialized");
+          }
+        } catch (error) {
+          console.error(
+            "[EditorAdapter] Failed to initialize CKEditor adapter:",
+            error
+          );
+        }
+        break;
+
+      case "quill":
+        try {
+          this.specificAdapters.quill = createQuillAdapter(this.editorId, {
+            debug: this.options.debug,
+          });
+
+          if (this.options.debug) {
+            console.log("[EditorAdapter] Quill adapter initialized");
+          }
+        } catch (error) {
+          console.error(
+            "[EditorAdapter] Failed to initialize Quill adapter:",
+            error
+          );
+        }
+        break;
+
       // Aquí se pueden agregar más adaptadores específicos para otros editores
 
       default:
@@ -99,6 +138,43 @@ export class EditorAdapter {
           }
 
           console.warn("[EditorAdapter] TinyMCE not initialized properly");
+          return "";
+
+        case "ckeditor":
+          // CKEditor - usar adaptador específico si está disponible
+          if (this.specificAdapters.ckeditor) {
+            return this.specificAdapters.ckeditor.getContent() || "";
+          }
+
+          // Fallback: intentar obtener contenido directamente
+          if (typeof window.ckeditorInstance !== "undefined") {
+            return window.ckeditorInstance.getData() || "";
+          }
+
+          console.warn("[EditorAdapter] CKEditor not initialized properly");
+          return "";
+
+        case "quill":
+          // Quill - usar adaptador específico si está disponible
+          if (this.specificAdapters.quill) {
+            return this.specificAdapters.quill.getContent() || "";
+          }
+
+          // Fallback: intentar obtener contenido directamente
+          if (typeof window.quillInstance !== "undefined") {
+            return window.quillInstance.root.innerHTML || "";
+          }
+
+          // Otro intento: buscar el elemento editor
+          const quillElement = document.getElementById(this.editorId);
+          if (quillElement) {
+            const editor = quillElement.querySelector(".ql-editor");
+            if (editor) {
+              return editor.innerHTML || "";
+            }
+          }
+
+          console.warn("[EditorAdapter] Quill not initialized properly");
           return "";
 
         case "textarea":
@@ -157,6 +233,48 @@ export class EditorAdapter {
           }
 
           console.warn("[EditorAdapter] TinyMCE not initialized properly");
+          return false;
+
+        case "ckeditor":
+          // CKEditor - usar adaptador específico si está disponible
+          if (this.specificAdapters.ckeditor) {
+            return this.specificAdapters.ckeditor.setContent(content);
+          }
+
+          // Fallback: intentar establecer contenido directamente
+          if (typeof window.ckeditorInstance !== "undefined") {
+            window.ckeditorInstance.setData(content);
+
+            if (this.options.debug) {
+              console.log("[EditorAdapter] Content set in CKEditor");
+            }
+
+            return true;
+          }
+
+          console.warn("[EditorAdapter] CKEditor not initialized properly");
+          return false;
+
+        case "quill":
+          // Quill - usar adaptador específico si está disponible
+          if (this.specificAdapters.quill) {
+            return this.specificAdapters.quill.setContent(content);
+          }
+
+          // Fallback: intentar establecer contenido directamente
+          if (typeof window.quillInstance !== "undefined") {
+            window.quillInstance.clipboard.dangerouslyPasteHTML(content);
+            return true;
+          }
+
+          // Otro intento: buscar el elemento editor
+          const quillElem = document.getElementById(this.editorId);
+          if (quillElem && quillElem.__quill) {
+            quillElem.__quill.clipboard.dangerouslyPasteHTML(content);
+            return true;
+          }
+
+          console.warn("[EditorAdapter] Quill not initialized properly");
           return false;
 
         case "textarea":
@@ -245,7 +363,47 @@ export class EditorAdapter {
 
           return false;
 
-        // Se pueden agregar otros editores que soporten inserción de contenido
+        case "ckeditor":
+          // CKEditor - usar adaptador específico si está disponible
+          if (this.specificAdapters.ckeditor) {
+            return this.specificAdapters.ckeditor.insertContent(content);
+          }
+
+          // Fallback básico: reemplazar todo el contenido
+          if (typeof window.ckeditorInstance !== "undefined") {
+            window.ckeditorInstance.setData(content);
+            return true;
+          }
+
+          return false;
+
+        case "quill":
+          // Quill - usar adaptador específico si está disponible
+          if (this.specificAdapters.quill) {
+            return this.specificAdapters.quill.insertContent(content);
+          }
+
+          // Fallback: intentar insertar contenido directamente
+          if (typeof window.quillInstance !== "undefined") {
+            const range = window.quillInstance.getSelection();
+            if (range) {
+              window.quillInstance.clipboard.dangerouslyPasteHTML(
+                range.index,
+                content,
+                "user"
+              );
+            } else {
+              const length = window.quillInstance.getLength();
+              window.quillInstance.clipboard.dangerouslyPasteHTML(
+                length,
+                content,
+                "user"
+              );
+            }
+            return true;
+          }
+
+          return false;
 
         case "textarea":
         default:
@@ -285,6 +443,10 @@ export class EditorAdapter {
               return tinyEditor.selection.getContent() || "";
             }
           }
+          return "";
+
+        case "ckeditor":
+          // CKEditor - no hay un método simple para obtener la selección actual
           return "";
 
         case "textarea":
@@ -338,6 +500,11 @@ export class EditorAdapter {
             }
           }
           return false;
+
+        case "ckeditor":
+          // CKEditor - no hay un método simple para reemplazar la selección
+          // Como fallback, insertamos el contenido completo
+          return this.setContent(content);
 
         case "textarea":
         default:

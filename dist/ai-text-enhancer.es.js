@@ -3420,11 +3420,362 @@ class TinyMCEAdapter {
 function createTinyMCEAdapter(editorId, options = {}) {
   return new TinyMCEAdapter(editorId, options);
 }
+class CKEditorAdapter {
+  /**
+   * Crea un nuevo adaptador para CKEditor
+   * @param {string} editorId - ID del elemento contenedor de CKEditor
+   * @param {Object} options - Opciones adicionales
+   */
+  constructor(editorId, options = {}) {
+    this.editorId = editorId;
+    this.options = {
+      debug: options.debug || false,
+      waitTimeout: options.waitTimeout || 2e3,
+      ...options
+    };
+    this.editorInstance = null;
+    this._initialized = false;
+    this._findEditorInstance();
+  }
+  /**
+   * Busca la instancia de CKEditor ya sea por ID o en el objeto global
+   * @private
+   */
+  _findEditorInstance() {
+    try {
+      if (typeof window.ckeditorInstance !== "undefined") {
+        this.editorInstance = window.ckeditorInstance;
+        this._initialized = true;
+        if (this.options.debug) {
+          console.log(
+            `[CKEditorAdapter] Found editor instance from global variable`
+          );
+        }
+        return true;
+      }
+      const editorElement = document.getElementById(this.editorId);
+      if (editorElement && editorElement.ckeditorInstance) {
+        this.editorInstance = editorElement.ckeditorInstance;
+        this._initialized = true;
+        if (this.options.debug) {
+          console.log(
+            `[CKEditorAdapter] Found editor instance from element property`
+          );
+        }
+        return true;
+      }
+      if (this.options.debug) {
+        console.warn(
+          `[CKEditorAdapter] CKEditor instance not found for "${this.editorId}"`
+        );
+      }
+      return false;
+    } catch (error) {
+      console.error(
+        `[CKEditorAdapter] Error finding CKEditor instance:`,
+        error
+      );
+      return false;
+    }
+  }
+  /**
+   * Espera a que CKEditor esté inicializado
+   * @returns {Promise<boolean>} Promesa que se resuelve cuando el editor está listo
+   */
+  async waitForEditor() {
+    if (this._initialized && this.editorInstance) {
+      return true;
+    }
+    return new Promise((resolve) => {
+      if (this._findEditorInstance()) {
+        resolve(true);
+        return;
+      }
+      const startTime = Date.now();
+      const checkInterval = setInterval(() => {
+        if (this._findEditorInstance()) {
+          clearInterval(checkInterval);
+          resolve(true);
+          return;
+        }
+        if (Date.now() - startTime > this.options.waitTimeout) {
+          clearInterval(checkInterval);
+          console.warn(
+            `[CKEditorAdapter] Timeout waiting for CKEditor to initialize`
+          );
+          resolve(false);
+        }
+      }, 100);
+    });
+  }
+  /**
+   * Obtiene el contenido del editor
+   * @returns {string} El contenido HTML del editor o cadena vacía si no está disponible
+   */
+  async getContent() {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        const content = this.editorInstance.getData();
+        if (this.options.debug) {
+          console.log(
+            `[CKEditorAdapter] Retrieved content (${content.length} chars)`
+          );
+        }
+        return content;
+      }
+    } catch (error) {
+      console.error(`[CKEditorAdapter] Error getting content:`, error);
+    }
+    return "";
+  }
+  /**
+   * Establece el contenido del editor
+   * @param {string} content - El contenido HTML a establecer
+   * @returns {boolean} true si se estableció correctamente, false en caso contrario
+   */
+  async setContent(content) {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        this.editorInstance.setData(content);
+        if (this.options.debug) {
+          console.log(
+            `[CKEditorAdapter] Content set successfully (${content.length} chars)`
+          );
+        }
+        return true;
+      }
+    } catch (error) {
+      console.error(`[CKEditorAdapter] Error setting content:`, error);
+    }
+    return false;
+  }
+  /**
+   * Inserta contenido en la posición actual del cursor
+   * @param {string} content - El contenido HTML a insertar
+   * @returns {boolean} true si se insertó correctamente, false en caso contrario
+   */
+  async insertContent(content) {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        const viewFragment = this.editorInstance.data.processor.toView(content);
+        const modelFragment = this.editorInstance.data.toModel(viewFragment);
+        this.editorInstance.model.insertContent(modelFragment);
+        if (this.options.debug) {
+          console.log(`[CKEditorAdapter] Content inserted successfully`);
+        }
+        return true;
+      }
+    } catch (error) {
+      console.error(`[CKEditorAdapter] Error inserting content:`, error);
+    }
+    return false;
+  }
+  /**
+   * Verifica si el editor está inicializado
+   * @returns {boolean} true si el editor está inicializado, false en caso contrario
+   */
+  isInitialized() {
+    return this._initialized && this.editorInstance !== null;
+  }
+}
+function createCKEditorAdapter(editorId, options = {}) {
+  return new CKEditorAdapter(editorId, options);
+}
+class QuillAdapter {
+  /**
+   * Crea un nuevo adaptador para Quill
+   * @param {string} editorId - ID del elemento contenedor de Quill
+   * @param {Object} options - Opciones adicionales
+   */
+  constructor(editorId, options = {}) {
+    this.editorId = editorId;
+    this.options = {
+      debug: options.debug || false,
+      waitTimeout: options.waitTimeout || 2e3,
+      ...options
+    };
+    this.editorInstance = null;
+    this._initialized = false;
+    this._findEditorInstance();
+  }
+  /**
+   * Busca la instancia de Quill ya sea por ID o en el objeto global
+   * @private
+   */
+  _findEditorInstance() {
+    try {
+      if (typeof window.quillInstance !== "undefined") {
+        this.editorInstance = window.quillInstance;
+        this._initialized = true;
+        if (this.options.debug) {
+          console.log(
+            `[QuillAdapter] Found editor instance from global variable`
+          );
+        }
+        return true;
+      }
+      const editorElement = document.getElementById(this.editorId);
+      if (editorElement) {
+        const quillContainer = editorElement;
+        if (quillContainer && quillContainer.__quill) {
+          this.editorInstance = quillContainer.__quill;
+          this._initialized = true;
+          if (this.options.debug) {
+            console.log(
+              `[QuillAdapter] Found editor instance from element __quill property`
+            );
+          }
+          return true;
+        }
+        const editor = quillContainer.querySelector(".ql-editor");
+        if (editor && editor.__quill) {
+          this.editorInstance = editor.__quill;
+          this._initialized = true;
+          if (this.options.debug) {
+            console.log(
+              `[QuillAdapter] Found editor instance from ql-editor element`
+            );
+          }
+          return true;
+        }
+      }
+      if (this.options.debug) {
+        console.warn(
+          `[QuillAdapter] Quill instance not found for "${this.editorId}"`
+        );
+      }
+      return false;
+    } catch (error) {
+      console.error(`[QuillAdapter] Error finding Quill instance:`, error);
+      return false;
+    }
+  }
+  /**
+   * Espera a que Quill esté inicializado
+   * @returns {Promise<boolean>} Promesa que se resuelve cuando el editor está listo
+   */
+  async waitForEditor() {
+    if (this._initialized && this.editorInstance) {
+      return true;
+    }
+    return new Promise((resolve) => {
+      if (this._findEditorInstance()) {
+        resolve(true);
+        return;
+      }
+      const startTime = Date.now();
+      const checkInterval = setInterval(() => {
+        if (this._findEditorInstance()) {
+          clearInterval(checkInterval);
+          resolve(true);
+          return;
+        }
+        if (Date.now() - startTime > this.options.waitTimeout) {
+          clearInterval(checkInterval);
+          console.warn(
+            `[QuillAdapter] Timeout waiting for Quill to initialize`
+          );
+          resolve(false);
+        }
+      }, 100);
+    });
+  }
+  /**
+   * Obtiene el contenido del editor
+   * @returns {string} El contenido HTML del editor o cadena vacía si no está disponible
+   */
+  async getContent() {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        const content = this.editorInstance.root.innerHTML;
+        if (this.options.debug) {
+          console.log(
+            `[QuillAdapter] Retrieved content (${content.length} chars)`
+          );
+        }
+        return content;
+      }
+    } catch (error) {
+      console.error(`[QuillAdapter] Error getting content:`, error);
+    }
+    return "";
+  }
+  /**
+   * Establece el contenido del editor
+   * @param {string} content - El contenido HTML a establecer
+   * @returns {boolean} true si se estableció correctamente, false en caso contrario
+   */
+  async setContent(content) {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        this.editorInstance.clipboard.dangerouslyPasteHTML(content);
+        if (this.options.debug) {
+          console.log(
+            `[QuillAdapter] Content set successfully (${content.length} chars)`
+          );
+        }
+        return true;
+      }
+    } catch (error) {
+      console.error(`[QuillAdapter] Error setting content:`, error);
+    }
+    return false;
+  }
+  /**
+   * Inserta contenido en la posición actual del cursor
+   * @param {string} content - El contenido HTML a insertar
+   * @returns {boolean} true si se insertó correctamente, false en caso contrario
+   */
+  async insertContent(content) {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        const range = this.editorInstance.getSelection();
+        if (range) {
+          this.editorInstance.clipboard.dangerouslyPasteHTML(
+            range.index,
+            content,
+            "user"
+          );
+        } else {
+          const length = this.editorInstance.getLength();
+          this.editorInstance.clipboard.dangerouslyPasteHTML(
+            length,
+            content,
+            "user"
+          );
+        }
+        if (this.options.debug) {
+          console.log(`[QuillAdapter] Content inserted successfully`);
+        }
+        return true;
+      }
+    } catch (error) {
+      console.error(`[QuillAdapter] Error inserting content:`, error);
+    }
+    return false;
+  }
+  /**
+   * Verifica si el editor está inicializado
+   * @returns {boolean} true si el editor está inicializado, false en caso contrario
+   */
+  isInitialized() {
+    return this._initialized && this.editorInstance !== null;
+  }
+}
+function createQuillAdapter(editorId, options = {}) {
+  return new QuillAdapter(editorId, options);
+}
 class EditorAdapter {
   /**
    * Constructor del adaptador de editor
    * @param {string} editorId - ID del elemento editor
-   * @param {string} editorType - Tipo de editor ('textarea', 'tinymce', etc.)
+   * @param {string} editorType - Tipo de editor ('textarea', 'tinymce', 'ckeditor', etc.)
    * @param {Object} options - Opciones adicionales
    */
   constructor(editorId, editorType = "textarea", options = {}) {
@@ -3469,6 +3820,39 @@ class EditorAdapter {
           );
         }
         break;
+      case "ckeditor":
+        try {
+          this.specificAdapters.ckeditor = createCKEditorAdapter(
+            this.editorId,
+            {
+              debug: this.options.debug
+            }
+          );
+          if (this.options.debug) {
+            console.log("[EditorAdapter] CKEditor adapter initialized");
+          }
+        } catch (error) {
+          console.error(
+            "[EditorAdapter] Failed to initialize CKEditor adapter:",
+            error
+          );
+        }
+        break;
+      case "quill":
+        try {
+          this.specificAdapters.quill = createQuillAdapter(this.editorId, {
+            debug: this.options.debug
+          });
+          if (this.options.debug) {
+            console.log("[EditorAdapter] Quill adapter initialized");
+          }
+        } catch (error) {
+          console.error(
+            "[EditorAdapter] Failed to initialize Quill adapter:",
+            error
+          );
+        }
+        break;
     }
   }
   /**
@@ -3490,6 +3874,31 @@ class EditorAdapter {
             }
           }
           console.warn("[EditorAdapter] TinyMCE not initialized properly");
+          return "";
+        case "ckeditor":
+          if (this.specificAdapters.ckeditor) {
+            return this.specificAdapters.ckeditor.getContent() || "";
+          }
+          if (typeof window.ckeditorInstance !== "undefined") {
+            return window.ckeditorInstance.getData() || "";
+          }
+          console.warn("[EditorAdapter] CKEditor not initialized properly");
+          return "";
+        case "quill":
+          if (this.specificAdapters.quill) {
+            return this.specificAdapters.quill.getContent() || "";
+          }
+          if (typeof window.quillInstance !== "undefined") {
+            return window.quillInstance.root.innerHTML || "";
+          }
+          const quillElement = document.getElementById(this.editorId);
+          if (quillElement) {
+            const editor = quillElement.querySelector(".ql-editor");
+            if (editor) {
+              return editor.innerHTML || "";
+            }
+          }
+          console.warn("[EditorAdapter] Quill not initialized properly");
           return "";
         case "textarea":
         default:
@@ -3537,6 +3946,34 @@ class EditorAdapter {
             }
           }
           console.warn("[EditorAdapter] TinyMCE not initialized properly");
+          return false;
+        case "ckeditor":
+          if (this.specificAdapters.ckeditor) {
+            return this.specificAdapters.ckeditor.setContent(content);
+          }
+          if (typeof window.ckeditorInstance !== "undefined") {
+            window.ckeditorInstance.setData(content);
+            if (this.options.debug) {
+              console.log("[EditorAdapter] Content set in CKEditor");
+            }
+            return true;
+          }
+          console.warn("[EditorAdapter] CKEditor not initialized properly");
+          return false;
+        case "quill":
+          if (this.specificAdapters.quill) {
+            return this.specificAdapters.quill.setContent(content);
+          }
+          if (typeof window.quillInstance !== "undefined") {
+            window.quillInstance.clipboard.dangerouslyPasteHTML(content);
+            return true;
+          }
+          const quillElem = document.getElementById(this.editorId);
+          if (quillElem && quillElem.__quill) {
+            quillElem.__quill.clipboard.dangerouslyPasteHTML(content);
+            return true;
+          }
+          console.warn("[EditorAdapter] Quill not initialized properly");
           return false;
         case "textarea":
         default:
@@ -3609,7 +4046,39 @@ class EditorAdapter {
             }
           }
           return false;
+        case "ckeditor":
+          if (this.specificAdapters.ckeditor) {
+            return this.specificAdapters.ckeditor.insertContent(content);
+          }
+          if (typeof window.ckeditorInstance !== "undefined") {
+            window.ckeditorInstance.setData(content);
+            return true;
+          }
+          return false;
         // Se pueden agregar otros editores que soporten inserción de contenido
+        case "quill":
+          if (this.specificAdapters.quill) {
+            return this.specificAdapters.quill.insertContent(content);
+          }
+          if (typeof window.quillInstance !== "undefined") {
+            const range = window.quillInstance.getSelection();
+            if (range) {
+              window.quillInstance.clipboard.dangerouslyPasteHTML(
+                range.index,
+                content,
+                "user"
+              );
+            } else {
+              const length = window.quillInstance.getLength();
+              window.quillInstance.clipboard.dangerouslyPasteHTML(
+                length,
+                content,
+                "user"
+              );
+            }
+            return true;
+          }
+          return false;
         case "textarea":
         default:
           const editorElement = document.getElementById(this.editorId);
@@ -3644,6 +4113,8 @@ class EditorAdapter {
               return tinyEditor.selection.getContent() || "";
             }
           }
+          return "";
+        case "ckeditor":
           return "";
         case "textarea":
         default:
@@ -3686,6 +4157,8 @@ class EditorAdapter {
             }
           }
           return false;
+        case "ckeditor":
+          return this.setContent(content);
         case "textarea":
         default:
           const editorElement = document.getElementById(this.editorId);

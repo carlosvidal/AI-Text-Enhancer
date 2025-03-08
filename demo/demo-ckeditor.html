@@ -61,6 +61,7 @@
         prompt="Eres un experto en copywriting, especializado en crear contenido persuasivo."
         tenant-id="3"
         user-id="12963"
+        hide-trigger
       ></ai-text-enhancer>
     </div>
 
@@ -71,103 +72,208 @@
 
       // Inicializar CKEditor con un botón personalizado
       document.addEventListener("DOMContentLoaded", async () => {
-        // Inicializar CKEditor con configuración más simple
-        ClassicEditor.create(document.querySelector("#ckeditor-container"), {
-          toolbar: [
-            "heading",
-            "|",
-            "bold",
-            "italic",
-            "link",
-            "bulletedList",
-            "numberedList",
-            "|",
-            "outdent",
-            "indent",
-            "|",
-            "undo",
-            "redo",
-          ],
-        })
-          .then((editor) => {
-            // Guardar instancia del editor
-            window.ckeditorInstance = editor;
+        try {
+          // Primero importamos el componente AI Text Enhancer
+          await import("../dist/ai-text-enhancer.umd.js");
 
-            // Establecer contenido inicial
-            editor.setData(`
-              <p>Este es un ejemplo de descripción en CKEditor que se puede mejorar con técnicas de copywriting usando IA.</p>
-              <p>El texto actual es bastante básico y carece de elementos persuasivos.</p>
-              <p>Necesita llamadas a la acción más fuertes y un lenguaje que conecte emocionalmente con el lector.</p>
-            `);
+          // Inicializar CKEditor con configuración más simple
+          ClassicEditor.create(document.querySelector("#ckeditor-container"), {
+            toolbar: [
+              "heading",
+              "|",
+              "bold",
+              "italic",
+              "link",
+              "bulletedList",
+              "numberedList",
+              "|",
+              "outdent",
+              "indent",
+              "|",
+              "undo",
+              "redo",
+            ],
+          })
+            .then((editor) => {
+              // Guardar instancia del editor
+              window.ckeditorInstance = editor;
 
-            // Asegurar que el editor ocupe suficiente altura
-            editor.editing.view.change((writer) => {
-              writer.setStyle(
-                "min-height",
-                "300px",
-                editor.editing.view.document.getRoot()
-              );
-            });
+              // Establecer contenido inicial
+              editor.setData(`
+                <p>Este es un ejemplo de descripción en CKEditor que se puede mejorar con técnicas de copywriting usando IA.</p>
+                <p>El texto actual es bastante básico y carece de elementos persuasivos.</p>
+                <p>Necesita llamadas a la acción más fuertes y un lenguaje que conecte emocionalmente con el lector.</p>
+              `);
 
-            // Añadir botón personalizado manualmente a la barra de herramientas
-            // Esta es una solución alternativa que no requiere un plugin formal
-            setTimeout(() => {
-              // Buscar la barra de herramientas de CKEditor
-              const toolbar = document.querySelector(".ck-toolbar");
-              if (toolbar) {
-                // Crear un botón personalizado
-                const aiButton = document.createElement("span");
-                aiButton.className =
-                  "ck ck-button ck-enabled ck-off ai-enhancer-button";
-                aiButton.setAttribute("tabindex", "-1");
-                aiButton.innerHTML = `
-                  <button class="ck ck-button__label" style="cursor:pointer" title="Mejorar con IA">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b400cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/>
-                      <path d="m14 7 3 3"/>
-                      <path d="M5 6v4"/>
-                      <path d="M19 14v4"/>
-                      <path d="M10 2v2"/>
-                      <path d="M7 8H3"/>
-                      <path d="M21 16h-4"/>
-                      <path d="M11 3H9"/>
-                    </svg>
-                  </button>
-                `;
+              // Añadir función para mostrar mensaje de éxito
+              function showSuccessMessage() {
+                const message = document.createElement("div");
+                message.style.cssText =
+                  "background:#d4edda; color:#155724; padding:10px; border-radius:4px; margin-top:10px;";
+                message.textContent =
+                  "✅ Contenido aplicado correctamente al editor";
 
-                // Añadir evento de clic
-                aiButton.addEventListener("click", () => {
+                // Añadir el mensaje debajo del editor y eliminarlo después de 5 segundos
+                const editorContainer =
+                  document.querySelector(".editor-container");
+                editorContainer.appendChild(message);
+                setTimeout(() => message.remove(), 5000);
+              }
+
+              // Añadir botón personalizado manualmente a la barra de herramientas
+              setTimeout(() => {
+                // Buscar la barra de herramientas de CKEditor
+                const toolbar = document.querySelector(".ck-toolbar");
+                if (toolbar) {
+                  // Crear un botón personalizado
+                  const aiButton = document.createElement("span");
+                  aiButton.className =
+                    "ck ck-button ck-enabled ck-off ai-enhancer-button";
+                  aiButton.setAttribute("tabindex", "-1");
+                  aiButton.innerHTML = `
+                    <button class="ck ck-button__label" style="cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Mejorar con IA">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b400cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/>
+                        <path d="m14 7 3 3"/>
+                        <path d="M5 6v4"/>
+                        <path d="M19 14v4"/>
+                        <path d="M10 2v2"/>
+                        <path d="M7 8H3"/>
+                        <path d="M21 16h-4"/>
+                        <path d="M11 3H9"/>
+                      </svg>
+                    </button>
+                  `;
+
+                  // Añadir evento de clic
+                  aiButton.addEventListener("click", () => {
+                    const enhancer =
+                      document.getElementById("ckeditor-enhancer");
+                    if (enhancer) {
+                      enhancer.openModal();
+                    } else {
+                      console.error(
+                        "No se encontró el componente AI Text Enhancer"
+                      );
+                    }
+                  });
+
+                  // Añadir separador antes del botón
+                  const separator = document.createElement("span");
+                  separator.className = "ck ck-toolbar__separator";
+
+                  // Insertar en la barra de herramientas
+                  toolbar.appendChild(separator);
+                  toolbar.appendChild(aiButton);
+
+                  console.log(
+                    "✅ Botón AI añadido manualmente a la barra de herramientas de CKEditor"
+                  );
+                } else {
+                  console.error(
+                    "❌ No se encontró la barra de herramientas de CKEditor"
+                  );
+                }
+              }, 500);
+
+              // Configurar interacción con el componente AI Text Enhancer
+              setTimeout(() => {
+                try {
+                  // Obtener referencia al componente
                   const enhancer = document.getElementById("ckeditor-enhancer");
-                  if (enhancer) {
-                    enhancer.openModal();
-                  } else {
+                  if (!enhancer) {
                     console.error(
-                      "No se encontró el componente AI Text Enhancer"
+                      "❌ No se encontró el componente AI Text Enhancer"
+                    );
+                    return;
+                  }
+
+                  console.log(
+                    "⚙️ Configurando interacción con AI Text Enhancer"
+                  );
+
+                  // Verificar que EditorAdapter está disponible
+                  if (typeof enhancer.editorAdapter === "undefined") {
+                    console.log("✅ Creando nuevo EditorAdapter para CKEditor");
+
+                    // Aquí el componente debería crear su propio EditorAdapter con
+                    // el constructor y parámetros adecuados 'ckeditor-container', 'ckeditor'
+
+                    // Solo necesitamos esperar a que termine de inicializarse
+                    setTimeout(() => {
+                      console.log(
+                        "🔍 Estado del editorAdapter:",
+                        enhancer.editorAdapter
+                      );
+
+                      // Configuramos manejador de evento responseUse para mayor seguridad
+                      enhancer.addEventListener(
+                        "responseUse",
+                        function (event) {
+                          try {
+                            console.log(
+                              "🔄 Evento responseUse recibido:",
+                              event.detail
+                            );
+                            const { responseId } = event.detail;
+
+                            // Intentar obtener la respuesta del historial
+                            const responseHistory =
+                              enhancer.shadowRoot?.querySelector(
+                                "response-history"
+                              );
+                            if (!responseHistory) return;
+
+                            const response =
+                              responseHistory.getResponse(responseId);
+                            if (!response || !response.content) return;
+
+                            // Aplicar al editor CKEditor como respaldo
+                            if (window.ckeditorInstance) {
+                              window.ckeditorInstance.setData(response.content);
+
+                              // Mostrar mensaje de éxito
+                              showSuccessMessage();
+
+                              // Cerrar el modal
+                              const modal =
+                                enhancer.shadowRoot?.querySelector(".modal");
+                              if (modal) {
+                                setTimeout(
+                                  () => modal.classList.remove("open"),
+                                  100
+                                );
+                              }
+                            }
+                          } catch (error) {
+                            console.error(
+                              "❌ Error en manejador de responseUse:",
+                              error
+                            );
+                          }
+                        }
+                      );
+                    }, 500);
+                  } else {
+                    console.log(
+                      "✅ EditorAdapter ya está configurado:",
+                      enhancer.editorAdapter
                     );
                   }
-                });
-
-                // Añadir separador antes del botón
-                const separator = document.createElement("span");
-                separator.className = "ck ck-toolbar__separator";
-
-                // Insertar en la barra de herramientas
-                toolbar.appendChild(separator);
-                toolbar.appendChild(aiButton);
-
-                console.log(
-                  "✅ Botón AI añadido manualmente a la barra de herramientas de CKEditor"
-                );
-              } else {
-                console.error(
-                  "❌ No se encontró la barra de herramientas de CKEditor"
-                );
-              }
-            }, 500); // Darle tiempo al editor para renderizarse completamente
-          })
-          .catch((error) => {
-            console.error("Error al inicializar CKEditor:", error);
-          });
+                } catch (error) {
+                  console.error(
+                    "❌ Error configurando AI Text Enhancer:",
+                    error
+                  );
+                }
+              }, 1000);
+            })
+            .catch((error) => {
+              console.error("Error al inicializar CKEditor:", error);
+            });
+        } catch (error) {
+          console.error("Error general:", error);
+        }
       });
     </script>
 
