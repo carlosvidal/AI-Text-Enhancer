@@ -1,9 +1,10 @@
-// editor-adapter.js - Actualización para incorporar el adaptador de CKEditor
+// editor-adapter.js - Actualizado con soporte para Froala
 
 // Importar los adaptadores específicos
 import { createTinyMCEAdapter } from "../utils/tinymce-adapter.js";
 import { createCKEditorAdapter } from "../utils/ckeditor-adapter.js";
 import { createQuillAdapter } from "../utils/quill-adapter.js";
+import { createFroalaAdapter } from "../utils/froala-adapter.js";
 
 /**
  * Clase adaptadora para diferentes tipos de editores
@@ -13,7 +14,7 @@ export class EditorAdapter {
   /**
    * Constructor del adaptador de editor
    * @param {string} editorId - ID del elemento editor
-   * @param {string} editorType - Tipo de editor ('textarea', 'tinymce', 'ckeditor', etc.)
+   * @param {string} editorType - Tipo de editor ('textarea', 'tinymce', 'ckeditor', 'froala', etc.)
    * @param {Object} options - Opciones adicionales
    */
   constructor(editorId, editorType = "textarea", options = {}) {
@@ -106,6 +107,23 @@ export class EditorAdapter {
         }
         break;
 
+      case "froala":
+        try {
+          this.specificAdapters.froala = createFroalaAdapter(this.editorId, {
+            debug: this.options.debug,
+          });
+
+          if (this.options.debug) {
+            console.log("[EditorAdapter] Froala adapter initialized");
+          }
+        } catch (error) {
+          console.error(
+            "[EditorAdapter] Failed to initialize Froala adapter:",
+            error
+          );
+        }
+        break;
+
       // Aquí se pueden agregar más adaptadores específicos para otros editores
 
       default:
@@ -175,6 +193,28 @@ export class EditorAdapter {
           }
 
           console.warn("[EditorAdapter] Quill not initialized properly");
+          return "";
+
+        case "froala":
+          // Froala - usar adaptador específico si está disponible
+          if (this.specificAdapters.froala) {
+            return this.specificAdapters.froala.getContent() || "";
+          }
+
+          // Fallback: intentar obtener contenido directamente
+          if (typeof window.froalaInstance !== "undefined") {
+            return window.froalaInstance.html.get() || "";
+          }
+
+          // Otro intento: buscar el elemento editable de Froala
+          const froalaElement = document.querySelector(
+            `#${this.editorId} div.fr-element`
+          );
+          if (froalaElement) {
+            return froalaElement.innerHTML || "";
+          }
+
+          console.warn("[EditorAdapter] Froala not initialized properly");
           return "";
 
         case "textarea":
@@ -275,6 +315,31 @@ export class EditorAdapter {
           }
 
           console.warn("[EditorAdapter] Quill not initialized properly");
+          return false;
+
+        case "froala":
+          // Froala - usar adaptador específico si está disponible
+          if (this.specificAdapters.froala) {
+            return this.specificAdapters.froala.setContent(content);
+          }
+
+          // Fallback: intentar establecer contenido directamente
+          if (typeof window.froalaInstance !== "undefined") {
+            window.froalaInstance.html.set(content);
+            window.froalaInstance.events.trigger("contentChanged");
+            return true;
+          }
+
+          // Otro intento: buscar el elemento editable de Froala
+          const froalaElement = document.querySelector(
+            `#${this.editorId} div.fr-element`
+          );
+          if (froalaElement) {
+            froalaElement.innerHTML = content;
+            return true;
+          }
+
+          console.warn("[EditorAdapter] Froala not initialized properly");
           return false;
 
         case "textarea":
@@ -405,6 +470,21 @@ export class EditorAdapter {
 
           return false;
 
+        case "froala":
+          // Froala - usar adaptador específico si está disponible
+          if (this.specificAdapters.froala) {
+            return this.specificAdapters.froala.insertContent(content);
+          }
+
+          // Fallback: intentar insertar contenido directamente
+          if (typeof window.froalaInstance !== "undefined") {
+            window.froalaInstance.html.insert(content, true);
+            window.froalaInstance.events.trigger("contentChanged");
+            return true;
+          }
+
+          return false;
+
         case "textarea":
         default:
           // Para textareas, simplemente agregamos al final (no hay cursor real)
@@ -447,6 +527,13 @@ export class EditorAdapter {
 
         case "ckeditor":
           // CKEditor - no hay un método simple para obtener la selección actual
+          return "";
+
+        case "froala":
+          // Froala
+          if (typeof window.froalaInstance !== "undefined") {
+            return window.froalaInstance.selection.text() || "";
+          }
           return "";
 
         case "textarea":
@@ -505,6 +592,15 @@ export class EditorAdapter {
           // CKEditor - no hay un método simple para reemplazar la selección
           // Como fallback, insertamos el contenido completo
           return this.setContent(content);
+
+        case "froala":
+          // Froala
+          if (typeof window.froalaInstance !== "undefined") {
+            window.froalaInstance.selection.replace(content);
+            window.froalaInstance.events.trigger("contentChanged");
+            return true;
+          }
+          return false;
 
         case "textarea":
         default:

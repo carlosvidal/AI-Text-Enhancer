@@ -3771,11 +3771,216 @@ class QuillAdapter {
 function createQuillAdapter(editorId, options = {}) {
   return new QuillAdapter(editorId, options);
 }
+class FroalaAdapter {
+  /**
+   * Crea un nuevo adaptador para Froala
+   * @param {string} editorId - ID del elemento contenedor de Froala
+   * @param {Object} options - Opciones adicionales
+   */
+  constructor(editorId, options = {}) {
+    this.editorId = editorId;
+    this.options = {
+      debug: options.debug || false,
+      waitTimeout: options.waitTimeout || 2e3,
+      ...options
+    };
+    this.editorInstance = null;
+    this._initialized = false;
+    this._findEditorInstance();
+  }
+  /**
+   * Busca la instancia de Froala ya sea por ID o en el objeto global
+   * @private
+   */
+  _findEditorInstance() {
+    try {
+      if (typeof window.froalaInstance !== "undefined") {
+        this.editorInstance = window.froalaInstance;
+        this._initialized = true;
+        if (this.options.debug) {
+          console.log(
+            `[FroalaAdapter] Found editor instance from global variable`
+          );
+        }
+        return true;
+      }
+      const editorElement = document.getElementById(this.editorId);
+      if (editorElement && editorElement.froalaEditor) {
+        this.editorInstance = editorElement.froalaEditor;
+        this._initialized = true;
+        if (this.options.debug) {
+          console.log(
+            `[FroalaAdapter] Found editor instance from element property`
+          );
+        }
+        return true;
+      }
+      const froalaContainer = document.querySelector(
+        `.fr-box[id^="${this.editorId}"]`
+      );
+      if (froalaContainer) {
+        const editorElement2 = froalaContainer.querySelector(
+          "[contenteditable=true]"
+        );
+        if (editorElement2 && editorElement2.parentNode.querySelector(".fr-element")) {
+          const instanceKey = Object.keys(window).find(
+            (key) => key.startsWith("FE_") && window[key] && typeof window[key] === "object" && window[key].$
+          );
+          if (instanceKey) {
+            this.editorInstance = window[instanceKey];
+            this._initialized = true;
+            if (this.options.debug) {
+              console.log(
+                `[FroalaAdapter] Found editor instance from global FE key`
+              );
+            }
+            return true;
+          }
+        }
+      }
+      if (this.options.debug) {
+        console.warn(
+          `[FroalaAdapter] Froala instance not found for "${this.editorId}"`
+        );
+      }
+      return false;
+    } catch (error) {
+      console.error(`[FroalaAdapter] Error finding Froala instance:`, error);
+      return false;
+    }
+  }
+  /**
+   * Espera a que Froala esté inicializado
+   * @returns {Promise<boolean>} Promesa que se resuelve cuando el editor está listo
+   */
+  async waitForEditor() {
+    if (this._initialized && this.editorInstance) {
+      return true;
+    }
+    return new Promise((resolve) => {
+      if (this._findEditorInstance()) {
+        resolve(true);
+        return;
+      }
+      const startTime = Date.now();
+      const checkInterval = setInterval(() => {
+        if (this._findEditorInstance()) {
+          clearInterval(checkInterval);
+          resolve(true);
+          return;
+        }
+        if (Date.now() - startTime > this.options.waitTimeout) {
+          clearInterval(checkInterval);
+          console.warn(
+            `[FroalaAdapter] Timeout waiting for Froala to initialize`
+          );
+          resolve(false);
+        }
+      }, 100);
+    });
+  }
+  /**
+   * Obtiene el contenido del editor
+   * @returns {string} El contenido HTML del editor o cadena vacía si no está disponible
+   */
+  async getContent() {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        const content = this.editorInstance.html.get();
+        if (this.options.debug) {
+          console.log(
+            `[FroalaAdapter] Retrieved content (${(content == null ? void 0 : content.length) || 0} chars)`
+          );
+        }
+        return content || "";
+      }
+    } catch (error) {
+      console.error(`[FroalaAdapter] Error getting content:`, error);
+    }
+    try {
+      const element = document.querySelector(
+        `#${this.editorId} div.fr-element`
+      );
+      if (element) {
+        return element.innerHTML || "";
+      }
+    } catch (e) {
+      console.error(`[FroalaAdapter] Error in fallback content retrieval:`, e);
+    }
+    return "";
+  }
+  /**
+   * Establece el contenido del editor
+   * @param {string} content - El contenido HTML a establecer
+   * @returns {boolean} true si se estableció correctamente, false en caso contrario
+   */
+  async setContent(content) {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        this.editorInstance.html.set(content);
+        this.editorInstance.events.trigger("contentChanged");
+        if (this.options.debug) {
+          console.log(
+            `[FroalaAdapter] Content set successfully (${content.length} chars)`
+          );
+        }
+        return true;
+      }
+    } catch (error) {
+      console.error(`[FroalaAdapter] Error setting content:`, error);
+    }
+    try {
+      const element = document.querySelector(
+        `#${this.editorId} div.fr-element`
+      );
+      if (element) {
+        element.innerHTML = content;
+        return true;
+      }
+    } catch (e) {
+      console.error(`[FroalaAdapter] Error in fallback content setting:`, e);
+    }
+    return false;
+  }
+  /**
+   * Inserta contenido en la posición actual del cursor
+   * @param {string} content - El contenido HTML a insertar
+   * @returns {boolean} true si se insertó correctamente, false en caso contrario
+   */
+  async insertContent(content) {
+    await this.waitForEditor();
+    try {
+      if (this.editorInstance) {
+        this.editorInstance.html.insert(content, true);
+        this.editorInstance.events.trigger("contentChanged");
+        if (this.options.debug) {
+          console.log(`[FroalaAdapter] Content inserted successfully`);
+        }
+        return true;
+      }
+    } catch (error) {
+      console.error(`[FroalaAdapter] Error inserting content:`, error);
+    }
+    return false;
+  }
+  /**
+   * Verifica si el editor está inicializado
+   * @returns {boolean} true si el editor está inicializado, false en caso contrario
+   */
+  isInitialized() {
+    return this._initialized && this.editorInstance !== null;
+  }
+}
+function createFroalaAdapter(editorId, options = {}) {
+  return new FroalaAdapter(editorId, options);
+}
 class EditorAdapter {
   /**
    * Constructor del adaptador de editor
    * @param {string} editorId - ID del elemento editor
-   * @param {string} editorType - Tipo de editor ('textarea', 'tinymce', 'ckeditor', etc.)
+   * @param {string} editorType - Tipo de editor ('textarea', 'tinymce', 'ckeditor', 'froala', etc.)
    * @param {Object} options - Opciones adicionales
    */
   constructor(editorId, editorType = "textarea", options = {}) {
@@ -3853,6 +4058,21 @@ class EditorAdapter {
           );
         }
         break;
+      case "froala":
+        try {
+          this.specificAdapters.froala = createFroalaAdapter(this.editorId, {
+            debug: this.options.debug
+          });
+          if (this.options.debug) {
+            console.log("[EditorAdapter] Froala adapter initialized");
+          }
+        } catch (error) {
+          console.error(
+            "[EditorAdapter] Failed to initialize Froala adapter:",
+            error
+          );
+        }
+        break;
     }
   }
   /**
@@ -3899,6 +4119,21 @@ class EditorAdapter {
             }
           }
           console.warn("[EditorAdapter] Quill not initialized properly");
+          return "";
+        case "froala":
+          if (this.specificAdapters.froala) {
+            return this.specificAdapters.froala.getContent() || "";
+          }
+          if (typeof window.froalaInstance !== "undefined") {
+            return window.froalaInstance.html.get() || "";
+          }
+          const froalaElement = document.querySelector(
+            `#${this.editorId} div.fr-element`
+          );
+          if (froalaElement) {
+            return froalaElement.innerHTML || "";
+          }
+          console.warn("[EditorAdapter] Froala not initialized properly");
           return "";
         case "textarea":
         default:
@@ -3974,6 +4209,24 @@ class EditorAdapter {
             return true;
           }
           console.warn("[EditorAdapter] Quill not initialized properly");
+          return false;
+        case "froala":
+          if (this.specificAdapters.froala) {
+            return this.specificAdapters.froala.setContent(content);
+          }
+          if (typeof window.froalaInstance !== "undefined") {
+            window.froalaInstance.html.set(content);
+            window.froalaInstance.events.trigger("contentChanged");
+            return true;
+          }
+          const froalaElement = document.querySelector(
+            `#${this.editorId} div.fr-element`
+          );
+          if (froalaElement) {
+            froalaElement.innerHTML = content;
+            return true;
+          }
+          console.warn("[EditorAdapter] Froala not initialized properly");
           return false;
         case "textarea":
         default:
@@ -4055,7 +4308,6 @@ class EditorAdapter {
             return true;
           }
           return false;
-        // Se pueden agregar otros editores que soporten inserción de contenido
         case "quill":
           if (this.specificAdapters.quill) {
             return this.specificAdapters.quill.insertContent(content);
@@ -4076,6 +4328,16 @@ class EditorAdapter {
                 "user"
               );
             }
+            return true;
+          }
+          return false;
+        case "froala":
+          if (this.specificAdapters.froala) {
+            return this.specificAdapters.froala.insertContent(content);
+          }
+          if (typeof window.froalaInstance !== "undefined") {
+            window.froalaInstance.html.insert(content, true);
+            window.froalaInstance.events.trigger("contentChanged");
             return true;
           }
           return false;
@@ -4115,6 +4377,11 @@ class EditorAdapter {
           }
           return "";
         case "ckeditor":
+          return "";
+        case "froala":
+          if (typeof window.froalaInstance !== "undefined") {
+            return window.froalaInstance.selection.text() || "";
+          }
           return "";
         case "textarea":
         default:
@@ -4159,6 +4426,13 @@ class EditorAdapter {
           return false;
         case "ckeditor":
           return this.setContent(content);
+        case "froala":
+          if (typeof window.froalaInstance !== "undefined") {
+            window.froalaInstance.selection.replace(content);
+            window.froalaInstance.events.trigger("contentChanged");
+            return true;
+          }
+          return false;
         case "textarea":
         default:
           const editorElement = document.getElementById(this.editorId);
@@ -5226,10 +5500,16 @@ function createTemplate(component) {
     <!-- Botón para abrir el modal (CONDICIONAL) -->
     ${showTrigger ? `
     <button class="modal-trigger" id="modal-trigger-button">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/>
-        <path d="m14 7 3 3"/>
-      </svg>
+       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" fill-opacity="0" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/>
+                        <path d="m14 7 3 3"/>
+                        <path d="M5 6v4"/>
+                        <path d="M19 14v4"/>
+                        <path d="M10 2v2"/>
+                        <path d="M7 8H3"/>
+                        <path d="M21 16h-4"/>
+                        <path d="M11 3H9"/>
+                      </svg>
       <span>${(t == null ? void 0 : t.modalTrigger) || "Enhance with AI"}</span>
     </button>
     ` : ""}
