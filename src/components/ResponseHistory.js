@@ -551,14 +551,21 @@ export class ResponseHistory extends HTMLElement {
         contentElement.lastChild &&
         contentElement.lastChild.nodeType === Node.TEXT_NODE
       ) {
-        // CLAVE: Actualizar el nodeValue para evitar parpadeo
-        contentElement.lastChild.nodeValue += newTextPart;
-      }
-      // Si no tiene un nodo de texto, crear uno nuevo
-      else {
+        // Actualizar el nodeValue para evitar parpadeo
+        contentElement.lastChild.nodeValue = response.content;
+      } else {
         const textNode = document.createTextNode(response.content);
         contentElement.innerHTML = "";
         contentElement.appendChild(textNode);
+      }
+
+      // Mantener el scroll al final si está cerca del final
+      const container = responseEntry.parentNode;
+      if (container) {
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+        if (isNearBottom) {
+          container.scrollTop = container.scrollHeight;
+        }
       }
     }
 

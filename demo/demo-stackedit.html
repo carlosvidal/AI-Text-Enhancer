@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Text Enhancer - Demo StackEdit</title>
+    <link rel="stylesheet" href="css/common-styles.css" />
+    <script src="https://unpkg.com/stackedit-js@1.0.7/docs/lib/stackedit.min.js"></script>
+    <style>
+      #markdown-editor {
+        width: 100%;
+        min-height: 300px !important;
+        padding: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-family: monospace;
+        resize: vertical;
+        box-sizing: border-box;
+        background: white;
+        line-height: 1.5;
+      }
+      .preview {
+        border: 1px solid #d1d5db;
+        padding: 20px;
+        border-radius: 6px;
+        background: white;
+        margin-top: 20px;
+        line-height: 1.6;
+      }
+      .preview img {
+        max-width: 100%;
+        height: auto;
+      }
+      .preview code {
+        background: #f3f4f6;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: monospace;
+      }
+      .preview pre {
+        background: #f3f4f6;
+        padding: 15px;
+        border-radius: 6px;
+        overflow-x: auto;
+      }
+      .controls {
+        margin: 20px 0;
+        display: flex;
+        gap: 10px;
+      }
+      .secondary {
+        background: #6b7280;
+      }
+      .secondary:hover {
+        background: #4b5563;
+      }
+      
+      /* Layout styles */
+      .editor-container {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 30px;
+        align-items: start;
+        margin-bottom: 40px;
+      }
+      
+      @media (max-width: 1024px) {
+        .editor-container {
+          grid-template-columns: 1fr;
+        }
+      }
+      
+      .editor-section {
+        grid-column: 1;
+      }
+      
+      .ai-section {
+        grid-column: 2;
+        background: #f9fafb;
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+      }
+      
+      ai-text-enhancer {
+        position: sticky;
+        top: 20px;
+        display: block;
+      }
+      
+      /* Test container styles */
+      .test-container {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background-color: #f9fafb;
+      }
+      
+      .test-container h5 {
+        margin-top: 0;
+        color: #111827;
+      }
+      
+      .test-container .text-muted {
+        color: #6b7280;
+        margin-bottom: 1rem;
+      }
+      
+      .btn-primary {
+        background-color: #2563eb;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+      }
+      
+      .btn-primary:hover {
+        background-color: #1d4ed8;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AI Text Enhancer - Demo StackEdit</h1>
+
+    <div class="api-key-form">
+      <label for="api-key">OpenAI API Key:</label>
+      <input type="password" id="api-key" placeholder="sk-..." />
+      <button id="update-api-key">Actualizar API Key</button>
+    </div>
+
+    <div class="demo-navigation">
+      <a href="index.html">Inicio</a>
+      <a href="demo-simple.html">Textarea Simple</a>
+      <a href="demo-tinymce.html">TinyMCE</a>
+      <a href="demo-ckeditor.html">CKEditor 5</a>
+      <a href="demo-quill.html">Quill</a>
+      <a href="demo-froala.html">Froala</a>
+      <a href="demo-stackedit.html" class="active">StackEdit</a>
+    </div>
+
+    <div class="container">
+      <div class="editor-container">
+        <div class="editor-section">
+          <h2>Editor Markdown con StackEdit</h2>
+
+          <textarea
+            id="markdown-editor"
+            placeholder="Escribe o pega tu texto aquí..."
+          >
+# Bienvenido a la Demo de AI Text Enhancer con StackEdit
+
+Este es un ejemplo de editor markdown que utiliza StackEdit.js integrado con AI Text Enhancer.
+
+## Características principales
+
+- Soporte completo para sintaxis Markdown
+- Vista previa en tiempo real
+- Integración con AI Text Enhancer
+- Interfaz limpia y fácil de usar
+
+## Ejemplo de lista
+
+1. Primer elemento
+2. Segundo elemento
+3. Tercer elemento
+
+## Ejemplo de tabla
+
+| Encabezado 1 | Encabezado 2 |
+|--------------|--------------|
+| Celda 1      | Celda 2      |
+| Celda 3      | Celda 4      |
+
+## Ejemplo de código
+
+```javascript
+function ejemplo() {
+  console.log("¡Hola mundo!");
+}
+```
+
+## Ejemplo de cita
+
+> Esta es una cita de ejemplo que muestra cómo se ven los bloques de cita en Markdown.
+
+### Imagen de ejemplo
+
+![Logo de Markdown](https://markdown-here.com/img/icon256.png)
+          </textarea>
+
+          <div class="controls">
+            <button onclick="openStackEdit()">Abrir en StackEdit</button>
+            <button onclick="togglePreview()" class="secondary">
+              Toggle Preview
+            </button>
+          </div>
+
+          <div id="preview" class="preview" style="display: none"></div>
+        </div>
+
+        <!-- AI Text Enhancer with chat -->
+        <div class="ai-section">
+          <h3>AI Chat Assistant</h3>
+          <p class="text-muted">Use the chat interface below to interact with the AI assistant. You can ask questions about your text or request improvements.</p>
+          
+          <ai-text-enhancer
+            editor-id="markdown-editor"
+            editor-type="stackedit"
+            api-provider="openai"
+            tenant-id="demo"
+            proxy-endpoint="http://llmproxy2.test:8080/api/llm-proxy"
+            language="es"
+            show-chat
+            chat-model="gpt-4-turbo"
+            chat-temperature="0.7"
+            stream-response="true"
+            initial-prompt="I'm an AI assistant that can help you improve your markdown content. Feel free to ask me questions or request improvements."
+          >
+          </ai-text-enhancer>
+        </div>
+      </div>
+
+      <!-- Test section moved outside the grid -->
+      <div class="test-container mt-4 p-3 border rounded bg-light">
+        <h5>Test Streaming Response</h5>
+        <p class="text-muted">
+          Click the button below to test the streaming functionality. You
+          should see the AI response appear word by word in real-time.
+        </p>
+        <button id="testStreaming" class="btn btn-primary">
+          Generate Story with Streaming
+        </button>
+      </div>
+    </div>
+
+    <script type="module">
+      import "../dist/ai-text-enhancer.umd.js";
+
+      // Initialize StackEdit instance
+      const stackedit = new Stackedit();
+
+      window.openStackEdit = function () {
+        // Open the iframe
+        stackedit.openFile({
+          content: {
+            text: document.getElementById("markdown-editor").value
+          }
+        });
+
+        // Listen to StackEdit events and update the editor
+        stackedit.on('fileChange', (file) => {
+          document.getElementById("markdown-editor").value = file.content.text;
+        });
+      };
+
+      window.togglePreview = function () {
+        const preview = document.getElementById("preview");
+        const isHidden = preview.style.display === 'none';
+        
+        if (isHidden) {
+          const editor = document.getElementById("markdown-editor");
+          preview.innerHTML = marked.parse(editor.value);
+          preview.style.display = 'block';
+        } else {
+          preview.style.display = 'none';
+        }
+      };
+
+      // Test streaming functionality
+      document
+        .getElementById("testStreaming")
+        .addEventListener("click", async () => {
+          const enhancer = document.querySelector("ai-text-enhancer");
+          const responseHistory = enhancer.shadowRoot.querySelector("response-history");
+          
+          if (!responseHistory) {
+            console.error("Response history component not found");
+            return;
+          }
+
+          try {
+            // Create a chat message
+            const message = {
+              type: 'user',
+              content: "Generate a creative story about an AI learning to write poetry. Make it about 3-4 paragraphs long."
+            };
+            
+            // Send chat message event
+            enhancer.dispatchEvent(new CustomEvent('chat-message', { 
+              detail: message,
+              bubbles: true,
+              composed: true 
+            }));
+          } catch (error) {
+            console.error("Error:", error);
+          }
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="js/common.js"></script>
+  </body>
+</html>

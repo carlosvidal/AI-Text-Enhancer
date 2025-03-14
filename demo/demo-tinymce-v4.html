@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TinyMCE v4 Demo</title>
+    <link rel="stylesheet" href="css/common-styles.css" />
+    <script src="lib/tinymce/4/tinymce/js/tinymce/tinymce.min.js"></script>
+</head>
+<body>
+    <h1>AI Text Enhancer - TinyMCE v4 Demo</h1>
+
+    <div class="api-key-form">
+        <label for="api-key">OpenAI API Key:</label>
+        <input type="password" id="api-key" placeholder="sk-..." />
+        <button id="update-api-key">Actualizar API Key</button>
+    </div>
+
+    <div class="demo-navigation">
+        <a href="index.html">Inicio</a>
+        <a href="demo-simple.html">Textarea Simple</a>
+        <a href="demo-tinymce.html">TinyMCE</a>
+        <a href="demo-ckeditor.html">CKEditor 5</a>
+        <a href="demo-quill.html">Quill</a>
+        <a href="demo-froala.html">Froala</a>
+    </div>
+
+    <div class="editor-container">
+        <h2>TinyMCE Version 4 Demo</h2>
+        <div id="tinymce-editor"></div>
+
+        <!-- AI Text Enhancer -->
+        <ai-text-enhancer
+            id="my-enhancer"
+            editor-id="tinymce-editor"
+            editor-type="tinymce"
+            api-provider="openai"
+            api-model="gpt-4"
+            prompt="Eres un asistente experto en SEO, especializado en optimizar contenido para motores de búsqueda."
+            tenant-id="2"
+            user-id="12964"
+            hide-trigger
+        ></ai-text-enhancer>
+    </div>
+
+    <!-- Script para importar el componente -->
+    <script type="module">
+        // Importar componente base
+        import "../dist/ai-text-enhancer.umd.js";
+
+        // Inicializar TinyMCE
+        document.addEventListener("DOMContentLoaded", () => {
+            tinymce.init({
+                selector: "#tinymce-editor",
+                height: 300,
+                menubar: false,
+                plugins: [
+                    "advlist",
+                    "autolink",
+                    "lists",
+                    "link",
+                    "image",
+                    "charmap",
+                    "preview",
+                    "anchor",
+                    "searchreplace",
+                    "visualblocks",
+                    "code",
+                    "fullscreen",
+                    "insertdatetime",
+                    "media",
+                    "table",
+                    "help",
+                    "wordcount",
+                ],
+                toolbar: "undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link image | ai_enhancer",
+                setup: function (editor) {
+                    // Agregar botón personalizado para IA
+                    editor.addButton('ai_enhancer', {
+                        icon: 'code',
+                        image: 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" fill-opacity="0" stroke="#b400cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/>
+                            <path d="m14 7 3 3"/>
+                            <path d="M5 6v4"/>
+                            <path d="M19 14v4"/>
+                            <path d="M10 2v2"/>
+                            <path d="M7 8H3"/>
+                            <path d="M21 16h-4"/>
+                            <path d="M11 3H9"/>
+                        </svg>`),
+                        tooltip: "Mejorar con IA",
+                        onclick: function () {
+                            const enhancer = document.getElementById("my-enhancer");
+                            if (enhancer) {
+                                enhancer.openModal();
+                            } else {
+                                console.error("No se encontró el componente AI Text Enhancer");
+                            }
+                        }
+                    });
+
+                    // Cuando el editor esté listo, añadir contenido inicial
+                    editor.on("init", function () {
+                        editor.setContent(`
+                            <p>Este es un ejemplo de descripción en TinyMCE v4 que se puede optimizar para SEO usando IA.</p>
+                            <p>Incluye algunas palabras clave pero necesita mejorar su estructura y relevancia.</p>
+                            <p>El contenido debe ser más atractivo para los motores de búsqueda.</p>
+                        `);
+                    });
+                },
+            });
+        });
+    </script>
+
+    <script src="js/common.js"></script>
+</body>
+</html>

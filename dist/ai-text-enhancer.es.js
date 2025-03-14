@@ -1301,13 +1301,20 @@ class ResponseHistory extends HTMLElement {
       contentElement.dataset.streamingActive = "true";
       contentElement.classList.add("typing-animation");
     } else if (isIncrementalUpdate && contentElement.dataset.streamingActive === "true") {
-      const newTextPart = response.content.substring(oldContent.length);
+      response.content.substring(oldContent.length);
       if (contentElement.lastChild && contentElement.lastChild.nodeType === Node.TEXT_NODE) {
-        contentElement.lastChild.nodeValue += newTextPart;
+        contentElement.lastChild.nodeValue = response.content;
       } else {
         const textNode = document.createTextNode(response.content);
         contentElement.innerHTML = "";
         contentElement.appendChild(textNode);
+      }
+      const container = responseEntry.parentNode;
+      if (container) {
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+        if (isNearBottom) {
+          container.scrollTop = container.scrollHeight;
+        }
       }
     } else {
       console.log(
@@ -2494,50 +2501,23 @@ class APIClient {
           if (line.startsWith("data: ")) {
             const content = line.slice(5).trim();
             if (content === "[DONE]") continue;
+            let jsonData;
             try {
-              const data = JSON.parse(content);
-              const textContent = extractContentFromJSON(data);
-              if (textContent !== void 0) {
-                if (isFirstContentChunk) {
-                  isFirstContentChunk = false;
-                  if (this.config.debugMode) {
-                    console.log(
-                      `[APIClient] Primer fragmento de respuesta: "${textContent}"`
-                    );
-                  }
-                }
-                completeText += textContent;
-                streamedChars += textContent.length;
-                onProgress(textContent);
-                foundContent = true;
-              }
+              jsonData = JSON.parse(content);
             } catch (e) {
-              console.warn("[APIClient] Error procesando JSON:", e);
-              if (content.includes('"text":"') || content.includes('"content":"')) {
-                try {
-                  const textMatch = content.match(/"(text|content)":"([^"]*)"/);
-                  if (textMatch && textMatch[2]) {
-                    const textContent = textMatch[2];
-                    completeText += textContent;
-                    streamedChars += textContent.length;
-                    onProgress(textContent);
-                    foundContent = true;
-                    if (isFirstContentChunk) {
-                      isFirstContentChunk = false;
-                      if (this.config.debugMode) {
-                        console.log(
-                          `[APIClient] Primer fragmento (regex): "${textContent}"`
-                        );
-                      }
-                    }
-                  }
-                } catch (extractError) {
-                  console.warn(
-                    "[APIClient] Error extrayendo texto con regex:",
-                    extractError
-                  );
-                }
+              if (content.trim()) {
+                foundContent = true;
+                completeText += content;
+                onProgress(content);
               }
+              continue;
+            }
+            const extractedContent = extractContentFromJSON(jsonData);
+            if (extractedContent) {
+              foundContent = true;
+              completeText += extractedContent;
+              streamedChars += extractedContent.length;
+              onProgress(extractedContent);
             }
           }
         }
@@ -3985,30 +3965,19 @@ class EditorAdapter {
    */
   constructor(editorId, editorType = "textarea", options = {}) {
     this.editorId = editorId;
-    this.editorType = (editorType == null ? void 0 : editorType.toLowerCase()) || "textarea";
+    this.editorType = editorType.toLowerCase();
     this.options = {
       debug: options.debug || false,
       ...options
     };
-    this.editor = document.getElementById(editorId);
     this.specificAdapters = {};
-    if (this.options.debug) {
-      console.log("[EditorAdapter] Initializing with:", {
-        editorId,
-        editorType: this.editorType,
-        editorFound: !!this.editor
-      });
-    }
-    if (!this.editor) {
-      console.warn(`[EditorAdapter] Editor element not found: ${editorId}`);
-    }
-    this.initSpecificAdapter();
+    this._initializeSpecificAdapter();
   }
   /**
-   * Inicializa adaptadores específicos según el tipo de editor
+   * Inicializa el adaptador específico según el tipo de editor
    * @private
    */
-  initSpecificAdapter() {
+  _initializeSpecificAdapter() {
     switch (this.editorType) {
       case "tinymce":
         try {
@@ -4027,12 +3996,9 @@ class EditorAdapter {
         break;
       case "ckeditor":
         try {
-          this.specificAdapters.ckeditor = createCKEditorAdapter(
-            this.editorId,
-            {
-              debug: this.options.debug
-            }
-          );
+          this.specificAdapters.ckeditor = createCKEditorAdapter(this.editorId, {
+            debug: this.options.debug
+          });
           if (this.options.debug) {
             console.log("[EditorAdapter] CKEditor adapter initialized");
           }
@@ -4073,6 +4039,14 @@ class EditorAdapter {
           );
         }
         break;
+      // Aquí se pueden agregar más adaptadores específicos para otros editores
+      default:
+        if (this.options.debug) {
+          console.log(
+            `[EditorAdapter] Using default textarea adapter for type: ${this.editorType}`
+          );
+        }
+        break;
     }
   }
   /**
@@ -4081,16 +4055,15 @@ class EditorAdapter {
    */
   getContent() {
     try {
-      const editorType = this.editorType.toLowerCase();
-      switch (editorType) {
+      switch (this.editorType) {
         case "tinymce":
           if (this.specificAdapters.tinymce) {
             return this.specificAdapters.tinymce.getContent() || "";
           }
-          if (typeof window.tinymce !== "undefined") {
-            const tinyEditor = window.tinymce.get(this.editorId);
-            if (tinyEditor) {
-              return tinyEditor.getContent() || "";
+          if (typeof tinymce !== "undefined") {
+            const editor = tinymce.get(this.editorId);
+            if (editor) {
+              return editor.getContent() || "";
             }
           }
           console.warn("[EditorAdapter] TinyMCE not initialized properly");
@@ -4099,8 +4072,11 @@ class EditorAdapter {
           if (this.specificAdapters.ckeditor) {
             return this.specificAdapters.ckeditor.getContent() || "";
           }
-          if (typeof window.ckeditorInstance !== "undefined") {
-            return window.ckeditorInstance.getData() || "";
+          if (typeof CKEDITOR !== "undefined") {
+            const editor = CKEDITOR.instances[this.editorId];
+            if (editor) {
+              return editor.getData() || "";
+            }
           }
           console.warn("[EditorAdapter] CKEditor not initialized properly");
           return "";
@@ -4108,15 +4084,9 @@ class EditorAdapter {
           if (this.specificAdapters.quill) {
             return this.specificAdapters.quill.getContent() || "";
           }
-          if (typeof window.quillInstance !== "undefined") {
-            return window.quillInstance.root.innerHTML || "";
-          }
-          const quillElement = document.getElementById(this.editorId);
-          if (quillElement) {
-            const editor = quillElement.querySelector(".ql-editor");
-            if (editor) {
-              return editor.innerHTML || "";
-            }
+          const quillElement = document.querySelector(`#${this.editorId}`);
+          if (quillElement && quillElement.__quill) {
+            return quillElement.__quill.root.innerHTML || "";
           }
           console.warn("[EditorAdapter] Quill not initialized properly");
           return "";
@@ -4137,18 +4107,19 @@ class EditorAdapter {
           return "";
         case "textarea":
         default:
-          const editorElement = document.getElementById(this.editorId);
-          if (editorElement) {
-            if (typeof editorElement.value !== "undefined") {
-              return editorElement.value || "";
-            } else if (typeof editorElement.innerHTML !== "undefined") {
-              return editorElement.innerHTML || "";
+          const element = document.getElementById(this.editorId);
+          if (element) {
+            if (element.tagName.toLowerCase() === "textarea") {
+              return element.value || "";
+            } else {
+              return element.innerHTML || "";
             }
           }
+          console.warn("[EditorAdapter] Element not found:", this.editorId);
           return "";
       }
     } catch (error) {
-      console.error("[EditorAdapter] Error getting editor content:", error);
+      console.error("[EditorAdapter] Error getting content:", error);
       return "";
     }
   }
@@ -4158,25 +4129,16 @@ class EditorAdapter {
    * @returns {boolean} true si se estableció correctamente, false en caso contrario
    */
   setContent(content) {
-    if (!content && content !== "") {
-      console.warn("[EditorAdapter] Attempt to set null/undefined content");
-      return false;
-    }
     try {
-      const editorType = this.editorType.toLowerCase();
-      switch (editorType) {
+      switch (this.editorType) {
         case "tinymce":
           if (this.specificAdapters.tinymce) {
             return this.specificAdapters.tinymce.setContent(content);
           }
-          if (typeof window.tinymce !== "undefined") {
-            const tinyEditor = window.tinymce.get(this.editorId);
-            if (tinyEditor) {
-              tinyEditor.setContent(content);
-              tinyEditor.undoManager.add();
-              if (this.options.debug) {
-                console.log("[EditorAdapter] Content set in TinyMCE");
-              }
+          if (typeof tinymce !== "undefined") {
+            const editor = tinymce.get(this.editorId);
+            if (editor) {
+              editor.setContent(content);
               return true;
             }
           }
@@ -4186,12 +4148,12 @@ class EditorAdapter {
           if (this.specificAdapters.ckeditor) {
             return this.specificAdapters.ckeditor.setContent(content);
           }
-          if (typeof window.ckeditorInstance !== "undefined") {
-            window.ckeditorInstance.setData(content);
-            if (this.options.debug) {
-              console.log("[EditorAdapter] Content set in CKEditor");
+          if (typeof CKEDITOR !== "undefined") {
+            const editor = CKEDITOR.instances[this.editorId];
+            if (editor) {
+              editor.setData(content);
+              return true;
             }
-            return true;
           }
           console.warn("[EditorAdapter] CKEditor not initialized properly");
           return false;
@@ -4199,13 +4161,9 @@ class EditorAdapter {
           if (this.specificAdapters.quill) {
             return this.specificAdapters.quill.setContent(content);
           }
-          if (typeof window.quillInstance !== "undefined") {
-            window.quillInstance.clipboard.dangerouslyPasteHTML(content);
-            return true;
-          }
-          const quillElem = document.getElementById(this.editorId);
-          if (quillElem && quillElem.__quill) {
-            quillElem.__quill.clipboard.dangerouslyPasteHTML(content);
+          const quillElement = document.querySelector(`#${this.editorId}`);
+          if (quillElement && quillElement.__quill) {
+            quillElement.__quill.root.innerHTML = content;
             return true;
           }
           console.warn("[EditorAdapter] Quill not initialized properly");
@@ -4230,223 +4188,20 @@ class EditorAdapter {
           return false;
         case "textarea":
         default:
-          const editorElement = document.getElementById(this.editorId);
-          if (editorElement) {
-            if (typeof editorElement.value !== "undefined") {
-              editorElement.value = content;
-              return true;
-            } else if (typeof editorElement.innerHTML !== "undefined") {
-              editorElement.innerHTML = content;
-              return true;
-            }
-          }
-          return false;
-      }
-    } catch (error) {
-      console.error("[EditorAdapter] Error setting editor content:", error);
-      return false;
-    }
-  }
-  /**
-   * Actualiza el tipo de editor
-   * @param {string} type - Nuevo tipo de editor
-   */
-  setEditorType(type) {
-    if (!type) return;
-    const oldType = this.editorType;
-    this.editorType = type.toLowerCase();
-    if (this.options.debug) {
-      console.log("[EditorAdapter] Editor type updated:", {
-        from: oldType,
-        to: this.editorType
-      });
-    }
-    if (oldType !== this.editorType) {
-      this.initSpecificAdapter();
-    }
-  }
-  /**
-   * Verifica si el editor tiene contenido
-   * @returns {boolean} true si el editor tiene contenido, false en caso contrario
-   */
-  hasContent() {
-    const content = this.getContent();
-    return content !== null && content !== void 0 && content.trim() !== "";
-  }
-  /**
-   * Inserta contenido en la posición actual del cursor (solo disponible en algunos editores)
-   * @param {string} content - Contenido a insertar
-   * @returns {boolean} true si se insertó correctamente, false en caso contrario
-   */
-  insertContent(content) {
-    if (!content) {
-      console.warn("[EditorAdapter] Attempt to insert null/undefined content");
-      return false;
-    }
-    try {
-      const editorType = this.editorType.toLowerCase();
-      switch (editorType) {
-        case "tinymce":
-          if (this.specificAdapters.tinymce) {
-            return this.specificAdapters.tinymce.insertContent(content);
-          }
-          if (typeof window.tinymce !== "undefined") {
-            const tinyEditor = window.tinymce.get(this.editorId);
-            if (tinyEditor) {
-              tinyEditor.execCommand("mceInsertContent", false, content);
-              tinyEditor.undoManager.add();
-              return true;
-            }
-          }
-          return false;
-        case "ckeditor":
-          if (this.specificAdapters.ckeditor) {
-            return this.specificAdapters.ckeditor.insertContent(content);
-          }
-          if (typeof window.ckeditorInstance !== "undefined") {
-            window.ckeditorInstance.setData(content);
-            return true;
-          }
-          return false;
-        case "quill":
-          if (this.specificAdapters.quill) {
-            return this.specificAdapters.quill.insertContent(content);
-          }
-          if (typeof window.quillInstance !== "undefined") {
-            const range = window.quillInstance.getSelection();
-            if (range) {
-              window.quillInstance.clipboard.dangerouslyPasteHTML(
-                range.index,
-                content,
-                "user"
-              );
+          const element = document.getElementById(this.editorId);
+          if (element) {
+            if (element.tagName.toLowerCase() === "textarea") {
+              element.value = content;
             } else {
-              const length = window.quillInstance.getLength();
-              window.quillInstance.clipboard.dangerouslyPasteHTML(
-                length,
-                content,
-                "user"
-              );
+              element.innerHTML = content;
             }
             return true;
           }
-          return false;
-        case "froala":
-          if (this.specificAdapters.froala) {
-            return this.specificAdapters.froala.insertContent(content);
-          }
-          if (typeof window.froalaInstance !== "undefined") {
-            window.froalaInstance.html.insert(content, true);
-            window.froalaInstance.events.trigger("contentChanged");
-            return true;
-          }
-          return false;
-        case "textarea":
-        default:
-          const editorElement = document.getElementById(this.editorId);
-          if (editorElement) {
-            if (typeof editorElement.value !== "undefined") {
-              editorElement.value += content;
-              return true;
-            } else if (typeof editorElement.innerHTML !== "undefined") {
-              editorElement.innerHTML += content;
-              return true;
-            }
-          }
+          console.warn("[EditorAdapter] Element not found:", this.editorId);
           return false;
       }
     } catch (error) {
-      console.error("[EditorAdapter] Error inserting content:", error);
-      return false;
-    }
-  }
-  /**
-   * Obtiene la selección actual en el editor
-   * @returns {string} Texto seleccionado o cadena vacía si no hay selección
-   */
-  getSelection() {
-    try {
-      const editorType = this.editorType.toLowerCase();
-      switch (editorType) {
-        case "tinymce":
-          if (typeof window.tinymce !== "undefined") {
-            const tinyEditor = window.tinymce.get(this.editorId);
-            if (tinyEditor) {
-              return tinyEditor.selection.getContent() || "";
-            }
-          }
-          return "";
-        case "ckeditor":
-          return "";
-        case "froala":
-          if (typeof window.froalaInstance !== "undefined") {
-            return window.froalaInstance.selection.text() || "";
-          }
-          return "";
-        case "textarea":
-        default:
-          const editorElement = document.getElementById(this.editorId);
-          if (editorElement && typeof editorElement.selectionStart !== "undefined") {
-            return editorElement.value.substring(
-              editorElement.selectionStart,
-              editorElement.selectionEnd
-            ) || "";
-          }
-          return "";
-      }
-    } catch (error) {
-      console.error("[EditorAdapter] Error getting selection:", error);
-      return "";
-    }
-  }
-  /**
-   * Reemplaza la selección actual con el contenido proporcionado
-   * @param {string} content - Contenido para reemplazar la selección
-   * @returns {boolean} true si se reemplazó correctamente, false en caso contrario
-   */
-  replaceSelection(content) {
-    if (!content && content !== "") {
-      console.warn(
-        "[EditorAdapter] Attempt to replace selection with null/undefined content"
-      );
-      return false;
-    }
-    try {
-      const editorType = this.editorType.toLowerCase();
-      switch (editorType) {
-        case "tinymce":
-          if (typeof window.tinymce !== "undefined") {
-            const tinyEditor = window.tinymce.get(this.editorId);
-            if (tinyEditor) {
-              tinyEditor.selection.setContent(content);
-              tinyEditor.undoManager.add();
-              return true;
-            }
-          }
-          return false;
-        case "ckeditor":
-          return this.setContent(content);
-        case "froala":
-          if (typeof window.froalaInstance !== "undefined") {
-            window.froalaInstance.selection.replace(content);
-            window.froalaInstance.events.trigger("contentChanged");
-            return true;
-          }
-          return false;
-        case "textarea":
-        default:
-          const editorElement = document.getElementById(this.editorId);
-          if (editorElement && typeof editorElement.selectionStart !== "undefined") {
-            const start = editorElement.selectionStart;
-            const end = editorElement.selectionEnd;
-            editorElement.value = editorElement.value.substring(0, start) + content + editorElement.value.substring(end);
-            editorElement.selectionStart = editorElement.selectionEnd = start + content.length;
-            return true;
-          }
-          return false;
-      }
-    } catch (error) {
-      console.error("[EditorAdapter] Error replacing selection:", error);
+      console.error("[EditorAdapter] Error setting content:", error);
       return false;
     }
   }
@@ -4808,6 +4563,7 @@ const responseHandlerMixin = {
    * @param {CustomEvent} event - El evento con la respuesta
    */
   handleResponseUse(event) {
+    var _a;
     try {
       console.log("[ResponseHandlers] Use event received:", event.detail);
       if (!event.detail || !event.detail.responseId) {
@@ -4821,23 +4577,22 @@ const responseHandlerMixin = {
       }
       const response = this.responseHistory.getResponse(responseId);
       if (!response) {
-        console.warn(
-          "[ResponseHandlers] No response found for ID:",
-          responseId
-        );
+        console.warn("[ResponseHandlers] No response found for ID:", responseId);
         throw new Error("Response not found");
       }
       if (!response.content || typeof response.content !== "string" || response.content.trim() === "") {
-        console.warn(
-          "[ResponseHandlers] Empty content in response:",
-          responseId
-        );
+        console.warn("[ResponseHandlers] Empty content in response:", responseId);
         throw new Error("Response content is empty");
+      }
+      let contentToInsert = response.content;
+      if (this.markdownHandler && ["tinymce", "ckeditor", "froala"].includes((_a = this.editorAdapter) == null ? void 0 : _a.editorType)) {
+        contentToInsert = this.markdownHandler.convert(response.content);
+        console.log("[ResponseHandlers] Content converted to HTML for WYSIWYG editor");
       }
       if (window.tinymce && this.editorId && tinymce.get(this.editorId)) {
         const editor = tinymce.get(this.editorId);
         if (editor && editor.initialized) {
-          editor.setContent(response.content);
+          editor.setContent(contentToInsert);
           editor.undoManager.add();
           console.log("[ResponseHandlers] Content applied directly to TinyMCE");
           setTimeout(() => {
@@ -4851,12 +4606,12 @@ const responseHandlerMixin = {
       }
       if (this.editorAdapter) {
         console.log("[ResponseHandlers] Applying content via editor adapter");
-        const success = this.editorAdapter.setContent(response.content);
+        const success = this.editorAdapter.setContent(contentToInsert);
         if (success) {
           console.log("[ResponseHandlers] Response content applied to editor");
           this.dispatchEvent(
             new CustomEvent("ai-content-generated", {
-              detail: { content: response.content },
+              detail: { content: contentToInsert },
               bubbles: true,
               composed: true
             })

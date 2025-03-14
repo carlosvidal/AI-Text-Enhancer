@@ -56,7 +56,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-
 # Dependency directories
 node_modules/
 jspm_packages/
@@ -90,3 +89,6 @@ lerna-debug.log
 Thumbs.db
 
 demo/mitienda.html
+
+# TinyMCE libraries
+demo/lib/tinymce/

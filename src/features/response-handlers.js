@@ -64,31 +64,28 @@ export const responseHandlerMixin = {
       const response = this.responseHistory.getResponse(responseId);
 
       if (!response) {
-        console.warn(
-          "[ResponseHandlers] No response found for ID:",
-          responseId
-        );
+        console.warn("[ResponseHandlers] No response found for ID:", responseId);
         throw new Error("Response not found");
       }
 
       // Verificar que la respuesta tenga contenido
-      if (
-        !response.content ||
-        typeof response.content !== "string" ||
-        response.content.trim() === ""
-      ) {
-        console.warn(
-          "[ResponseHandlers] Empty content in response:",
-          responseId
-        );
+      if (!response.content || typeof response.content !== "string" || response.content.trim() === "") {
+        console.warn("[ResponseHandlers] Empty content in response:", responseId);
         throw new Error("Response content is empty");
+      }
+
+      // Convertir el contenido markdown a HTML si es necesario
+      let contentToInsert = response.content;
+      if (this.markdownHandler && ["tinymce", "ckeditor", "froala"].includes(this.editorAdapter?.editorType)) {
+        contentToInsert = this.markdownHandler.convert(response.content);
+        console.log("[ResponseHandlers] Content converted to HTML for WYSIWYG editor");
       }
 
       // Primero intentar aplicar usando TinyMCE directamente (si está disponible)
       if (window.tinymce && this.editorId && tinymce.get(this.editorId)) {
         const editor = tinymce.get(this.editorId);
         if (editor && editor.initialized) {
-          editor.setContent(response.content);
+          editor.setContent(contentToInsert);
           editor.undoManager.add();
           console.log("[ResponseHandlers] Content applied directly to TinyMCE");
 
@@ -109,7 +106,7 @@ export const responseHandlerMixin = {
         console.log("[ResponseHandlers] Applying content via editor adapter");
 
         // Usar el método setContent del adaptador del editor
-        const success = this.editorAdapter.setContent(response.content);
+        const success = this.editorAdapter.setContent(contentToInsert);
 
         if (success) {
           console.log("[ResponseHandlers] Response content applied to editor");
@@ -117,7 +114,7 @@ export const responseHandlerMixin = {
           // Disparar evento ai-content-generated para plugins
           this.dispatchEvent(
             new CustomEvent("ai-content-generated", {
-              detail: { content: response.content },
+              detail: { content: contentToInsert },
               bubbles: true,
               composed: true,
             })

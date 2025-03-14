@@ -200,65 +200,30 @@ class APIClient {
           if (line.startsWith("data: ")) {
             const content = line.slice(5).trim();
 
-            // Ignorar marcador de fin de stream
             if (content === "[DONE]") continue;
 
+            let jsonData;
             try {
-              // Intentar parsear como JSON
-              const data = JSON.parse(content);
-              const textContent = extractContentFromJSON(data);
-
-              if (textContent !== undefined) {
-                // Si es el primer fragmento, verificar que esté completo
-                if (isFirstContentChunk) {
-                  isFirstContentChunk = false;
-
-                  // Logging para depuración
-                  if (this.config.debugMode) {
-                    console.log(
-                      `[APIClient] Primer fragmento de respuesta: "${textContent}"`
-                    );
-                  }
-                }
-
-                completeText += textContent;
-                streamedChars += textContent.length;
-                onProgress(textContent);
-                foundContent = true;
-              }
+              jsonData = JSON.parse(content);
             } catch (e) {
-              console.warn("[APIClient] Error procesando JSON:", e);
-
-              // Intentar extraer usando expresiones regulares si el JSON falla
-              if (
-                content.includes('"text":"') ||
-                content.includes('"content":"')
-              ) {
-                try {
-                  const textMatch = content.match(/"(text|content)":"([^"]*)"/);
-                  if (textMatch && textMatch[2]) {
-                    const textContent = textMatch[2];
-                    completeText += textContent;
-                    streamedChars += textContent.length;
-                    onProgress(textContent);
-                    foundContent = true;
-
-                    if (isFirstContentChunk) {
-                      isFirstContentChunk = false;
-                      if (this.config.debugMode) {
-                        console.log(
-                          `[APIClient] Primer fragmento (regex): "${textContent}"`
-                        );
-                      }
-                    }
-                  }
-                } catch (extractError) {
-                  console.warn(
-                    "[APIClient] Error extrayendo texto con regex:",
-                    extractError
-                  );
-                }
+              // Si no es JSON válido y no está vacío, tratar como texto plano
+              if (content.trim()) {
+                foundContent = true;
+                completeText += content;
+                onProgress(content);
               }
+              continue;
+            }
+
+            const extractedContent = extractContentFromJSON(jsonData);
+
+            if (extractedContent) {
+              foundContent = true;
+              completeText += extractedContent;
+              streamedChars += extractedContent.length;
+
+              // Llamar a onProgress con solo el nuevo contenido
+              onProgress(extractedContent);
             }
           }
         }

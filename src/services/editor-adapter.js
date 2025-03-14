@@ -8,7 +8,7 @@ import { createFroalaAdapter } from "../utils/froala-adapter.js";
 
 /**
  * Clase adaptadora para diferentes tipos de editores
- * Proporciona una interfaz unificada para trabajar con distintos editores
+ * @class EditorAdapter
  */
 export class EditorAdapter {
   /**
@@ -19,39 +19,24 @@ export class EditorAdapter {
    */
   constructor(editorId, editorType = "textarea", options = {}) {
     this.editorId = editorId;
-    this.editorType = editorType?.toLowerCase() || "textarea";
+    this.editorType = editorType.toLowerCase();
     this.options = {
       debug: options.debug || false,
       ...options,
     };
 
-    // Referencia al elemento DOM del editor
-    this.editor = document.getElementById(editorId);
-
-    // Adaptadores específicos para tipos de editor
+    // Inicializar contenedor para adaptadores específicos
     this.specificAdapters = {};
 
-    if (this.options.debug) {
-      console.log("[EditorAdapter] Initializing with:", {
-        editorId,
-        editorType: this.editorType,
-        editorFound: !!this.editor,
-      });
-    }
-
-    if (!this.editor) {
-      console.warn(`[EditorAdapter] Editor element not found: ${editorId}`);
-    }
-
-    // Inicializar adaptador específico si es necesario
-    this.initSpecificAdapter();
+    // Inicializar el adaptador específico según el tipo
+    this._initializeSpecificAdapter();
   }
 
   /**
-   * Inicializa adaptadores específicos según el tipo de editor
+   * Inicializa el adaptador específico según el tipo de editor
    * @private
    */
-  initSpecificAdapter() {
+  _initializeSpecificAdapter() {
     switch (this.editorType) {
       case "tinymce":
         try {
@@ -72,12 +57,9 @@ export class EditorAdapter {
 
       case "ckeditor":
         try {
-          this.specificAdapters.ckeditor = createCKEditorAdapter(
-            this.editorId,
-            {
-              debug: this.options.debug,
-            }
-          );
+          this.specificAdapters.ckeditor = createCKEditorAdapter(this.editorId, {
+            debug: this.options.debug,
+          });
 
           if (this.options.debug) {
             console.log("[EditorAdapter] CKEditor adapter initialized");
@@ -127,7 +109,11 @@ export class EditorAdapter {
       // Aquí se pueden agregar más adaptadores específicos para otros editores
 
       default:
-        // No se necesita adaptador específico para textarea
+        if (this.options.debug) {
+          console.log(
+            `[EditorAdapter] Using default textarea adapter for type: ${this.editorType}`
+          );
+        }
         break;
     }
   }
@@ -138,9 +124,7 @@ export class EditorAdapter {
    */
   getContent() {
     try {
-      const editorType = this.editorType.toLowerCase();
-
-      switch (editorType) {
+      switch (this.editorType) {
         case "tinymce":
           // TinyMCE - usar adaptador específico si está disponible
           if (this.specificAdapters.tinymce) {
@@ -148,10 +132,10 @@ export class EditorAdapter {
           }
 
           // Fallback: intentar obtener contenido directamente
-          if (typeof window.tinymce !== "undefined") {
-            const tinyEditor = window.tinymce.get(this.editorId);
-            if (tinyEditor) {
-              return tinyEditor.getContent() || "";
+          if (typeof tinymce !== "undefined") {
+            const editor = tinymce.get(this.editorId);
+            if (editor) {
+              return editor.getContent() || "";
             }
           }
 
@@ -165,8 +149,11 @@ export class EditorAdapter {
           }
 
           // Fallback: intentar obtener contenido directamente
-          if (typeof window.ckeditorInstance !== "undefined") {
-            return window.ckeditorInstance.getData() || "";
+          if (typeof CKEDITOR !== "undefined") {
+            const editor = CKEDITOR.instances[this.editorId];
+            if (editor) {
+              return editor.getData() || "";
+            }
           }
 
           console.warn("[EditorAdapter] CKEditor not initialized properly");
@@ -179,17 +166,9 @@ export class EditorAdapter {
           }
 
           // Fallback: intentar obtener contenido directamente
-          if (typeof window.quillInstance !== "undefined") {
-            return window.quillInstance.root.innerHTML || "";
-          }
-
-          // Otro intento: buscar el elemento editor
-          const quillElement = document.getElementById(this.editorId);
-          if (quillElement) {
-            const editor = quillElement.querySelector(".ql-editor");
-            if (editor) {
-              return editor.innerHTML || "";
-            }
+          const quillElement = document.querySelector(`#${this.editorId}`);
+          if (quillElement && quillElement.__quill) {
+            return quillElement.__quill.root.innerHTML || "";
           }
 
           console.warn("[EditorAdapter] Quill not initialized properly");
@@ -220,18 +199,20 @@ export class EditorAdapter {
         case "textarea":
         default:
           // Textarea o elemento HTML genérico
-          const editorElement = document.getElementById(this.editorId);
-          if (editorElement) {
-            if (typeof editorElement.value !== "undefined") {
-              return editorElement.value || "";
-            } else if (typeof editorElement.innerHTML !== "undefined") {
-              return editorElement.innerHTML || "";
+          const element = document.getElementById(this.editorId);
+          if (element) {
+            if (element.tagName.toLowerCase() === "textarea") {
+              return element.value || "";
+            } else {
+              return element.innerHTML || "";
             }
           }
+
+          console.warn("[EditorAdapter] Element not found:", this.editorId);
           return "";
       }
     } catch (error) {
-      console.error("[EditorAdapter] Error getting editor content:", error);
+      console.error("[EditorAdapter] Error getting content:", error);
       return "";
     }
   }
@@ -242,15 +223,8 @@ export class EditorAdapter {
    * @returns {boolean} true si se estableció correctamente, false en caso contrario
    */
   setContent(content) {
-    if (!content && content !== "") {
-      console.warn("[EditorAdapter] Attempt to set null/undefined content");
-      return false;
-    }
-
     try {
-      const editorType = this.editorType.toLowerCase();
-
-      switch (editorType) {
+      switch (this.editorType) {
         case "tinymce":
           // TinyMCE - usar adaptador específico si está disponible
           if (this.specificAdapters.tinymce) {
@@ -258,16 +232,10 @@ export class EditorAdapter {
           }
 
           // Fallback: intentar establecer contenido directamente
-          if (typeof window.tinymce !== "undefined") {
-            const tinyEditor = window.tinymce.get(this.editorId);
-            if (tinyEditor) {
-              tinyEditor.setContent(content);
-              tinyEditor.undoManager.add();
-
-              if (this.options.debug) {
-                console.log("[EditorAdapter] Content set in TinyMCE");
-              }
-
+          if (typeof tinymce !== "undefined") {
+            const editor = tinymce.get(this.editorId);
+            if (editor) {
+              editor.setContent(content);
               return true;
             }
           }
@@ -282,14 +250,12 @@ export class EditorAdapter {
           }
 
           // Fallback: intentar establecer contenido directamente
-          if (typeof window.ckeditorInstance !== "undefined") {
-            window.ckeditorInstance.setData(content);
-
-            if (this.options.debug) {
-              console.log("[EditorAdapter] Content set in CKEditor");
+          if (typeof CKEDITOR !== "undefined") {
+            const editor = CKEDITOR.instances[this.editorId];
+            if (editor) {
+              editor.setData(content);
+              return true;
             }
-
-            return true;
           }
 
           console.warn("[EditorAdapter] CKEditor not initialized properly");
@@ -302,15 +268,9 @@ export class EditorAdapter {
           }
 
           // Fallback: intentar establecer contenido directamente
-          if (typeof window.quillInstance !== "undefined") {
-            window.quillInstance.clipboard.dangerouslyPasteHTML(content);
-            return true;
-          }
-
-          // Otro intento: buscar el elemento editor
-          const quillElem = document.getElementById(this.editorId);
-          if (quillElem && quillElem.__quill) {
-            quillElem.__quill.clipboard.dangerouslyPasteHTML(content);
+          const quillElement = document.querySelector(`#${this.editorId}`);
+          if (quillElement && quillElement.__quill) {
+            quillElement.__quill.root.innerHTML = content;
             return true;
           }
 
@@ -345,289 +305,21 @@ export class EditorAdapter {
         case "textarea":
         default:
           // Textarea o elemento HTML genérico
-          const editorElement = document.getElementById(this.editorId);
-          if (editorElement) {
-            if (typeof editorElement.value !== "undefined") {
-              editorElement.value = content;
-              return true;
-            } else if (typeof editorElement.innerHTML !== "undefined") {
-              editorElement.innerHTML = content;
-              return true;
-            }
-          }
-          return false;
-      }
-    } catch (error) {
-      console.error("[EditorAdapter] Error setting editor content:", error);
-      return false;
-    }
-  }
-
-  /**
-   * Actualiza el tipo de editor
-   * @param {string} type - Nuevo tipo de editor
-   */
-  setEditorType(type) {
-    if (!type) return;
-
-    const oldType = this.editorType;
-    this.editorType = type.toLowerCase();
-
-    if (this.options.debug) {
-      console.log("[EditorAdapter] Editor type updated:", {
-        from: oldType,
-        to: this.editorType,
-      });
-    }
-
-    // Reinicializar adaptador específico si el tipo cambió
-    if (oldType !== this.editorType) {
-      this.initSpecificAdapter();
-    }
-  }
-
-  /**
-   * Verifica si el editor tiene contenido
-   * @returns {boolean} true si el editor tiene contenido, false en caso contrario
-   */
-  hasContent() {
-    const content = this.getContent();
-    return content !== null && content !== undefined && content.trim() !== "";
-  }
-
-  /**
-   * Inserta contenido en la posición actual del cursor (solo disponible en algunos editores)
-   * @param {string} content - Contenido a insertar
-   * @returns {boolean} true si se insertó correctamente, false en caso contrario
-   */
-  insertContent(content) {
-    if (!content) {
-      console.warn("[EditorAdapter] Attempt to insert null/undefined content");
-      return false;
-    }
-
-    try {
-      const editorType = this.editorType.toLowerCase();
-
-      switch (editorType) {
-        case "tinymce":
-          // TinyMCE - usar adaptador específico si está disponible
-          if (this.specificAdapters.tinymce) {
-            return this.specificAdapters.tinymce.insertContent(content);
-          }
-
-          // Fallback: intentar insertar contenido directamente
-          if (typeof window.tinymce !== "undefined") {
-            const tinyEditor = window.tinymce.get(this.editorId);
-            if (tinyEditor) {
-              tinyEditor.execCommand("mceInsertContent", false, content);
-              tinyEditor.undoManager.add();
-              return true;
-            }
-          }
-
-          return false;
-
-        case "ckeditor":
-          // CKEditor - usar adaptador específico si está disponible
-          if (this.specificAdapters.ckeditor) {
-            return this.specificAdapters.ckeditor.insertContent(content);
-          }
-
-          // Fallback básico: reemplazar todo el contenido
-          if (typeof window.ckeditorInstance !== "undefined") {
-            window.ckeditorInstance.setData(content);
-            return true;
-          }
-
-          return false;
-
-        case "quill":
-          // Quill - usar adaptador específico si está disponible
-          if (this.specificAdapters.quill) {
-            return this.specificAdapters.quill.insertContent(content);
-          }
-
-          // Fallback: intentar insertar contenido directamente
-          if (typeof window.quillInstance !== "undefined") {
-            const range = window.quillInstance.getSelection();
-            if (range) {
-              window.quillInstance.clipboard.dangerouslyPasteHTML(
-                range.index,
-                content,
-                "user"
-              );
+          const element = document.getElementById(this.editorId);
+          if (element) {
+            if (element.tagName.toLowerCase() === "textarea") {
+              element.value = content;
             } else {
-              const length = window.quillInstance.getLength();
-              window.quillInstance.clipboard.dangerouslyPasteHTML(
-                length,
-                content,
-                "user"
-              );
+              element.innerHTML = content;
             }
             return true;
           }
 
-          return false;
-
-        case "froala":
-          // Froala - usar adaptador específico si está disponible
-          if (this.specificAdapters.froala) {
-            return this.specificAdapters.froala.insertContent(content);
-          }
-
-          // Fallback: intentar insertar contenido directamente
-          if (typeof window.froalaInstance !== "undefined") {
-            window.froalaInstance.html.insert(content, true);
-            window.froalaInstance.events.trigger("contentChanged");
-            return true;
-          }
-
-          return false;
-
-        case "textarea":
-        default:
-          // Para textareas, simplemente agregamos al final (no hay cursor real)
-          const editorElement = document.getElementById(this.editorId);
-          if (editorElement) {
-            if (typeof editorElement.value !== "undefined") {
-              editorElement.value += content;
-              return true;
-            } else if (typeof editorElement.innerHTML !== "undefined") {
-              editorElement.innerHTML += content;
-              return true;
-            }
-          }
+          console.warn("[EditorAdapter] Element not found:", this.editorId);
           return false;
       }
     } catch (error) {
-      console.error("[EditorAdapter] Error inserting content:", error);
-      return false;
-    }
-  }
-
-  /**
-   * Obtiene la selección actual en el editor
-   * @returns {string} Texto seleccionado o cadena vacía si no hay selección
-   */
-  getSelection() {
-    try {
-      const editorType = this.editorType.toLowerCase();
-
-      switch (editorType) {
-        case "tinymce":
-          // TinyMCE
-          if (typeof window.tinymce !== "undefined") {
-            const tinyEditor = window.tinymce.get(this.editorId);
-            if (tinyEditor) {
-              return tinyEditor.selection.getContent() || "";
-            }
-          }
-          return "";
-
-        case "ckeditor":
-          // CKEditor - no hay un método simple para obtener la selección actual
-          return "";
-
-        case "froala":
-          // Froala
-          if (typeof window.froalaInstance !== "undefined") {
-            return window.froalaInstance.selection.text() || "";
-          }
-          return "";
-
-        case "textarea":
-        default:
-          // Textarea básico
-          const editorElement = document.getElementById(this.editorId);
-          if (
-            editorElement &&
-            typeof editorElement.selectionStart !== "undefined"
-          ) {
-            return (
-              editorElement.value.substring(
-                editorElement.selectionStart,
-                editorElement.selectionEnd
-              ) || ""
-            );
-          }
-          return "";
-      }
-    } catch (error) {
-      console.error("[EditorAdapter] Error getting selection:", error);
-      return "";
-    }
-  }
-
-  /**
-   * Reemplaza la selección actual con el contenido proporcionado
-   * @param {string} content - Contenido para reemplazar la selección
-   * @returns {boolean} true si se reemplazó correctamente, false en caso contrario
-   */
-  replaceSelection(content) {
-    if (!content && content !== "") {
-      console.warn(
-        "[EditorAdapter] Attempt to replace selection with null/undefined content"
-      );
-      return false;
-    }
-
-    try {
-      const editorType = this.editorType.toLowerCase();
-
-      switch (editorType) {
-        case "tinymce":
-          // TinyMCE
-          if (typeof window.tinymce !== "undefined") {
-            const tinyEditor = window.tinymce.get(this.editorId);
-            if (tinyEditor) {
-              tinyEditor.selection.setContent(content);
-              tinyEditor.undoManager.add();
-              return true;
-            }
-          }
-          return false;
-
-        case "ckeditor":
-          // CKEditor - no hay un método simple para reemplazar la selección
-          // Como fallback, insertamos el contenido completo
-          return this.setContent(content);
-
-        case "froala":
-          // Froala
-          if (typeof window.froalaInstance !== "undefined") {
-            window.froalaInstance.selection.replace(content);
-            window.froalaInstance.events.trigger("contentChanged");
-            return true;
-          }
-          return false;
-
-        case "textarea":
-        default:
-          // Textarea básico
-          const editorElement = document.getElementById(this.editorId);
-          if (
-            editorElement &&
-            typeof editorElement.selectionStart !== "undefined"
-          ) {
-            const start = editorElement.selectionStart;
-            const end = editorElement.selectionEnd;
-
-            editorElement.value =
-              editorElement.value.substring(0, start) +
-              content +
-              editorElement.value.substring(end);
-
-            // Mover el cursor al final del contenido insertado
-            editorElement.selectionStart = editorElement.selectionEnd =
-              start + content.length;
-
-            return true;
-          }
-          return false;
-      }
-    } catch (error) {
-      console.error("[EditorAdapter] Error replacing selection:", error);
+      console.error("[EditorAdapter] Error setting content:", error);
       return false;
     }
   }
