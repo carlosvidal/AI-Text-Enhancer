@@ -971,7 +971,10 @@ class AITextEnhancer extends HTMLElement {
     }
   }
 
-  // Manejador de mensajes de chat actualizado
+  /**
+   * Manejador mejorado de mensajes de chat para AITextEnhancer
+   * con soporte para URLs de imágenes externas afectadas por CORS
+   */
   async handleChatMessage(event) {
     const { message, image } = event.detail;
 
@@ -1010,11 +1013,26 @@ class AITextEnhancer extends HTMLElement {
         );
       };
 
+      // Determinar el tipo de imagen (URL o File)
+      let imageParameter = image;
+
+      // Si la imagen es una string pero no empieza con 'data:' (que sería un data URL),
+      // asumimos que es una URL externa y la pasamos directamente
+      if (typeof image === "string" && !image.startsWith("data:")) {
+        console.log("[AITextEnhancer] Using external image URL:", image);
+        // Mantener la URL como string, el API client la maneja adecuadamente
+      }
+      // De lo contrario, si es un objeto File, lo pasamos como está
+      else if (image instanceof File) {
+        console.log("[AITextEnhancer] Using image file:", image.name);
+      }
+      // O podría ser null/undefined (sin imagen)
+
       // Hacer solicitud API con streaming
       await this.apiClient.chatResponse(
         this.currentContent,
         message.trim(),
-        image,
+        imageParameter,
         onProgress
       );
 
@@ -1043,7 +1061,6 @@ class AITextEnhancer extends HTMLElement {
       }
     }
   }
-
   // Agrega este método para solicitar actualizaciones explícitas
   requestUpdate(part = null) {
     // Este método delegará en el stateManager

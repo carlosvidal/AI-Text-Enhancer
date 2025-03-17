@@ -375,6 +375,14 @@ class APIClient {
     }
   }
 
+  /**
+   * Versión actualizada de makeRequestWithImage que maneja URLs con CORS
+   * @param {string} prompt - El prompt para la IA
+   * @param {string} content - El contenido a procesar
+   * @param {string|File} imageSource - URL de imagen o archivo
+   * @param {Function} onProgress - Callback para streaming de respuesta
+   * @returns {Promise<string>} El texto generado
+   */
   async makeRequestWithImage(
     prompt,
     content,
@@ -385,88 +393,127 @@ class APIClient {
       let imageData;
       let imageUrl;
       let mimeType = "image/jpeg"; // Default mime type
+      let isExternalUrl = false;
 
       if (typeof imageSource === "string") {
+        // Es una URL - guardamos directamente
         imageUrl = imageSource;
+        isExternalUrl = true;
+        console.log("[APIClient] Using external image URL:", imageUrl);
       } else if (imageSource instanceof File) {
+        // Es un archivo - convertimos a base64
         imageData = await this.imageToBase64(imageSource);
-        mimeType = imageSource.type || mimeType; // Use the actual file type if available
-        console.log("[APIClient] Image file type:", mimeType);
+        mimeType = imageSource.type || mimeType;
+        console.log("[APIClient] Image file processed, type:", mimeType);
       } else {
         throw new Error("Invalid image source");
       }
 
-      // Crear wrapper para onProgress con debugging
+      // Wrapper para debugging de onProgress
       const progressHandler = this.config.debugMode
         ? this._createDebugProgressHandler(onProgress)
         : onProgress;
 
-      // Construir el mensaje con la imagen
+      // Construir mensajes según el formato de cada proveedor
       const messages = [];
+
       if (this.config.provider === "openai") {
         messages.push({
           role: "system",
           content: this.config.systemPrompt,
         });
+
+        // Contenido de usuario con texto e imagen
+        const userContent = [
+          {
+            type: "text",
+            text: `${prompt}\n\n${
+              content || "Please create a new description."
+            }`,
+          },
+        ];
+
+        // Añadir la imagen en el formato correcto
+        if (isExternalUrl) {
+          userContent.push({
+            type: "image_url",
+            image_url: { url: imageUrl, detail: "high" },
+          });
+        } else {
+          userContent.push({
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${imageData}`,
+              detail: "high",
+            },
+          });
+        }
+
         messages.push({
           role: "user",
-          content: [
-            {
-              type: "text",
-              text: `${prompt}\n\n${
-                content || "Please create a new description."
-              }`,
-            },
-            {
-              type: "image_url",
-              image_url: imageUrl
-                ? { url: imageUrl, detail: "high" }
-                : {
-                    url: `data:${mimeType};base64,${imageData}`,
-                    detail: "high",
-                  },
-            },
-          ],
+          content: userContent,
         });
       } else if (this.config.provider === "anthropic") {
+        // Contenido de usuario con texto e imagen
+        const userContent = [
+          {
+            type: "text",
+            text: this.config.systemPrompt,
+          },
+        ];
+
+        // Añadir la imagen en el formato correcto
+        if (isExternalUrl) {
+          userContent.push({
+            type: "image",
+            source: { type: "url", url: imageUrl },
+          });
+        } else {
+          userContent.push({
+            type: "image",
+            source: { type: "base64", media_type: mimeType, data: imageData },
+          });
+        }
+
+        // Añadir el prompt del usuario
+        userContent.push({
+          type: "text",
+          text: `${prompt}\n\n${content || "Please create a new description."}`,
+        });
+
         messages.push({
           role: "user",
-          content: [
-            {
-              type: "text",
-              text: this.config.systemPrompt,
-            },
-            {
-              type: "image",
-              source: imageUrl
-                ? { type: "url", url: imageUrl }
-                : { type: "base64", media_type: mimeType, data: imageData },
-            },
-            {
-              type: "text",
-              text: `${prompt}\n\n${
-                content || "Please create a new description."
-              }`,
-            },
-          ],
+          content: userContent,
         });
       } else if (this.config.provider === "google") {
-        // Google Gemini format
+        // Formato para Google Gemini
+        const userParts = [
+          {
+            text: `${this.config.systemPrompt}\n\n${prompt}\n\n${
+              content || "Please create a new description."
+            }`,
+          },
+        ];
+
+        // Añadir la imagen en el formato correcto
+        if (isExternalUrl) {
+          // Para URLs externas, podemos necesitar un formato diferente
+          // que el proxy backend pueda manejar adecuadamente
+          userParts.push({
+            externalImageUrl: imageUrl, // Campo personalizado para el proxy
+          });
+        } else {
+          userParts.push({
+            inline_data: {
+              mime_type: mimeType,
+              data: imageData,
+            },
+          });
+        }
+
         messages.push({
           role: "user",
-          parts: [
-            {
-              text: `${this.config.systemPrompt}\n\n${prompt}\n\n${
-                content || "Please create a new description."
-              }`,
-            },
-            {
-              inline_data: {
-                mime_type: mimeType,
-                data: imageData,
-              },
-            },
-          ],
+          parts: userParts,
         });
       }
 
@@ -484,6 +531,7 @@ class APIClient {
         tenantId: this.config.tenantId,
         userId: this.config.userId,
         hasImage: true,
+        isExternalImageUrl: isExternalUrl, // Indicador para el servidor
       };
 
       console.log("[APIClient] Sending image request to proxy:", {
@@ -491,7 +539,7 @@ class APIClient {
         provider: this.config.provider,
         model: payload.model,
         hasImage: true,
-        imageType: mimeType,
+        isExternalUrl: isExternalUrl,
       });
 
       // Reset stream counter for each request
@@ -515,6 +563,7 @@ class APIClient {
       );
 
       if (!response.ok) {
+        // Manejo de errores
         try {
           const errorData = await response.json();
           console.error("[APIClient] Image API Error Response:", errorData);
@@ -540,6 +589,75 @@ class APIClient {
       console.error("[APIClient] Image processing error:", error);
       throw new Error(`Image processing failed: ${error.message}`);
     }
+  }
+
+  /**
+   * Función de ayuda para crear el formato correcto para una imagen según el proveedor
+   * @param {string|Object} imageSource - URL de imagen o datos base64
+   * @param {string} mimeType - Tipo MIME para imágenes base64
+   * @returns {Object} Objeto con el formato correcto para la API
+   */
+  formatImageForProvider(imageSource, mimeType) {
+    // Si imageSource es una string, asumimos que es una URL
+    const isExternalUrl = typeof imageSource === "string";
+    const provider = this.config.provider;
+
+    if (provider === "openai") {
+      if (isExternalUrl) {
+        return {
+          type: "image_url",
+          image_url: {
+            url: imageSource,
+            detail: "high",
+          },
+        };
+      } else {
+        return {
+          type: "image_url",
+          image_url: {
+            url: `data:${mimeType};base64,${imageSource}`,
+            detail: "high",
+          },
+        };
+      }
+    } else if (provider === "anthropic") {
+      if (isExternalUrl) {
+        return {
+          type: "image",
+          source: {
+            type: "url",
+            url: imageSource,
+          },
+        };
+      } else {
+        return {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: mimeType,
+            data: imageSource,
+          },
+        };
+      }
+    } else if (provider === "google") {
+      if (isExternalUrl) {
+        // Algunos proveedores como Google Gemini pueden necesitar un formato especial
+        // para las URLs externas que no podemos convertir a base64
+        return {
+          externalImageUrl: imageSource, // Campo personalizado para el proxy
+        };
+      } else {
+        return {
+          inline_data: {
+            mime_type: mimeType,
+            data: imageSource,
+          },
+        };
+      }
+    }
+
+    // Formato por defecto - probablemente necesitarás ajustar esto
+    return isExternalUrl ? { url: imageSource } : { base64: imageSource };
   }
 
   async imageToBase64(imageFile) {

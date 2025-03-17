@@ -313,6 +313,9 @@ export class ChatWithImage extends HTMLElement {
     }
   }
 
+  /**
+   * Método handleSubmit actualizado para manejar URLs de imágenes
+   */
   handleSubmit(event) {
     event.preventDefault();
     event.stopPropagation();
@@ -323,13 +326,25 @@ export class ChatWithImage extends HTMLElement {
     if (message || this.tempImage) {
       this.dispatchEvent(
         new CustomEvent("chatMessage", {
-          detail: { message, image: this.tempImage },
+          detail: {
+            message,
+            // Pasar this.tempImage que puede ser un objeto File o una URL string
+            image: this.tempImage,
+          },
           bubbles: true,
           composed: true,
         })
       );
       input.innerText = "";
+
+      // Limpiar imagen temporal y vista previa
       this.tempImage = null;
+      const container = this.shadowRoot.querySelector(
+        ".image-preview-container"
+      );
+      if (container) {
+        container.remove();
+      }
     }
   }
 
@@ -361,15 +376,120 @@ export class ChatWithImage extends HTMLElement {
     }
   }
 
+  /**
+   * Maneja una URL de imagen, con soporte para URLs con restricciones CORS
+   * @param {string} url - URL de la imagen
+   * @returns {Promise<void>}
+   */
+  /**
+   * Método actualizado para manejar imageUrl
+   * Con soporte para URLs con restricciones CORS
+   */
   async handleImageUrl(url) {
+    if (!url) return;
+
+    console.log("[ChatWithImage] Processing image URL:", url);
+
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const file = new File([blob], "image.jpg", { type: blob.type });
-      this.tempImage = file;
-      this.updateImagePreview();
+      // Primero intentamos el método tradicional: fetch + blob
+      try {
+        const response = await fetch(url, {
+          mode: "cors",
+          credentials: "omit", // Evitar cookies para reducir problemas CORS
+          cache: "no-store", // Evitar problemas de caché
+        });
+
+        const blob = await response.blob();
+        const file = new File([blob], "image.jpg", { type: blob.type });
+        this.tempImage = file;
+
+        console.log("[ChatWithImage] Successfully loaded image via fetch");
+        this.updateImagePreview();
+        return;
+      } catch (fetchError) {
+        console.warn("[ChatWithImage] Error fetching image:", fetchError);
+
+        // Si falla, usamos la URL directamente
+        this.tempImage = url; // Guardar URL como string
+        console.log(
+          "[ChatWithImage] Using URL directly due to CORS restrictions"
+        );
+
+        // Crear vista previa aunque no podamos cargar la imagen directamente
+        this.updateImagePreviewForURL(url);
+      }
     } catch (error) {
-      console.error("Error loading image:", error);
+      console.error("[ChatWithImage] Error loading image:", error);
+    }
+  }
+
+  /**
+   * Nuevo método para actualizar la vista previa usando una URL
+   */
+  updateImagePreviewForURL(url) {
+    if (!url) return;
+
+    // Obtener nombre de archivo de la URL
+    let filename = "image";
+    try {
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split("/");
+      if (pathParts.length > 0) {
+        const lastPart = pathParts[pathParts.length - 1];
+        if (lastPart) {
+          filename = lastPart;
+        }
+      }
+    } catch (e) {
+      console.warn("[ChatWithImage] Error parsing image URL for filename");
+    }
+
+    const container = document.createElement("div");
+    container.className = "image-preview-container";
+    container.innerHTML = `
+    <div class="image-preview-card">
+      <div class="image-preview-content">
+        <div class="image-preview-thumbnail">
+          <img src="${url}" alt="Preview" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMWYxZjEiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjNDQ0IiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZSBub3QgYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=='"/>
+        </div>
+        <div class="image-preview-info">
+          <div class="image-preview-filename">
+            ${filename} (External URL)
+          </div>
+          <button class="image-preview-remove" title="Remove image">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+    // Buscar contenedor existente y reemplazarlo
+    const existingContainer = this.shadowRoot.querySelector(
+      ".image-preview-container"
+    );
+    if (existingContainer) {
+      existingContainer.remove();
+    }
+
+    // Añadir nuevo contenedor
+    this.shadowRoot
+      .querySelector(".chat-form")
+      .parentNode.insertBefore(
+        container,
+        this.shadowRoot.querySelector(".chat-form")
+      );
+
+    // Agregar evento de clic para eliminar
+    const removeButton = container.querySelector(".image-preview-remove");
+    if (removeButton) {
+      removeButton.addEventListener("click", () => {
+        this.tempImage = null;
+        container.remove();
+      });
     }
   }
 }

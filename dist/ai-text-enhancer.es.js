@@ -1876,6 +1876,9 @@ class ChatWithImage extends HTMLElement {
       this.tempImage = file;
     }
   }
+  /**
+   * Método handleSubmit actualizado para manejar URLs de imágenes
+   */
   handleSubmit(event) {
     event.preventDefault();
     event.stopPropagation();
@@ -1884,13 +1887,23 @@ class ChatWithImage extends HTMLElement {
     if (message || this.tempImage) {
       this.dispatchEvent(
         new CustomEvent("chatMessage", {
-          detail: { message, image: this.tempImage },
+          detail: {
+            message,
+            // Pasar this.tempImage que puede ser un objeto File o una URL string
+            image: this.tempImage
+          },
           bubbles: true,
           composed: true
         })
       );
       input.innerText = "";
       this.tempImage = null;
+      const container = this.shadowRoot.querySelector(
+        ".image-preview-container"
+      );
+      if (container) {
+        container.remove();
+      }
     }
   }
   updateTranslations() {
@@ -1917,15 +1930,101 @@ class ChatWithImage extends HTMLElement {
       uploadButton.style.display = this.supportsImages ? "inline-flex" : "none";
     }
   }
+  /**
+   * Maneja una URL de imagen, con soporte para URLs con restricciones CORS
+   * @param {string} url - URL de la imagen
+   * @returns {Promise<void>}
+   */
+  /**
+   * Método actualizado para manejar imageUrl
+   * Con soporte para URLs con restricciones CORS
+   */
   async handleImageUrl(url) {
+    if (!url) return;
+    console.log("[ChatWithImage] Processing image URL:", url);
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const file = new File([blob], "image.jpg", { type: blob.type });
-      this.tempImage = file;
-      this.updateImagePreview();
+      try {
+        const response = await fetch(url, {
+          mode: "cors",
+          credentials: "omit",
+          // Evitar cookies para reducir problemas CORS
+          cache: "no-store"
+          // Evitar problemas de caché
+        });
+        const blob = await response.blob();
+        const file = new File([blob], "image.jpg", { type: blob.type });
+        this.tempImage = file;
+        console.log("[ChatWithImage] Successfully loaded image via fetch");
+        this.updateImagePreview();
+        return;
+      } catch (fetchError) {
+        console.warn("[ChatWithImage] Error fetching image:", fetchError);
+        this.tempImage = url;
+        console.log(
+          "[ChatWithImage] Using URL directly due to CORS restrictions"
+        );
+        this.updateImagePreviewForURL(url);
+      }
     } catch (error) {
-      console.error("Error loading image:", error);
+      console.error("[ChatWithImage] Error loading image:", error);
+    }
+  }
+  /**
+   * Nuevo método para actualizar la vista previa usando una URL
+   */
+  updateImagePreviewForURL(url) {
+    if (!url) return;
+    let filename = "image";
+    try {
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split("/");
+      if (pathParts.length > 0) {
+        const lastPart = pathParts[pathParts.length - 1];
+        if (lastPart) {
+          filename = lastPart;
+        }
+      }
+    } catch (e) {
+      console.warn("[ChatWithImage] Error parsing image URL for filename");
+    }
+    const container = document.createElement("div");
+    container.className = "image-preview-container";
+    container.innerHTML = `
+    <div class="image-preview-card">
+      <div class="image-preview-content">
+        <div class="image-preview-thumbnail">
+          <img src="${url}" alt="Preview" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMWYxZjEiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjNDQ0IiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZSBub3QgYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=='"/>
+        </div>
+        <div class="image-preview-info">
+          <div class="image-preview-filename">
+            ${filename} (External URL)
+          </div>
+          <button class="image-preview-remove" title="Remove image">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+    const existingContainer = this.shadowRoot.querySelector(
+      ".image-preview-container"
+    );
+    if (existingContainer) {
+      existingContainer.remove();
+    }
+    this.shadowRoot.querySelector(".chat-form").parentNode.insertBefore(
+      container,
+      this.shadowRoot.querySelector(".chat-form")
+    );
+    const removeButton = container.querySelector(".image-preview-remove");
+    if (removeButton) {
+      removeButton.addEventListener("click", () => {
+        this.tempImage = null;
+        container.remove();
+      });
     }
   }
 }
@@ -2643,6 +2742,14 @@ ${content || "Crea una nueva descripción."}`
       throw new APIError(error.message, error);
     }
   }
+  /**
+   * Versión actualizada de makeRequestWithImage que maneja URLs con CORS
+   * @param {string} prompt - El prompt para la IA
+   * @param {string} content - El contenido a procesar
+   * @param {string|File} imageSource - URL de imagen o archivo
+   * @param {Function} onProgress - Callback para streaming de respuesta
+   * @returns {Promise<string>} El texto generado
+   */
   async makeRequestWithImage(prompt, content, imageSource, onProgress = () => {
   }) {
     var _a;
@@ -2650,12 +2757,15 @@ ${content || "Crea una nueva descripción."}`
       let imageData;
       let imageUrl;
       let mimeType = "image/jpeg";
+      let isExternalUrl = false;
       if (typeof imageSource === "string") {
         imageUrl = imageSource;
+        isExternalUrl = true;
+        console.log("[APIClient] Using external image URL:", imageUrl);
       } else if (imageSource instanceof File) {
         imageData = await this.imageToBase64(imageSource);
         mimeType = imageSource.type || mimeType;
-        console.log("[APIClient] Image file type:", mimeType);
+        console.log("[APIClient] Image file processed, type:", mimeType);
       } else {
         throw new Error("Invalid image source");
       }
@@ -2666,62 +2776,86 @@ ${content || "Crea una nueva descripción."}`
           role: "system",
           content: this.config.systemPrompt
         });
-        messages.push({
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `${prompt}
+        const userContent = [
+          {
+            type: "text",
+            text: `${prompt}
 
 ${content || "Please create a new description."}`
-            },
-            {
-              type: "image_url",
-              image_url: imageUrl ? { url: imageUrl, detail: "high" } : {
-                url: `data:${mimeType};base64,${imageData}`,
-                detail: "high"
-              }
+          }
+        ];
+        if (isExternalUrl) {
+          userContent.push({
+            type: "image_url",
+            image_url: { url: imageUrl, detail: "high" }
+          });
+        } else {
+          userContent.push({
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${imageData}`,
+              detail: "high"
             }
-          ]
+          });
+        }
+        messages.push({
+          role: "user",
+          content: userContent
         });
       } else if (this.config.provider === "anthropic") {
-        messages.push({
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: this.config.systemPrompt
-            },
-            {
-              type: "image",
-              source: imageUrl ? { type: "url", url: imageUrl } : { type: "base64", media_type: mimeType, data: imageData }
-            },
-            {
-              type: "text",
-              text: `${prompt}
+        const userContent = [
+          {
+            type: "text",
+            text: this.config.systemPrompt
+          }
+        ];
+        if (isExternalUrl) {
+          userContent.push({
+            type: "image",
+            source: { type: "url", url: imageUrl }
+          });
+        } else {
+          userContent.push({
+            type: "image",
+            source: { type: "base64", media_type: mimeType, data: imageData }
+          });
+        }
+        userContent.push({
+          type: "text",
+          text: `${prompt}
 
 ${content || "Please create a new description."}`
-            }
-          ]
         });
-      } else if (this.config.provider === "google") {
         messages.push({
           role: "user",
-          parts: [
-            {
-              text: `${this.config.systemPrompt}
+          content: userContent
+        });
+      } else if (this.config.provider === "google") {
+        const userParts = [
+          {
+            text: `${this.config.systemPrompt}
 
 ${prompt}
 
 ${content || "Please create a new description."}`
-            },
-            {
-              inline_data: {
-                mime_type: mimeType,
-                data: imageData
-              }
+          }
+        ];
+        if (isExternalUrl) {
+          userParts.push({
+            externalImageUrl: imageUrl
+            // Campo personalizado para el proxy
+          });
+        } else {
+          userParts.push({
+            inline_data: {
+              mime_type: mimeType,
+              data: imageData
             }
-          ]
+          });
+        }
+        messages.push({
+          role: "user",
+          parts: userParts
         });
       }
       const visionModel = this.modelManager.getVisionModelForProvider(
@@ -2735,14 +2869,16 @@ ${content || "Please create a new description."}`
         stream: true,
         tenantId: this.config.tenantId,
         userId: this.config.userId,
-        hasImage: true
+        hasImage: true,
+        isExternalImageUrl: isExternalUrl
+        // Indicador para el servidor
       };
       console.log("[APIClient] Sending image request to proxy:", {
         endpoint: this.config.proxyEndpoint,
         provider: this.config.provider,
         model: payload.model,
         hasImage: true,
-        imageType: mimeType
+        isExternalUrl
       });
       this._streamCounter = 0;
       const response = await fetch(this.config.proxyEndpoint, {
@@ -2784,6 +2920,69 @@ ${content || "Please create a new description."}`
       console.error("[APIClient] Image processing error:", error);
       throw new Error(`Image processing failed: ${error.message}`);
     }
+  }
+  /**
+   * Función de ayuda para crear el formato correcto para una imagen según el proveedor
+   * @param {string|Object} imageSource - URL de imagen o datos base64
+   * @param {string} mimeType - Tipo MIME para imágenes base64
+   * @returns {Object} Objeto con el formato correcto para la API
+   */
+  formatImageForProvider(imageSource, mimeType) {
+    const isExternalUrl = typeof imageSource === "string";
+    const provider = this.config.provider;
+    if (provider === "openai") {
+      if (isExternalUrl) {
+        return {
+          type: "image_url",
+          image_url: {
+            url: imageSource,
+            detail: "high"
+          }
+        };
+      } else {
+        return {
+          type: "image_url",
+          image_url: {
+            url: `data:${mimeType};base64,${imageSource}`,
+            detail: "high"
+          }
+        };
+      }
+    } else if (provider === "anthropic") {
+      if (isExternalUrl) {
+        return {
+          type: "image",
+          source: {
+            type: "url",
+            url: imageSource
+          }
+        };
+      } else {
+        return {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: mimeType,
+            data: imageSource
+          }
+        };
+      }
+    } else if (provider === "google") {
+      if (isExternalUrl) {
+        return {
+          externalImageUrl: imageSource
+          // Campo personalizado para el proxy
+        };
+      } else {
+        return {
+          inline_data: {
+            mime_type: mimeType,
+            data: imageSource
+          }
+        };
+      }
+    }
+    return isExternalUrl ? { url: imageSource } : { base64: imageSource };
   }
   async imageToBase64(imageFile) {
     if (!imageFile) {
@@ -6226,7 +6425,10 @@ class AITextEnhancer extends HTMLElement {
       return "";
     }
   }
-  // Manejador de mensajes de chat actualizado
+  /**
+   * Manejador mejorado de mensajes de chat para AITextEnhancer
+   * con soporte para URLs de imágenes externas afectadas por CORS
+   */
   async handleChatMessage(event) {
     const { message, image } = event.detail;
     try {
@@ -6255,10 +6457,16 @@ class AITextEnhancer extends HTMLElement {
           (prevContent) => prevContent + chunk
         );
       };
+      let imageParameter = image;
+      if (typeof image === "string" && !image.startsWith("data:")) {
+        console.log("[AITextEnhancer] Using external image URL:", image);
+      } else if (image instanceof File) {
+        console.log("[AITextEnhancer] Using image file:", image.name);
+      }
       await this.apiClient.chatResponse(
         this.currentContent,
         message.trim(),
-        image,
+        imageParameter,
         onProgress
       );
       setTimeout(() => {
