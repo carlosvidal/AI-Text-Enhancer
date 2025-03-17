@@ -3234,11 +3234,43 @@ class TinyMCEAdapter {
     this.options = {
       debug: options.debug || false,
       waitTimeout: options.waitTimeout || 2e3,
+      useGlobalReference: options.useGlobalReference !== false,
+      // Por defecto usa referencias globales
       ...options
     };
     this.editorInstance = null;
     this._initialized = false;
+    this.tmceVersion = null;
     this._findEditorInstance();
+  }
+  /**
+   * Detecta la versión de TinyMCE
+   * @private
+   * @returns {number|null} Versión principal de TinyMCE (3, 4, 5 o 6) o null si no se puede detectar
+   */
+  _detectTinyMCEVersion() {
+    var _a, _b, _c;
+    try {
+      if (typeof window.tinymce === "undefined") {
+        return null;
+      }
+      if (window.tinymce.majorVersion) {
+        return parseInt(window.tinymce.majorVersion, 10);
+      }
+      if (typeof window.tinymce.createEditor === "function") {
+        return 6;
+      } else if (typeof ((_a = window.tinymce.dom) == null ? void 0 : _a.TreeWalker) === "function") {
+        return 5;
+      } else if (typeof ((_b = window.tinymce.dom) == null ? void 0 : _b.EventUtils) === "function") {
+        return 4;
+      } else if (typeof ((_c = window.tinymce.dom) == null ? void 0 : _c.Event) === "function") {
+        return 3;
+      }
+      return 4;
+    } catch (error) {
+      console.error("[TinyMCEAdapter] Error detecting TinyMCE version:", error);
+      return null;
+    }
   }
   /**
    * Busca la instancia de TinyMCE ya sea por ID o en el objeto global
@@ -3246,8 +3278,26 @@ class TinyMCEAdapter {
    */
   _findEditorInstance() {
     try {
+      this.tmceVersion = this._detectTinyMCEVersion();
+      if (this.options.debug) {
+        console.log(
+          `[TinyMCEAdapter] Detected TinyMCE version: ${this.tmceVersion || "unknown"}`
+        );
+      }
       if (typeof window.tinymce !== "undefined") {
-        const instance = window.tinymce.get(this.editorId);
+        let instance = null;
+        if (this.tmceVersion >= 3) {
+          instance = window.tinymce.get(this.editorId);
+        }
+        if (!instance && this.options.useGlobalReference) {
+          const globalInstanceKey = `tinyMCE_${this.editorId}`;
+          if (window[globalInstanceKey]) {
+            instance = window[globalInstanceKey];
+          }
+          if (window.tinyMCEInstance) {
+            instance = window.tinyMCEInstance;
+          }
+        }
         if (instance) {
           this.editorInstance = instance;
           this._initialized = true;
@@ -3302,25 +3352,87 @@ class TinyMCEAdapter {
     });
   }
   /**
+   * Verifica si el método existe en la instancia del editor y es una función
+   * @param {string} methodName - Nombre del método a verificar
+   * @returns {boolean} true si el método existe y es una función
+   */
+  _hasMethod(methodName) {
+    return this.editorInstance && typeof this.editorInstance[methodName] === "function";
+  }
+  /**
    * Obtiene el contenido del editor
    * @returns {string} El contenido HTML del editor o cadena vacía si no está disponible
    */
   async getContent() {
+    var _a;
     await this.waitForEditor();
     try {
-      if (this.editorInstance) {
-        const content = this.editorInstance.getContent();
-        if (this.options.debug) {
-          console.log(
-            `[TinyMCEAdapter] Retrieved content (${content.length} chars)`
+      if (!this.editorInstance) {
+        throw new Error("No editor instance available");
+      }
+      if (this._hasMethod("getContent")) {
+        try {
+          const content = this.editorInstance.getContent({ format: "html" });
+          if (this.options.debug) {
+            console.log(
+              `[TinyMCEAdapter] Retrieved content using getContent() (${(content == null ? void 0 : content.length) || 0} chars)`
+            );
+          }
+          return content || "";
+        } catch (err) {
+          console.warn("[TinyMCEAdapter] Error using getContent():", err);
+        }
+      }
+      if (this.editorInstance.getBody) {
+        try {
+          const body = this.editorInstance.getBody();
+          if (body) {
+            const content = body.innerHTML;
+            if (this.options.debug) {
+              console.log(
+                `[TinyMCEAdapter] Retrieved content from body (${(content == null ? void 0 : content.length) || 0} chars)`
+              );
+            }
+            return content || "";
+          }
+        } catch (err) {
+          console.warn("[TinyMCEAdapter] Error accessing body content:", err);
+        }
+      }
+      if (this.editorInstance.contentDocument) {
+        try {
+          const doc = this.editorInstance.contentDocument;
+          if (doc && doc.body) {
+            const content = doc.body.innerHTML;
+            if (this.options.debug) {
+              console.log(
+                `[TinyMCEAdapter] Retrieved content from contentDocument (${(content == null ? void 0 : content.length) || 0} chars)`
+              );
+            }
+            return content || "";
+          }
+        } catch (err) {
+          console.warn(
+            "[TinyMCEAdapter] Error accessing contentDocument:",
+            err
           );
         }
-        return content;
       }
+      const textareaElement = document.getElementById(this.editorId);
+      if (textareaElement && textareaElement.value) {
+        if (this.options.debug) {
+          console.log(
+            `[TinyMCEAdapter] Retrieved content from textarea (${((_a = textareaElement.value) == null ? void 0 : _a.length) || 0} chars)`
+          );
+        }
+        return textareaElement.value;
+      }
+      console.error("[TinyMCEAdapter] All content retrieval methods failed");
+      return "";
     } catch (error) {
       console.error(`[TinyMCEAdapter] Error getting content:`, error);
+      return "";
     }
-    return "";
   }
   /**
    * Establece el contenido del editor
@@ -3330,20 +3442,76 @@ class TinyMCEAdapter {
   async setContent(content) {
     await this.waitForEditor();
     try {
-      if (this.editorInstance) {
-        this.editorInstance.setContent(content);
-        this.editorInstance.undoManager.add();
+      if (!this.editorInstance) {
+        throw new Error("No editor instance available");
+      }
+      if (this._hasMethod("setContent")) {
+        try {
+          this.editorInstance.setContent(content);
+          if (this._hasMethod("undoManager") && this.editorInstance.undoManager && this._hasMethod("undoManager.add")) {
+            this.editorInstance.undoManager.add();
+          }
+          if (this.options.debug) {
+            console.log(
+              `[TinyMCEAdapter] Content set successfully using setContent (${(content == null ? void 0 : content.length) || 0} chars)`
+            );
+          }
+          return true;
+        } catch (err) {
+          console.warn("[TinyMCEAdapter] Error using setContent():", err);
+        }
+      }
+      if (this.editorInstance.getBody) {
+        try {
+          const body = this.editorInstance.getBody();
+          if (body) {
+            body.innerHTML = content;
+            if (this.options.debug) {
+              console.log(
+                `[TinyMCEAdapter] Content set successfully using body (${(content == null ? void 0 : content.length) || 0} chars)`
+              );
+            }
+            return true;
+          }
+        } catch (err) {
+          console.warn("[TinyMCEAdapter] Error setting body content:", err);
+        }
+      }
+      if (this.editorInstance.contentDocument) {
+        try {
+          const doc = this.editorInstance.contentDocument;
+          if (doc && doc.body) {
+            doc.body.innerHTML = content;
+            if (this.options.debug) {
+              console.log(
+                `[TinyMCEAdapter] Content set successfully using contentDocument (${(content == null ? void 0 : content.length) || 0} chars)`
+              );
+            }
+            return true;
+          }
+        } catch (err) {
+          console.warn("[TinyMCEAdapter] Error setting contentDocument:", err);
+        }
+      }
+      const textareaElement = document.getElementById(this.editorId);
+      if (textareaElement) {
+        textareaElement.value = content;
+        if (this._hasMethod("load")) {
+          this.editorInstance.load();
+        }
         if (this.options.debug) {
           console.log(
-            `[TinyMCEAdapter] Content set successfully (${content.length} chars)`
+            `[TinyMCEAdapter] Content set using textarea (${(content == null ? void 0 : content.length) || 0} chars)`
           );
         }
         return true;
       }
+      console.error("[TinyMCEAdapter] All content setting methods failed");
+      return false;
     } catch (error) {
       console.error(`[TinyMCEAdapter] Error setting content:`, error);
+      return false;
     }
-    return false;
   }
   /**
    * Inserta contenido en la posición actual del cursor
@@ -3353,39 +3521,47 @@ class TinyMCEAdapter {
   async insertContent(content) {
     await this.waitForEditor();
     try {
-      if (this.editorInstance) {
-        this.editorInstance.execCommand("mceInsertContent", false, content);
-        this.editorInstance.undoManager.add();
-        if (this.options.debug) {
-          console.log(`[TinyMCEAdapter] Content inserted successfully`);
-        }
-        return true;
+      if (!this.editorInstance) {
+        throw new Error("No editor instance available");
       }
+      if (this._hasMethod("execCommand")) {
+        try {
+          this.editorInstance.execCommand("mceInsertContent", false, content);
+          if (this._hasMethod("undoManager") && this.editorInstance.undoManager && this._hasMethod("undoManager.add")) {
+            this.editorInstance.undoManager.add();
+          }
+          if (this.options.debug) {
+            console.log(
+              `[TinyMCEAdapter] Content inserted successfully using execCommand`
+            );
+          }
+          return true;
+        } catch (err) {
+          console.warn("[TinyMCEAdapter] Error using execCommand():", err);
+        }
+      }
+      if (this._hasMethod("selection") && this.editorInstance.selection) {
+        try {
+          const selection = this.editorInstance.selection;
+          if (this._hasMethod("selection.setContent")) {
+            selection.setContent(content);
+            if (this.options.debug) {
+              console.log(
+                `[TinyMCEAdapter] Content inserted successfully using selection.setContent`
+              );
+            }
+            return true;
+          }
+        } catch (err) {
+          console.warn(
+            "[TinyMCEAdapter] Error using selection.setContent():",
+            err
+          );
+        }
+      }
+      return await this.setContent(content);
     } catch (error) {
       console.error(`[TinyMCEAdapter] Error inserting content:`, error);
-    }
-    return false;
-  }
-  /**
-   * Registra un plugin personalizado en TinyMCE
-   * @param {Object} plugin - El plugin a registrar
-   * @param {Object} options - Opciones para el registro del plugin
-   * @returns {boolean} true si se registró correctamente, false en caso contrario
-   */
-  registerPlugin(plugin, options = {}) {
-    try {
-      if (typeof window.tinymce === "undefined") {
-        console.error(
-          `[TinyMCEAdapter] TinyMCE not available for plugin registration`
-        );
-        return false;
-      }
-      if (this.options.debug) {
-        console.log(`[TinyMCEAdapter] Registering plugin:`, plugin);
-      }
-      return true;
-    } catch (error) {
-      console.error(`[TinyMCEAdapter] Error registering plugin:`, error);
       return false;
     }
   }
@@ -3395,6 +3571,13 @@ class TinyMCEAdapter {
    */
   isInitialized() {
     return this._initialized && this.editorInstance !== null;
+  }
+  /**
+   * Obtiene la versión detectada de TinyMCE
+   * @returns {number|null} Versión principal de TinyMCE (3, 4, 5, 6) o null si no se detectó
+   */
+  getVersion() {
+    return this.tmceVersion;
   }
 }
 function createTinyMCEAdapter(editorId, options = {}) {
