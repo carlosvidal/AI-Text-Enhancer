@@ -2478,6 +2478,8 @@ class APIClient {
       // Parámetros adicionales para el proxy
       tenantId: config.tenantId || "",
       userId: config.userId || "",
+      componentId: config.componentId || "",
+      // Añadido componentId
       debugMode: config.debugMode || false
     };
     this._streamCounter = 0;
@@ -2514,6 +2516,9 @@ class APIClient {
     }
     if (config.userId) {
       this.config.userId = config.userId;
+    }
+    if (config.componentId) {
+      this.config.componentId = config.componentId;
     }
     if (config.proxyEndpoint) {
       this.config.proxyEndpoint = config.proxyEndpoint;
@@ -2704,7 +2709,9 @@ ${content || "Crea una nueva descripción."}`
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        user_id: this.config.userId,
+        userId: this.config.userId,
+        componentId: this.config.componentId,
+        // Añadido componentId al payload
         debugMode: this.config.debugMode
       };
       console.log(
@@ -2877,7 +2884,9 @@ ${content || "Please create a new description."}`
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        user_id: this.config.userId,
+        userId: this.config.userId,
+        componentId: this.config.componentId,
+        // Añadido componentId al payload
         hasImage: true,
         isExternalImageUrl: isExternalUrl
         // Indicador para el servidor
@@ -3151,7 +3160,9 @@ Crea una descripción profesional y atractiva que destaque sus características 
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        user_id: this.config.userId,
+        userId: this.config.userId,
+        componentId: this.config.componentId,
+        // Añadido componentId al payload
         hasImage
       };
       console.log("[APIClient] Payload completo de la solicitud:", JSON.stringify(payload, null, 2));
@@ -5780,7 +5791,9 @@ class AITextEnhancer extends HTMLElement {
       "quota-endpoint",
       "proxy-endpoint",
       "editor-type",
-      "hide-trigger"
+      "hide-trigger",
+      "id"
+      // Añadido el atributo id
     ];
   }
   get language() {
@@ -5828,6 +5841,9 @@ class AITextEnhancer extends HTMLElement {
   }
   get hideTrigger() {
     return this.hasAttribute("hide-trigger");
+  }
+  get componentId() {
+    return this.getAttribute("id");
   }
   // Método mejorado para connectedCallback
   async connectedCallback() {
@@ -6341,7 +6357,9 @@ class AITextEnhancer extends HTMLElement {
         proxyEndpoint,
         tenantId: this.getAttribute("tenant-id") || "default",
         userId: this.getAttribute("user-id") || "default",
-        debugMode: true
+        componentId: this.componentId,
+        // Añadido componentId
+        debugMode: false
       });
       console.log(
         "[AITextEnhancer] API client initialized with provider",

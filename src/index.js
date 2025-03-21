@@ -116,6 +116,7 @@ class AITextEnhancer extends HTMLElement {
       "proxy-endpoint",
       "editor-type",
       "hide-trigger",
+      "id", // Añadido el atributo id
     ];
   }
 
@@ -177,6 +178,10 @@ class AITextEnhancer extends HTMLElement {
 
   get hideTrigger() {
     return this.hasAttribute("hide-trigger");
+  }
+
+  get componentId() { // Añadido getter para componentId
+    return this.getAttribute("id");
   }
 
   // Método mejorado para connectedCallback
@@ -840,7 +845,8 @@ class AITextEnhancer extends HTMLElement {
         proxyEndpoint: proxyEndpoint,
         tenantId: this.getAttribute("tenant-id") || "default",
         userId: this.getAttribute("user-id") || "default",
-        debugMode: true,
+        componentId: this.componentId, // Añadido componentId
+        debugMode: false,
       });
 
       console.log(

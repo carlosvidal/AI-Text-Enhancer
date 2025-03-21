@@ -37,6 +37,7 @@ class APIClient {
       // Parámetros adicionales para el proxy
       tenantId: config.tenantId || "",
       userId: config.userId || "",
+      componentId: config.componentId || "", // Añadido componentId
       debugMode: config.debugMode || false,
     };
 
@@ -80,6 +81,9 @@ class APIClient {
     }
     if (config.userId) {
       this.config.userId = config.userId;
+    }
+    if (config.componentId) { // Añadido setter para componentId
+      this.config.componentId = config.componentId;
     }
     if (config.proxyEndpoint) {
       this.config.proxyEndpoint = config.proxyEndpoint;
@@ -327,7 +331,8 @@ class APIClient {
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        user_id: this.config.userId,
+        userId: this.config.userId,
+        componentId: this.config.componentId, // Añadido componentId al payload
         debugMode: this.config.debugMode,
       };
 
@@ -538,7 +543,8 @@ class APIClient {
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        user_id: this.config.userId,
+        userId: this.config.userId,
+        componentId: this.config.componentId, // Añadido componentId al payload
         hasImage: true,
         isExternalImageUrl: isExternalUrl, // Indicador para el servidor
       };
@@ -844,7 +850,8 @@ class APIClient {
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        user_id: this.config.userId,
+        userId: this.config.userId,
+        componentId: this.config.componentId, // Añadido componentId al payload
         hasImage: hasImage,
       };
 
