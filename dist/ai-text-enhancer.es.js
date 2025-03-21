@@ -2710,8 +2710,8 @@ ${content || "Crea una nueva descripción."}`
         stream: true,
         tenantId: this.config.tenantId,
         userId: this.config.userId,
-        componentId: this.config.componentId,
-        // Añadido componentId al payload
+        buttonId: this.config.componentId,
+        // Cambiado de componentId a buttonId
         debugMode: this.config.debugMode
       };
       console.log(
@@ -2885,8 +2885,8 @@ ${content || "Please create a new description."}`
         stream: true,
         tenantId: this.config.tenantId,
         userId: this.config.userId,
-        componentId: this.config.componentId,
-        // Añadido componentId al payload
+        buttonId: this.config.componentId,
+        // Cambiado de componentId a buttonId
         hasImage: true,
         isExternalImageUrl: isExternalUrl
         // Indicador para el servidor
@@ -3161,8 +3161,8 @@ Crea una descripción profesional y atractiva que destaque sus características 
         stream: true,
         tenantId: this.config.tenantId,
         userId: this.config.userId,
-        componentId: this.config.componentId,
-        // Añadido componentId al payload
+        buttonId: this.config.componentId,
+        // Cambiado de componentId a buttonId
         hasImage
       };
       console.log("[APIClient] Payload completo de la solicitud:", JSON.stringify(payload, null, 2));

@@ -332,7 +332,7 @@ class APIClient {
         stream: true,
         tenantId: this.config.tenantId,
         userId: this.config.userId,
-        componentId: this.config.componentId, // Añadido componentId al payload
+        buttonId: this.config.componentId, // Cambiado de componentId a buttonId
         debugMode: this.config.debugMode,
       };
 
@@ -544,7 +544,7 @@ class APIClient {
         stream: true,
         tenantId: this.config.tenantId,
         userId: this.config.userId,
-        componentId: this.config.componentId, // Añadido componentId al payload
+        buttonId: this.config.componentId, // Cambiado de componentId a buttonId
         hasImage: true,
         isExternalImageUrl: isExternalUrl, // Indicador para el servidor
       };
@@ -851,7 +851,7 @@ class APIClient {
         stream: true,
         tenantId: this.config.tenantId,
         userId: this.config.userId,
-        componentId: this.config.componentId, // Añadido componentId al payload
+        buttonId: this.config.componentId, // Cambiado de componentId a buttonId
         hasImage: hasImage,
       };
 
