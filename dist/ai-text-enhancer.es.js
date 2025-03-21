@@ -3153,6 +3153,7 @@ Crea una descripción profesional y atractiva que destaque sus características 
         userId: this.config.userId,
         hasImage
       };
+      console.log("[APIClient] Payload completo de la solicitud:", JSON.stringify(payload, null, 2));
       console.log("[APIClient] Sending chat request to proxy:", {
         endpoint: this.config.proxyEndpoint,
         provider: this.config.provider,
