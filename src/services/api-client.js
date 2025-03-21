@@ -327,7 +327,8 @@ class APIClient {
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        userId: this.config.userId,
+        user_id: this.config.userId,
+        debugMode: this.config.debugMode,
       };
 
       console.log(
@@ -537,7 +538,7 @@ class APIClient {
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        userId: this.config.userId,
+        user_id: this.config.userId,
         hasImage: true,
         isExternalImageUrl: isExternalUrl, // Indicador para el servidor
       };
@@ -843,7 +844,7 @@ class APIClient {
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        userId: this.config.userId,
+        user_id: this.config.userId,
         hasImage: hasImage,
       };
 

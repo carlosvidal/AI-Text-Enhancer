@@ -2704,7 +2704,8 @@ ${content || "Crea una nueva descripción."}`
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        userId: this.config.userId
+        user_id: this.config.userId,
+        debugMode: this.config.debugMode
       };
       console.log(
         "[APIClient] Enviando solicitud al proxy:",
@@ -2876,7 +2877,7 @@ ${content || "Please create a new description."}`
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        userId: this.config.userId,
+        user_id: this.config.userId,
         hasImage: true,
         isExternalImageUrl: isExternalUrl
         // Indicador para el servidor
@@ -3150,7 +3151,7 @@ Crea una descripción profesional y atractiva que destaque sus características 
         temperature: this.config.temperature,
         stream: true,
         tenantId: this.config.tenantId,
-        userId: this.config.userId,
+        user_id: this.config.userId,
         hasImage
       };
       console.log("[APIClient] Payload completo de la solicitud:", JSON.stringify(payload, null, 2));
