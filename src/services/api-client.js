@@ -334,6 +334,19 @@ class APIClient {
         "[APIClient] Enviando solicitud al proxy:",
         this.config.proxyEndpoint
       );
+      console.log("[APIClient] Detalles completos de la solicitud:", {
+        endpoint: this.config.proxyEndpoint,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        payload: payload,
+        provider: this.config.provider,
+        model: model,
+        temperature: this.config.temperature,
+        tenantId: this.config.tenantId,
+        userId: this.config.userId,
+      });
       if (this.config.debugMode) {
         console.log("[APIClient] Payload:", JSON.stringify(payload, null, 2));
       }
