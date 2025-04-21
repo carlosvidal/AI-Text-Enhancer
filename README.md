@@ -4,13 +4,9 @@ Un potente componente web para mejorar descripciones de productos usando IA. Est
 
 ## Características
 
-- 🤖 **Soporte para múltiples proveedores de IA**:
-  - OpenAI (GPT-4 Turbo, GPT-4, GPT-3.5 Turbo)
-  - Anthropic (Claude 3 Opus, Claude 3 Sonnet)
-  - Google (Gemini Pro)
-  - Mistral AI
-  - DeepSeek
-  - Cohere
+- 🤖 **Soporte seguro vía proxy backend**:
+  - Toda la comunicación con proveedores de IA se realiza exclusivamente a través de un proxy seguro en el backend.
+  - No se expone ninguna clave API ni información sensible en el frontend.
   
 - 🎨 **Múltiples modos de mejora**:
   - **Mejorar**: Hace que las descripciones sean más profesionales y atractivas
@@ -36,9 +32,9 @@ Un potente componente web para mejorar descripciones de productos usando IA. Est
   - Interfaz receptiva durante el procesamiento
 
 - 🔌 **Arquitectura de proxy segura**:
-  - Llamadas a la API enrutadas a través de middleware seguro
-  - Sin exposición de claves API en código del lado del cliente
-  - Modo de clave API directa opcional para pruebas
+  - Todas las llamadas a la API pasan por el backend, nunca directamente desde el frontend.
+  - No se expone ninguna clave API en el cliente.
+  - El componente solo requiere el parámetro `proxy-endpoint` para funcionar.
 
 - 🌐 **Soporte multilenguaje**:
   - Interfaz en inglés, español, francés, alemán, italiano, portugués
@@ -56,6 +52,8 @@ Un potente componente web para mejorar descripciones de productos usando IA. Est
   - Implementación consciente de los recursos
 
 ## Instalación
+
+> ⚠️ **Seguridad:** Este componente solo funciona a través de un proxy backend seguro. Nunca expongas claves API ni intentes conectar directamente con proveedores de IA desde el frontend.
 
 ### Opción 1: Vía NPM
 

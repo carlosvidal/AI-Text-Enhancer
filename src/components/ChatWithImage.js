@@ -17,7 +17,6 @@ export class ChatWithImage extends HTMLElement {
     return [
       "language",
       "image-url",
-      "api-provider",
       "initial-prompt",
       "has-content",
       "has-context",
@@ -36,13 +35,7 @@ export class ChatWithImage extends HTMLElement {
     return this.getAttribute("image-url");
   }
 
-  get apiProvider() {
-    return this.getAttribute("api-provider") || "openai";
-  }
 
-  get supportsImages() {
-    return ["openai", "anthropic"].includes(this.apiProvider);
-  }
 
   get initialPrompt() {
     return this.getAttribute("initial-prompt") || "";

@@ -33,7 +33,6 @@ const TRANSLATIONS = {
       emptyPrompt: "What type of content would you like me to help you create?"
     },
     errors: {
-      apiKey: "Error: API key not configured. Please provide a valid API key.",
       initialization: "Error initializing component:",
       request: "Error processing request:"
     }
@@ -72,7 +71,6 @@ const TRANSLATIONS = {
       emptyPrompt: "¿Qué tipo de contenido te gustaría que te ayude a crear?"
     },
     errors: {
-      apiKey: "Error: API key no configurada. Por favor proporciona una API key válida.",
       initialization: "Error inicializando componente:",
       request: "Error procesando solicitud:"
     }
@@ -111,7 +109,6 @@ const TRANSLATIONS = {
       emptyPrompt: "Quel type de contenu souhaitez-vous que je vous aide à créer ?"
     },
     errors: {
-      apiKey: "Erreur : Clé API non configurée. Veuillez fournir une clé API valide.",
       initialization: "Erreur d'initialisation du composant :",
       request: "Erreur lors du traitement de la demande :"
     }
@@ -150,7 +147,6 @@ const TRANSLATIONS = {
       emptyPrompt: "Welche Art von Inhalt möchten Sie, dass ich Ihnen erstellen helfe?"
     },
     errors: {
-      apiKey: "Fehler: API-Schlüssel nicht konfiguriert. Bitte geben Sie einen gültigen API-Schlüssel an.",
       initialization: "Fehler bei der Initialisierung der Komponente:",
       request: "Fehler bei der Verarbeitung der Anfrage:"
     }
@@ -1630,7 +1626,6 @@ class ChatWithImage extends HTMLElement {
     return [
       "language",
       "image-url",
-      "api-provider",
       "initial-prompt",
       "has-content",
       "has-context"
@@ -1644,12 +1639,6 @@ class ChatWithImage extends HTMLElement {
   }
   get imageUrl() {
     return this.getAttribute("image-url");
-  }
-  get apiProvider() {
-    return this.getAttribute("api-provider") || "openai";
-  }
-  get supportsImages() {
-    return ["openai", "anthropic"].includes(this.apiProvider);
   }
   get initialPrompt() {
     return this.getAttribute("initial-prompt") || "";
@@ -2176,241 +2165,8 @@ class ToolBar extends HTMLElement {
   }
 }
 customElements.define("ai-toolbar", ToolBar);
-const MODEL_CONFIG = {
-  openai: {
-    models: {
-      "gpt-4-turbo": {
-        name: "GPT-4 Turbo",
-        contextWindow: 128e3,
-        description: "Latest GPT-4 model with larger context window",
-        suggested: true,
-        maxTokens: 4096,
-        costPer1k: 0.01,
-        supportsImages: true
-      },
-      "gpt-4": {
-        name: "GPT-4",
-        contextWindow: 8192,
-        description: "Most capable GPT-4 model",
-        maxTokens: 4096,
-        costPer1k: 0.03,
-        supportsImages: true
-      },
-      "gpt-3.5-turbo": {
-        name: "GPT-3.5 Turbo",
-        contextWindow: 16385,
-        description: "Efficient and cost-effective model",
-        maxTokens: 4096,
-        costPer1k: 15e-4,
-        supportsImages: false
-      }
-    },
-    defaultModel: "gpt-4-turbo",
-    visionModel: "gpt-4-turbo"
-    // Preferred model for vision tasks
-  },
-  anthropic: {
-    models: {
-      "claude-3-opus-20240229": {
-        name: "Claude 3 Opus",
-        contextWindow: 2e5,
-        description: "Most capable Claude model",
-        suggested: true,
-        supportsImages: true
-      },
-      "claude-3-sonnet-20240229": {
-        name: "Claude 3 Sonnet",
-        contextWindow: 2e5,
-        description: "Balance of intelligence and speed",
-        supportsImages: true
-      }
-    },
-    defaultModel: "claude-3-opus-20240229",
-    visionModel: "claude-3-opus-20240229"
-    // Preferred model for vision tasks
-  },
-  deepseek: {
-    models: {
-      "deepseek-chat": {
-        name: "DeepSeek Chat",
-        contextWindow: 32768,
-        description: "General purpose chat model",
-        suggested: true,
-        maxTokens: 4096
-      },
-      "deepseek-coder": {
-        name: "DeepSeek Coder",
-        contextWindow: 32768,
-        description: "Specialized in code generation",
-        maxTokens: 4096
-      }
-    },
-    defaultModel: "deepseek-chat"
-  },
-  cohere: {
-    models: {
-      command: {
-        name: "Command",
-        contextWindow: 4096,
-        description: "Latest generation model",
-        suggested: true,
-        maxTokens: 4096
-      },
-      "command-light": {
-        name: "Command Light",
-        contextWindow: 4096,
-        description: "Faster, more efficient model",
-        maxTokens: 4096
-      },
-      "command-nightly": {
-        name: "Command Nightly",
-        contextWindow: 4096,
-        description: "Experimental features",
-        maxTokens: 4096
-      }
-    },
-    defaultModel: "command"
-  },
-  google: {
-    models: {
-      "gemini-pro": {
-        name: "Gemini Pro",
-        contextWindow: 32768,
-        description: "Most capable Gemini model",
-        suggested: true,
-        maxTokens: 4096,
-        supportsImages: false
-      },
-      "gemini-pro-vision": {
-        name: "Gemini Pro Vision",
-        contextWindow: 32768,
-        description: "Multimodal capabilities",
-        maxTokens: 4096,
-        supportsImages: true
-      }
-    },
-    defaultModel: "gemini-pro",
-    visionModel: "gemini-pro-vision"
-    // Preferred model for vision tasks
-  },
-  mistral: {
-    models: {
-      "mistral-large-latest": {
-        name: "Mistral Large",
-        contextWindow: 32768,
-        description: "Most capable Mistral model",
-        suggested: true,
-        maxTokens: 4096
-      },
-      "mistral-medium-latest": {
-        name: "Mistral Medium",
-        contextWindow: 32768,
-        description: "Balanced performance",
-        maxTokens: 4096
-      },
-      "mistral-small-latest": {
-        name: "Mistral Small",
-        contextWindow: 32768,
-        description: "Fast and efficient",
-        maxTokens: 4096
-      }
-    },
-    defaultModel: "mistral-large-latest"
-  },
-  ollama: {
-    models: {
-      llama2: {
-        name: "Llama 2",
-        contextWindow: 4096,
-        description: "Default Llama 2 model",
-        suggested: true,
-        maxTokens: 4096
-      },
-      "llama2:13b": {
-        name: "Llama 2 13B",
-        contextWindow: 4096,
-        description: "Balanced 13B parameter model",
-        maxTokens: 4096
-      },
-      "llama2:70b": {
-        name: "Llama 2 70B",
-        contextWindow: 4096,
-        description: "Large 70B parameter model",
-        maxTokens: 4096
-      },
-      mistral: {
-        name: "Mistral",
-        contextWindow: 8192,
-        description: "Mistral base model",
-        maxTokens: 4096
-      },
-      mixtral: {
-        name: "Mixtral",
-        contextWindow: 32768,
-        description: "Mixtral 8x7B model",
-        maxTokens: 4096
-      }
-    },
-    defaultModel: "llama2"
-  }
-};
-class ModelManager {
-  constructor(provider = "openai") {
-    this.provider = provider;
-    this.config = MODEL_CONFIG;
-  }
-  getModelConfig(modelId) {
-    const providerConfig = this.config[this.provider];
-    if (!providerConfig) {
-      throw new Error(`Provider ${this.provider} not supported`);
-    }
-    if (modelId && providerConfig.models[modelId]) {
-      return providerConfig.models[modelId];
-    }
-    return providerConfig.models[providerConfig.default];
-  }
-  getDefaultModel() {
-    const providerConfig = this.config[this.provider];
-    if (!providerConfig) {
-      throw new Error(`Provider ${this.provider} not supported`);
-    }
-    return providerConfig.default;
-  }
-  getAllModels() {
-    const providerConfig = this.config[this.provider];
-    if (!providerConfig) {
-      throw new Error(`Provider ${this.provider} not supported`);
-    }
-    return Object.values(providerConfig.models);
-  }
-  isProviderSupported(provider) {
-    return !!this.config[provider];
-  }
-  isImageSupportedForProvider(provider) {
-    const providerConfig = this.config[provider];
-    if (!providerConfig) return false;
-    if (providerConfig.visionModel) return true;
-    return ["openai", "anthropic", "google"].includes(provider);
-  }
-  getVisionModelForProvider(provider) {
-    const providerConfig = this.config[provider];
-    if (!providerConfig) return null;
-    if (providerConfig.visionModel) {
-      return providerConfig.visionModel;
-    }
-    return providerConfig.defaultModel;
-  }
-  setProvider(provider) {
-    if (this.isProviderSupported(provider)) {
-      this.provider = provider;
-    } else {
-      throw new Error(`Provider ${provider} not supported`);
-    }
-  }
-}
 class TokenManager {
   constructor() {
-    this.modelManager = new ModelManager();
     this.tokensPerChar = {
       en: 0.25,
       // English: ~4 chars per token
@@ -2453,33 +2209,14 @@ class MarkdownHandler {
 }
 class APIClient {
   constructor(config = {}) {
-    this.modelManager = new ModelManager(config.provider || "openai");
     this.config = {
-      provider: config.provider || "openai",
-      // Punto de entrada al proxy CodeIgniter 3
       proxyEndpoint: config.proxyEndpoint || "http://llmproxy2.test:8080/api/llm-proxy",
-      // Sin "api/"
-      models: {
-        openai: config.model || "gpt-4-turbo",
-        deepseek: "deepseek-chat",
-        anthropic: "claude-3-opus-20240229",
-        cohere: "command",
-        google: "gemini-pro",
-        mistral: "mistral-large-latest"
-      },
-      visionModels: {
-        openai: "gpt-4-turbo",
-        anthropic: "claude-3-opus-20240229"
-      },
       temperature: config.temperature || 0.7,
-      // Ya no necesitas almacenar el API key en el cliente
       sessionToken: config.sessionToken || "",
       systemPrompt: config.systemPrompt || "Actúa como un experto en redacción de descripciones de productos para tiendas en línea.\n\nTu tarea es generar o mejorar la descripción de un producto con un enfoque atractivo y persuasivo, destacando sus características principales, beneficios y posibles usos.\n\nSi el usuario ya ha escrito una descripción: Mejórala manteniendo su esencia, pero haciéndola más clara, persuasiva y optimizada para ventas.\n\nSi la descripción está vacía: Genera una nueva descripción atractiva, destacando características y beneficios. Usa un tono profesional y cercano, adaptado a una tienda en línea.\n\nSi hay una imagen del producto, aprovecha los detalles visuales para enriquecer la descripción.\n\nSi aplica, menciona información relevante del comercio para reforzar la confianza del comprador (envíos, garantía, atención al cliente, etc.).\n\nMantén el texto claro, sin repeticiones innecesarias, y optimizado para SEO si es posible.",
-      // Parámetros adicionales para el proxy
       tenantId: config.tenantId || "",
       userId: config.userId || "",
       componentId: config.componentId || "",
-      // Añadido componentId
       debugMode: config.debugMode || false
     };
     this._streamCounter = 0;
@@ -2487,27 +2224,8 @@ class APIClient {
   setSessionToken(token) {
     this.config.sessionToken = token;
   }
-  setProvider(provider) {
-    if (this.modelManager.isProviderSupported(provider)) {
-      this.config.provider = provider;
-      this.modelManager.setProvider(provider);
-      this.config.models[provider] = this.modelManager.getDefaultModel();
-    } else {
-      throw new Error(`Provider ${provider} not supported`);
-    }
-  }
-  setModel(model) {
-    if (model) {
-      this.config.models[this.config.provider] = model;
-    }
-  }
+  // Métodos de provider y modelo eliminados. Solo se permite actualizar el proxyEndpoint y parámetros seguros.
   updateConfig(config) {
-    if (config.provider) {
-      this.setProvider(config.provider);
-    }
-    if (config.model) {
-      this.setModel(config.model);
-    }
     if (config.sessionToken) {
       this.setSessionToken(config.sessionToken);
     }
@@ -5691,7 +5409,7 @@ function createTemplate(component) {
             <chat-with-image
               language="${component.language || "en"}"
               image-url="${component.imageUrl || ""}"
-              api-provider="${component.apiProvider || "openai"}"
+              "${component.apiProvider || "openai"}"
               has-content="${hasContent.toString()}"
               has-context="${hasContext.toString()}">
             </chat-with-image>
@@ -5745,7 +5463,6 @@ class AITextEnhancer extends HTMLElement {
     this.responseHistory = null;
     this.editorAdapter = null;
     this.currentAction = "improve";
-    this.modelManager = new ModelManager();
     this.markdownHandler = new MarkdownHandler();
     this.tokenManager = new TokenManager();
     this.initializeStateManager();
@@ -5762,6 +5479,7 @@ class AITextEnhancer extends HTMLElement {
       usageControl: null
     });
     this.bindMethods();
+    this.proxyEndpoint = this.getAttribute("proxy-endpoint") || "";
   }
   bindMethods() {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i;

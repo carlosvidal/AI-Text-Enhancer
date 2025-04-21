@@ -36,7 +36,7 @@ export const TRANSLATIONS = {
       emptyPrompt: "What type of content would you like me to help you create?",
     },
     errors: {
-      apiKey: "Error: API key not configured. Please provide a valid API key.",
+      
       initialization: "Error initializing component:",
       request: "Error processing request:",
     },
@@ -76,8 +76,7 @@ export const TRANSLATIONS = {
       emptyPrompt: "¿Qué tipo de contenido te gustaría que te ayude a crear?",
     },
     errors: {
-      apiKey:
-        "Error: API key no configurada. Por favor proporciona una API key válida.",
+      
       initialization: "Error inicializando componente:",
       request: "Error procesando solicitud:",
     },
@@ -119,8 +118,7 @@ export const TRANSLATIONS = {
         "Quel type de contenu souhaitez-vous que je vous aide à créer ?",
     },
     errors: {
-      apiKey:
-        "Erreur : Clé API non configurée. Veuillez fournir une clé API valide.",
+      
       initialization: "Erreur d'initialisation du composant :",
       request: "Erreur lors du traitement de la demande :",
     },
@@ -161,8 +159,7 @@ export const TRANSLATIONS = {
         "Welche Art von Inhalt möchten Sie, dass ich Ihnen erstellen helfe?",
     },
     errors: {
-      apiKey:
-        "Fehler: API-Schlüssel nicht konfiguriert. Bitte geben Sie einen gültigen API-Schlüssel an.",
+      
       initialization: "Fehler bei der Initialisierung der Komponente:",
       request: "Fehler bei der Verarbeitung der Anfrage:",
     },

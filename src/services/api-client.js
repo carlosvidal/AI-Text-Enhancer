@@ -1,29 +1,12 @@
 // api-client.js - Versión mejorada con corrección del procesamiento de streams
-import { ModelManager } from "./model-manager.js";
+// Eliminado ModelManager, ya no es necesario para múltiples providers
 
 class APIClient {
   constructor(config = {}) {
-    this.modelManager = new ModelManager(config.provider || "openai");
-
     this.config = {
-      provider: config.provider || "openai",
-      // Punto de entrada al proxy CodeIgniter 3
       proxyEndpoint:
-        config.proxyEndpoint || "http://llmproxy2.test:8080/api/llm-proxy", // Sin "api/"
-      models: {
-        openai: config.model || "gpt-4-turbo",
-        deepseek: "deepseek-chat",
-        anthropic: "claude-3-opus-20240229",
-        cohere: "command",
-        google: "gemini-pro",
-        mistral: "mistral-large-latest",
-      },
-      visionModels: {
-        openai: "gpt-4-turbo",
-        anthropic: "claude-3-opus-20240229",
-      },
+        config.proxyEndpoint || "http://llmproxy2.test:8080/api/llm-proxy",
       temperature: config.temperature || 0.7,
-      // Ya no necesitas almacenar el API key en el cliente
       sessionToken: config.sessionToken || "",
       systemPrompt:
         config.systemPrompt ||
@@ -34,14 +17,11 @@ class APIClient {
           "Si hay una imagen del producto, aprovecha los detalles visuales para enriquecer la descripción.\n\n" +
           "Si aplica, menciona información relevante del comercio para reforzar la confianza del comprador (envíos, garantía, atención al cliente, etc.).\n\n" +
           "Mantén el texto claro, sin repeticiones innecesarias, y optimizado para SEO si es posible.",
-      // Parámetros adicionales para el proxy
       tenantId: config.tenantId || "",
       userId: config.userId || "",
-      componentId: config.componentId || "", // Añadido componentId
+      componentId: config.componentId || "",
       debugMode: config.debugMode || false,
     };
-
-    // Inicializar contador para logging
     this._streamCounter = 0;
   }
 
@@ -49,30 +29,8 @@ class APIClient {
     this.config.sessionToken = token;
   }
 
-  setProvider(provider) {
-    if (this.modelManager.isProviderSupported(provider)) {
-      this.config.provider = provider;
-      this.modelManager.setProvider(provider);
-      // Reset to default model for new provider
-      this.config.models[provider] = this.modelManager.getDefaultModel();
-    } else {
-      throw new Error(`Provider ${provider} not supported`);
-    }
-  }
-
-  setModel(model) {
-    if (model) {
-      this.config.models[this.config.provider] = model;
-    }
-  }
-
+  // Métodos de provider y modelo eliminados. Solo se permite actualizar el proxyEndpoint y parámetros seguros.
   updateConfig(config) {
-    if (config.provider) {
-      this.setProvider(config.provider);
-    }
-    if (config.model) {
-      this.setModel(config.model);
-    }
     if (config.sessionToken) {
       this.setSessionToken(config.sessionToken);
     }
@@ -82,7 +40,7 @@ class APIClient {
     if (config.userId) {
       this.config.userId = config.userId;
     }
-    if (config.componentId) { // Añadido setter para componentId
+    if (config.componentId) {
       this.config.componentId = config.componentId;
     }
     if (config.proxyEndpoint) {

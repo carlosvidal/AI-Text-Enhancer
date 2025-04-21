@@ -166,7 +166,7 @@ export function createTemplate(component) {
             <chat-with-image
               language="${component.language || "en"}"
               image-url="${component.imageUrl || ""}"
-              api-provider="${component.apiProvider || "openai"}"
+              "${component.apiProvider || "openai"}"
               has-content="${hasContent.toString()}"
               has-context="${hasContext.toString()}">
             </chat-with-image>

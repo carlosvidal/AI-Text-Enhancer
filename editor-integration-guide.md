@@ -23,17 +23,21 @@ Actualmente, AI Text Enhancer soporta los siguientes editores:
 
 ## Configuración Básica
 
-Para conectar AI Text Enhancer con un editor, necesitas configurar dos atributos clave:
+Para conectar AI Text Enhancer con un editor, necesitas configurar los siguientes atributos clave:
 
 ```html
 <ai-text-enhancer
   editor-id="id-del-elemento-editor"
-  editor-type="tipo-de-editor">
+  editor-type="tipo-de-editor"
+  proxy-endpoint="https://tu-backend-seguro.com/api/llm-proxy">
 </ai-text-enhancer>
 ```
 
 - `editor-id`: El ID del elemento editor en el DOM
 - `editor-type`: El tipo de editor (textarea, tinymce, ckeditor, quill, froala)
+- `proxy-endpoint`: URL de tu proxy backend seguro. Todas las llamadas a proveedores de IA se hacen exclusivamente a través de este endpoint.
+
+> ⚠️ **Importante:** Nunca expongas claves API en el frontend ni configures directamente el provider/modelo. Toda la lógica de integración con proveedores de IA debe estar en el backend.
 
 ## Integración Paso a Paso por Editor
 

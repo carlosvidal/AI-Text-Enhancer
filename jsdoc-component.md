@@ -6,13 +6,14 @@ Este documento proporciona información detallada sobre los métodos, propiedade
 
 ### Propiedades
 
+> ⚠️ **Seguridad:** El componente solo debe configurarse con el atributo `proxy-endpoint`, que apunta a tu backend seguro. No se debe exponer ninguna clave API ni configurar providers/modelos desde el frontend.
+
 | Propiedad | Tipo | Descripción |
 |-----------|------|-------------|
 | `editorId` | String | El ID del elemento editor asociado |
 | `editorType` | String | Tipo de editor (textarea, tinymce, ckeditor, quill, froala) |
 | `language` | String | Código del idioma actual (en, es, fr, de, it, pt) |
-| `apiProvider` | String | Proveedor de IA actual (openai, anthropic, etc.) |
-| `apiModel` | String | Modelo de IA seleccionado |
+
 | `currentContent` | String | Contenido actual del editor (solo lectura) |
 | `isInitialized` | Boolean | Si el componente está completamente inicializado |
 | `imageUrl` | String | URL de imagen para analizar (si existe) |

@@ -1,11 +1,10 @@
 // token-manager.js
-import { ModelManager } from "./model-manager.js";
-import { MODEL_CONFIG } from "../constants/model-config.js";
+
+
 
 export class TokenManager {
   constructor() {
-    this.modelManager = new ModelManager();
-    
+
     // Average tokens per character for different languages
     this.tokensPerChar = {
       en: 0.25, // English: ~4 chars per token

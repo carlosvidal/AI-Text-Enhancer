@@ -7,7 +7,7 @@ import { TokenManager } from "./services/token-manager.js";
 import { MarkdownHandler } from "./services/markdown-handler.js";
 import { createAPIClient } from "./services/api-client.js";
 import { createCacheManager } from "./services/cache-manager.js";
-import { ModelManager } from "./services/model-manager.js";
+
 import { EditorAdapter } from "./services/editor-adapter.js";
 import { createEventEmitter } from "./utils/event-utils.js";
 import { attachShadowTemplate } from "./utils/dom-utils.js";
@@ -53,7 +53,8 @@ class AITextEnhancer extends HTMLElement {
     this.responseHistory = null;
     this.editorAdapter = null;
     this.currentAction = "improve";
-    this.modelManager = new ModelManager();
+    // Eliminado ModelManager, ya no es necesario para múltiples providers
+    // this.modelManager = new ModelManager();
     this.markdownHandler = new MarkdownHandler();
     this.tokenManager = new TokenManager();
 
@@ -78,6 +79,9 @@ class AITextEnhancer extends HTMLElement {
 
     // Bind methods after mixins are applied
     this.bindMethods();
+
+    // Configuración del endpoint del proxy (única integración)
+    this.proxyEndpoint = this.getAttribute("proxy-endpoint") || "";
   }
 
   bindMethods() {
