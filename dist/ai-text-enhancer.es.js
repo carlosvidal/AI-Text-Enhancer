@@ -5501,7 +5501,6 @@ class AITextEnhancer extends HTMLElement {
       usageControl: null
     });
     this.bindMethods();
-    this.proxyEndpoint = this.getAttribute("proxy-endpoint") || "";
   }
   bindMethods() {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i;

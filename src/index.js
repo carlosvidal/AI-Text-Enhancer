@@ -81,7 +81,7 @@ class AITextEnhancer extends HTMLElement {
     this.bindMethods();
 
     // Configuración del endpoint del proxy (única integración)
-    this.proxyEndpoint = this.getAttribute("proxy-endpoint") || "";
+    // this.proxyEndpoint = this.getAttribute("proxy-endpoint") || "";
   }
 
   bindMethods() {
