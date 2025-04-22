@@ -2232,7 +2232,7 @@ class MarkdownHandler {
 class APIClient {
   constructor(config = {}) {
     this.config = {
-      proxyEndpoint: config.proxyEndpoint || "http://llmproxy2.test:8080/api/llm-proxy",
+      proxyEndpoint: config.proxyEndpoint || "https://llmproxy.mitienda.host/index.php/api/llm-proxy",
       temperature: config.temperature || 0.7,
       sessionToken: config.sessionToken || "",
       systemPrompt: config.systemPrompt || "Actúa como un experto en redacción de descripciones de productos para tiendas en línea.\n\nTu tarea es generar o mejorar la descripción de un producto con un enfoque atractivo y persuasivo, destacando sus características principales, beneficios y posibles usos.\n\nSi el usuario ya ha escrito una descripción: Mejórala manteniendo su esencia, pero haciéndola más clara, persuasiva y optimizada para ventas.\n\nSi la descripción está vacía: Genera una nueva descripción atractiva, destacando características y beneficios. Usa un tono profesional y cercano, adaptado a una tienda en línea.\n\nSi hay una imagen del producto, aprovecha los detalles visuales para enriquecer la descripción.\n\nSi aplica, menciona información relevante del comercio para reforzar la confianza del comprador (envíos, garantía, atención al cliente, etc.).\n\nMantén el texto claro, sin repeticiones innecesarias, y optimizado para SEO si es posible.",
@@ -2458,14 +2458,21 @@ ${content || "Crea una nueva descripción."}`
         "[APIClient] Enviando solicitud al proxy:",
         this.config.proxyEndpoint
       );
-      console.log("[APIClient] JSON exacto de la solicitud:", JSON.stringify({
-        endpoint: this.config.proxyEndpoint,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      }, null, 2));
+      console.log(
+        "[APIClient] JSON exacto de la solicitud:",
+        JSON.stringify(
+          {
+            endpoint: this.config.proxyEndpoint,
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          },
+          null,
+          2
+        )
+      );
       if (this.config.debugMode) {
         console.log("[APIClient] Payload:", JSON.stringify(payload, null, 2));
       }
@@ -2905,7 +2912,10 @@ Crea una descripción profesional y atractiva que destaque sus características 
         // Cambiado de componentId a buttonId
         hasImage
       };
-      console.log("[APIClient] Payload completo de la solicitud:", JSON.stringify(payload, null, 2));
+      console.log(
+        "[APIClient] Payload completo de la solicitud:",
+        JSON.stringify(payload, null, 2)
+      );
       console.log("[APIClient] Sending chat request to proxy:", {
         endpoint: this.config.proxyEndpoint,
         provider: this.config.provider,

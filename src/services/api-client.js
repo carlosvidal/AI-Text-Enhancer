@@ -5,7 +5,8 @@ class APIClient {
   constructor(config = {}) {
     this.config = {
       proxyEndpoint:
-        config.proxyEndpoint || "http://llmproxy2.test:8080/api/llm-proxy",
+        config.proxyEndpoint ||
+        "https://llmproxy.mitienda.host/index.php/api/llm-proxy",
       temperature: config.temperature || 0.7,
       sessionToken: config.sessionToken || "",
       systemPrompt:
@@ -298,14 +299,21 @@ class APIClient {
         "[APIClient] Enviando solicitud al proxy:",
         this.config.proxyEndpoint
       );
-      console.log("[APIClient] JSON exacto de la solicitud:", JSON.stringify({
-        endpoint: this.config.proxyEndpoint,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      }, null, 2));
+      console.log(
+        "[APIClient] JSON exacto de la solicitud:",
+        JSON.stringify(
+          {
+            endpoint: this.config.proxyEndpoint,
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          },
+          null,
+          2
+        )
+      );
       if (this.config.debugMode) {
         console.log("[APIClient] Payload:", JSON.stringify(payload, null, 2));
       }
@@ -813,7 +821,10 @@ class APIClient {
         hasImage: hasImage,
       };
 
-      console.log("[APIClient] Payload completo de la solicitud:", JSON.stringify(payload, null, 2));
+      console.log(
+        "[APIClient] Payload completo de la solicitud:",
+        JSON.stringify(payload, null, 2)
+      );
 
       console.log("[APIClient] Sending chat request to proxy:", {
         endpoint: this.config.proxyEndpoint,
