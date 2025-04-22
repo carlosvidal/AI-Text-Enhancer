@@ -6087,7 +6087,7 @@ class AITextEnhancer extends HTMLElement {
       console.log("[AITextEnhancer] Initializing components...");
       await this.markdownHandler.initialize();
       console.log("[AITextEnhancer] Markdown handler initialized");
-      const proxyEndpoint = this.proxyEndpoint || "http://llmproxy2.test:8080/api/llm-proxy";
+      const proxyEndpoint = this.proxyEndpoint || "https://llmproxy.mitienda.host/index.php/api/llm-proxy";
       this.apiClient = createAPIClient({
         provider: this.apiProvider,
         model: this.apiModel,

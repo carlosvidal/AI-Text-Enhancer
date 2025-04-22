@@ -838,7 +838,7 @@ class AITextEnhancer extends HTMLElement {
 
       // Obtener el endpoint del proxy del atributo o usar el valor predeterminado
       const proxyEndpoint =
-        this.proxyEndpoint || "http://llmproxy2.test:8080/api/llm-proxy";
+        this.proxyEndpoint || "https://llmproxy.mitienda.host/index.php/api/llm-proxy";
 
       // Inicializar API client con proxy
       this.apiClient = createAPIClient({
