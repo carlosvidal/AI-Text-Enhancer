@@ -5571,13 +5571,7 @@ class AITextEnhancer extends HTMLElement {
     return this.getAttribute("api-provider") || "openai";
   }
   get apiModel() {
-    var _a;
-    const model = this.getAttribute("api-model");
-    try {
-      return (_a = this.modelManager.getModelConfig(model)) == null ? void 0 : _a.id;
-    } catch {
-      return this.modelManager.getDefaultModel();
-    }
+    return this.getAttribute("api-model") || "gpt-3.5-turbo";
   }
   get imageUrl() {
     return this.getAttribute("image-url");

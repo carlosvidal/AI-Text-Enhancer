@@ -160,12 +160,7 @@ class AITextEnhancer extends HTMLElement {
   }
 
   get apiModel() {
-    const model = this.getAttribute("api-model");
-    try {
-      return this.modelManager.getModelConfig(model)?.id;
-    } catch {
-      return this.modelManager.getDefaultModel();
-    }
+    return this.getAttribute("api-model") || "gpt-3.5-turbo";
   }
 
   get imageUrl() {
