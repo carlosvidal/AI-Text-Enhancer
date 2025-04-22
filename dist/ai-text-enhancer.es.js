@@ -1679,15 +1679,37 @@ class ChatWithImage extends HTMLElement {
     }
   }
   setInitialPrompt() {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     if (!this.shadowRoot) return;
     const chatInput = this.shadowRoot.querySelector(".chat-input");
     if (!chatInput) return;
     let prompt = "";
-    if (this.hasContent) {
-      prompt = ((_b = (_a = this.translations) == null ? void 0 : _a.chat) == null ? void 0 : _b.contentPrompt) || "Could you improve the text in the editor?";
+    const content = this.getAttribute("content") || this.currentContent || "";
+    const context = this.getAttribute("context") || "";
+    if (this.hasContent && this.hasContext) {
+      prompt = ((_b = (_a = this.translations) == null ? void 0 : _a.chat) == null ? void 0 : _b.contentAndContextPrompt) ? `${this.translations.chat.contentAndContextPrompt}
+
+${content}
+
+${((_d = (_c = this.translations) == null ? void 0 : _c.chat) == null ? void 0 : _d.contextLabel) || "Contexto:"}
+${context}` : `Mejora el siguiente texto considerando el siguiente contexto:
+
+${content}
+
+Contexto:
+${context}`;
+    } else if (this.hasContent) {
+      prompt = ((_f = (_e = this.translations) == null ? void 0 : _e.chat) == null ? void 0 : _f.contentPrompt) ? `${this.translations.chat.contentPrompt}
+
+${content}` : `Mejora el siguiente texto:
+
+${content}`;
     } else if (this.hasContext) {
-      prompt = ((_d = (_c = this.translations) == null ? void 0 : _c.chat) == null ? void 0 : _d.contextPrompt) || "Can you create a professional description based on this context?";
+      prompt = ((_h = (_g = this.translations) == null ? void 0 : _g.chat) == null ? void 0 : _h.contextPrompt) ? `${this.translations.chat.contextPrompt}
+
+${context}` : `Crea una descripción profesional basado en este contexto:
+
+${context}`;
     } else if (this.initialPrompt) {
       prompt = this.initialPrompt;
     }

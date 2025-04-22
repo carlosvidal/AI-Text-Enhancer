@@ -93,14 +93,27 @@ export class ChatWithImage extends HTMLElement {
     // Determine which initial prompt to use
     let prompt = "";
 
-    if (this.hasContent) {
+    const content = this.getAttribute("content") || this.currentContent || "";
+    const context = this.getAttribute("context") || "";
+
+    if (this.hasContent && this.hasContext) {
+      // Ambos presentes
       prompt =
-        this.translations?.chat?.contentPrompt ||
-        "Could you improve the text in the editor?";
+        (this.translations?.chat?.contentAndContextPrompt
+          ? `${this.translations.chat.contentAndContextPrompt}\n\n${content}\n\n${this.translations?.chat?.contextLabel || "Contexto:"}\n${context}`
+          : `Mejora el siguiente texto considerando el siguiente contexto:\n\n${content}\n\nContexto:\n${context}`);
+    } else if (this.hasContent) {
+      // Solo contenido
+      prompt =
+        (this.translations?.chat?.contentPrompt
+          ? `${this.translations.chat.contentPrompt}\n\n${content}`
+          : `Mejora el siguiente texto:\n\n${content}`);
     } else if (this.hasContext) {
+      // Solo contexto
       prompt =
-        this.translations?.chat?.contextPrompt ||
-        "Can you create a professional description based on this context?";
+        (this.translations?.chat?.contextPrompt
+          ? `${this.translations.chat.contextPrompt}\n\n${context}`
+          : `Crea una descripción profesional basado en este contexto:\n\n${context}`);
     } else if (this.initialPrompt) {
       prompt = this.initialPrompt;
     }
