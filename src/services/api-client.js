@@ -804,10 +804,8 @@ class APIClient {
         }
       }
 
-      // Select the appropriate model based on whether we're sending an image
-      const model = hasImage
-        ? this.modelManager.getVisionModelForProvider(this.config.provider)
-        : this.config.models[this.config.provider];
+      // Seleccionar el modelo adecuado
+      const model = this.config.model || "gpt-3.5-turbo";
 
       const payload = {
         provider: this.config.provider,
