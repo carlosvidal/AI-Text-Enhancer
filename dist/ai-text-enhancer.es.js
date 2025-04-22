@@ -2899,7 +2899,7 @@ Crea una descripción profesional y atractiva que destaque sus características 
           messages.push({ role: "user", content: message });
         }
       }
-      const model = hasImage ? this.modelManager.getVisionModelForProvider(this.config.provider) : this.config.models[this.config.provider];
+      const model = this.config.model || "gpt-3.5-turbo";
       const payload = {
         provider: this.config.provider,
         model,
