@@ -1101,10 +1101,9 @@ class AITextEnhancer extends HTMLElement {
 
     // Log for debugging
     console.log("[AITextEnhancer] Updated chat state:", {
-      hasContent,
-      hasContext,
       contentLength: this.currentContent?.length || 0,
       contextLength: this.context?.length || 0,
+      supportsImages: chatComponent.getAttribute("supports-images")
     });
   }
 
