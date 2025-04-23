@@ -985,15 +985,9 @@ class AITextEnhancer extends HTMLElement {
         if (typeof content === "string") {
           return content;
         }
-        // Si es una promesa, muestra advertencia y fuerza updateChatState al resolverse
+        // Si es una promesa, solo advierte y devuelve string vacío (sin efectos secundarios)
         if (content && typeof content.then === "function") {
           console.warn("[AITextEnhancer] editorAdapter.getContent() devolvió una promesa. Debes usar await para obtener el contenido real.");
-          content.then(resolved => {
-            if (typeof resolved === "string") {
-              // Forzar actualización del chat o estado si es necesario
-              this.updateChatState?.();
-            }
-          });
           return "";
         }
         console.warn("[AITextEnhancer] editorAdapter.getContent() no devolvió un string", content);

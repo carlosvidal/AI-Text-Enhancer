@@ -6222,12 +6222,6 @@ class AITextEnhancer extends HTMLElement {
         }
         if (content && typeof content.then === "function") {
           console.warn("[AITextEnhancer] editorAdapter.getContent() devolvió una promesa. Debes usar await para obtener el contenido real.");
-          content.then((resolved) => {
-            var _a;
-            if (typeof resolved === "string") {
-              (_a = this.updateChatState) == null ? void 0 : _a.call(this);
-            }
-          });
           return "";
         }
         console.warn("[AITextEnhancer] editorAdapter.getContent() no devolvió un string", content);
