@@ -1628,8 +1628,24 @@ class ChatWithImage extends HTMLElement {
       "image-url",
       "initial-prompt",
       "has-content",
-      "has-context"
+      "has-context",
+      "supports-images",
+      "apiProvider",
+      "apiModel",
+      "temperature"
     ];
+  }
+  get apiProvider() {
+    return this.getAttribute("apiProvider") || "";
+  }
+  get apiModel() {
+    return this.getAttribute("apiModel") || "";
+  }
+  get temperature() {
+    return this.getAttribute("temperature") || "";
+  }
+  get supportsImages() {
+    return this.getAttribute("supports-images") === "true";
   }
   get language() {
     return this.getAttribute("language") || "en";
@@ -1668,7 +1684,7 @@ class ChatWithImage extends HTMLElement {
           this.handleImageUrl(newValue);
         }
         break;
-      case "api-provider":
+      case "apiProvider":
         this.updateUploadVisibility();
         break;
       case "initial-prompt":
@@ -1900,8 +1916,10 @@ ${context}`;
         new CustomEvent("chatMessage", {
           detail: {
             message,
-            // Pasar this.tempImage que puede ser un objeto File o una URL string
-            image: this.tempImage
+            image: this.tempImage,
+            apiProvider: this.apiProvider,
+            apiModel: this.apiModel,
+            temperature: this.temperature
           },
           bubbles: true,
           composed: true
