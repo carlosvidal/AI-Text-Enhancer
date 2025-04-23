@@ -955,18 +955,35 @@ class AITextEnhancer extends HTMLElement {
   // Getter mejorado de currentContent
   get currentContent() {
     try {
-      // Primero intentar usando el editorAdapter
+      // Usar el editorAdapter si está listo
       if (
         this.editorAdapter &&
         typeof this.editorAdapter.getContent === "function"
       ) {
         const content = this.editorAdapter.getContent();
-        return typeof content === "string" ? content : "";
+        if (typeof content === "string") {
+          return content;
+        } else {
+          console.warn("[AITextEnhancer] editorAdapter.getContent() no devolvió un string", content);
+          return "";
+        }
       }
 
       // Fallback para TinyMCE (si está presente en la página)
       if (window.tinymce && this.editorId && tinymce.get(this.editorId)) {
-        return tinymce.get(this.editorId).getContent() || "";
+        const editorInstance = tinymce.get(this.editorId);
+        if (editorInstance && typeof editorInstance.getContent === "function") {
+          const content = editorInstance.getContent();
+          if (typeof content === "string") {
+            return content;
+          } else {
+            console.warn("[AITextEnhancer] TinyMCE.getContent() no devolvió un string", content);
+            return "";
+          }
+        } else {
+          console.warn("[AITextEnhancer] TinyMCE instance not ready for editorId:", this.editorId);
+          return "";
+        }
       }
 
       return "";
