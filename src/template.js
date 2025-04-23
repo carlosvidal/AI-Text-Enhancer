@@ -163,12 +163,13 @@ export function createTemplate(component) {
           
           <!-- Sección de chat -->
           <div class="chat-section">
+            <!-- LOG: supports-images = "${component.getAttribute && component.getAttribute('supports-images')}" -->
             <chat-with-image
               language="${component.language || "en"}"
               image-url="${component.imageUrl || ""}"
-              "${component.apiProvider || "openai"}"
-              has-content="${hasContent.toString()}"
-              has-context="${hasContext.toString()}">
+              apiProvider="${component.apiProvider || "openai"}"
+              ${component.hasAttribute && component.hasAttribute('supports-images') ? `supports-images="${component.getAttribute('supports-images')}"` : ''}
+            >
             </chat-with-image>
           </div>
         </div>
