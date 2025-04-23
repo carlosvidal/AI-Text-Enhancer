@@ -1696,9 +1696,9 @@ class ChatWithImage extends HTMLElement {
     let prompt = "";
     const content = this.getAttribute("content") || this.currentContent || "";
     const context = this.getAttribute("context") || "";
-    const hasContent = !!content.trim();
-    const hasContext = !!context.trim();
-    if (hasContent && hasContext) {
+    const hasContent2 = !!content.trim();
+    const hasContext2 = !!context.trim();
+    if (hasContent2 && hasContext2) {
       prompt = ((_b = (_a = this.translations) == null ? void 0 : _a.chat) == null ? void 0 : _b.contentAndContextPrompt) ? `${this.translations.chat.contentAndContextPrompt}
 
 ${content}
@@ -1710,13 +1710,13 @@ ${content}
 
 Contexto:
 ${context}`;
-    } else if (hasContent) {
+    } else if (hasContent2) {
       prompt = ((_f = (_e = this.translations) == null ? void 0 : _e.chat) == null ? void 0 : _f.contentPrompt) ? `${this.translations.chat.contentPrompt}
 
 ${content}` : `Mejora el siguiente texto:
 
 ${content}`;
-    } else if (hasContext) {
+    } else if (hasContext2) {
       prompt = ((_h = (_g = this.translations) == null ? void 0 : _g.chat) == null ? void 0 : _h.contextPrompt) ? `${this.translations.chat.contextPrompt}
 
 ${context}` : `Crea una descripción profesional basado en este contexto:
@@ -2173,10 +2173,10 @@ class ToolBar extends HTMLElement {
     });
   }
   updateVisibleTools() {
-    const hasContent = this.hasContent;
+    const hasContent2 = this.hasContent;
     const improveButton = this.shadowRoot.querySelector('[data-action="improve"]');
     const tools = this.shadowRoot.querySelectorAll(".tool-button");
-    if (!hasContent) {
+    if (!hasContent2) {
       improveButton.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
@@ -2189,7 +2189,7 @@ class ToolBar extends HTMLElement {
     }
     tools.forEach((tool) => {
       const action = tool.dataset.action;
-      if (hasContent) {
+      if (hasContent2) {
         tool.style.display = "inline-flex";
       } else {
         tool.style.display = action === "improve" ? "inline-flex" : "none";
@@ -5332,12 +5332,12 @@ function createTemplate(component) {
     const t = component.translations || {};
     const currentContent = typeof component.currentContent === "function" ? component.currentContent() : component.currentContent || "";
     const context = component.context || "";
-    const hasContent = Boolean((currentContent == null ? void 0 : currentContent.trim) && currentContent.trim());
-    const hasContext = Boolean((context == null ? void 0 : context.trim) && context.trim());
+    const hasContent2 = Boolean((currentContent == null ? void 0 : currentContent.trim) && currentContent.trim());
+    const hasContext2 = Boolean((context == null ? void 0 : context.trim) && context.trim());
     const showTrigger = !component.hideTrigger;
     console.log("[createTemplate] Estado del componente:", {
-      hasContent,
-      hasContext,
+      hasContent: hasContent2,
+      hasContext: hasContext2,
       language: component.language || "en",
       showTrigger
       // Añadir esta línea para mostrar el estado en logs
@@ -5456,8 +5456,8 @@ function createTemplate(component) {
               language="${component.language || "en"}"
               image-url="${component.imageUrl || ""}"
               "${component.apiProvider || "openai"}"
-              has-content="${hasContent.toString()}"
-              has-context="${hasContext.toString()}">
+              has-content="${hasContent2.toString()}"
+              has-context="${hasContext2.toString()}">
             </chat-with-image>
           </div>
         </div>
@@ -6185,10 +6185,10 @@ class AITextEnhancer extends HTMLElement {
           );
         }
       }
-      const hasContent = content.trim().length > 0;
+      const hasContent2 = content.trim().length > 0;
       const toolbar = (_a = this.shadowRoot) == null ? void 0 : _a.querySelector("ai-toolbar");
       if (toolbar) {
-        toolbar.setAttribute("has-content", hasContent.toString());
+        toolbar.setAttribute("has-content", hasContent2.toString());
       }
     } catch (error) {
       console.warn("[AITextEnhancer] Error en updateVisibleTools:", error);
@@ -6290,19 +6290,20 @@ class AITextEnhancer extends HTMLElement {
    * This should be called whenever editor content or context changes
    */
   updateChatState() {
-    var _a, _b, _c, _d;
+    var _a, _b;
     if (!this.shadowRoot) return;
     const chatComponent = this.shadowRoot.querySelector("chat-with-image");
     if (!chatComponent) return;
-    const hasContent = Boolean((_a = this.currentContent) == null ? void 0 : _a.trim());
-    const hasContext = Boolean((_b = this.context) == null ? void 0 : _b.trim());
-    chatComponent.setAttribute("has-content", hasContent.toString());
-    chatComponent.setAttribute("has-context", hasContext.toString());
+    if (this.hasAttribute("supports-images")) {
+      chatComponent.setAttribute("supports-images", this.getAttribute("supports-images"));
+    } else {
+      chatComponent.removeAttribute("supports-images");
+    }
     console.log("[AITextEnhancer] Updated chat state:", {
       hasContent,
       hasContext,
-      contentLength: ((_c = this.currentContent) == null ? void 0 : _c.length) || 0,
-      contextLength: ((_d = this.context) == null ? void 0 : _d.length) || 0
+      contentLength: ((_a = this.currentContent) == null ? void 0 : _a.length) || 0,
+      contextLength: ((_b = this.context) == null ? void 0 : _b.length) || 0
     });
   }
   /**

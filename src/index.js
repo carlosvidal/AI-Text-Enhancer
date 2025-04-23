@@ -1092,12 +1092,12 @@ class AITextEnhancer extends HTMLElement {
     const chatComponent = this.shadowRoot.querySelector("chat-with-image");
     if (!chatComponent) return;
 
-    const hasContent = Boolean(this.currentContent?.trim());
-    const hasContext = Boolean(this.context?.trim());
-
-    // Update attributes
-    chatComponent.setAttribute("has-content", hasContent.toString());
-    chatComponent.setAttribute("has-context", hasContext.toString());
+    // Propaga supports-images al componente interno
+    if (this.hasAttribute("supports-images")) {
+      chatComponent.setAttribute("supports-images", this.getAttribute("supports-images"));
+    } else {
+      chatComponent.removeAttribute("supports-images");
+    }
 
     // Log for debugging
     console.log("[AITextEnhancer] Updated chat state:", {
