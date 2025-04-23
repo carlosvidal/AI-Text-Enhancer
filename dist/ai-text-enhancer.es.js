@@ -5626,7 +5626,23 @@ class AITextEnhancer extends HTMLElement {
       await this.initializeComponents();
       console.log("[AITextEnhancer] Components initialized");
       this.setupEditorListener();
-      this.updateChatState();
+      this.editorReady = false;
+      if (window.tinymce && this.editorId && tinymce.get(this.editorId)) {
+        const editorInstance = tinymce.get(this.editorId);
+        if (editorInstance.initialized) {
+          this.editorReady = true;
+        } else {
+          editorInstance.on("init", () => {
+            this.editorReady = true;
+            this.updateChatState();
+          });
+        }
+      } else {
+        this.editorReady = true;
+      }
+      if (this.editorReady) {
+        this.updateChatState();
+      }
       setTimeout(() => {
         console.log("[AITextEnhancer] Re-binding events after initialization");
         this.bindEvents();
@@ -5840,8 +5856,9 @@ class AITextEnhancer extends HTMLElement {
       language: this.language,
       context: ((_a = this.context) == null ? void 0 : _a.substring(0, 50)) + (((_b = this.context) == null ? void 0 : _b.length) > 50 ? "..." : ""),
       imageUrl: this.imageUrl,
-      hasContent: Boolean((_c = this.currentContent) == null ? void 0 : _c.trim()),
-      hasContext: Boolean((_d = this.context) == null ? void 0 : _d.trim())
+      hasContent: this.editorReady ? Boolean((_c = this.currentContent) == null ? void 0 : _c.trim()) : false,
+      hasContext: Boolean((_d = this.context) == null ? void 0 : _d.trim()),
+      editorReady: this.editorReady
     });
     modal.classList.add("open");
     setTimeout(() => {
@@ -6317,10 +6334,15 @@ class AITextEnhancer extends HTMLElement {
     } else {
       chatComponent.removeAttribute("supports-images");
     }
+    let contentLength = 0;
+    if (this.editorReady) {
+      contentLength = ((_a = this.currentContent) == null ? void 0 : _a.length) || 0;
+    }
     console.log("[AITextEnhancer] Updated chat state:", {
-      contentLength: ((_a = this.currentContent) == null ? void 0 : _a.length) || 0,
+      contentLength,
       contextLength: ((_b = this.context) == null ? void 0 : _b.length) || 0,
-      supportsImages: chatComponent.getAttribute("supports-images")
+      supportsImages: chatComponent.getAttribute("supports-images"),
+      editorReady: this.editorReady
     });
   }
   /**

@@ -221,8 +221,27 @@ class AITextEnhancer extends HTMLElement {
       // Configurar listener del editor
       this.setupEditorListener();
 
-      // Actualizar estado inicial del chat
-      this.updateChatState();
+      // Bandera para saber si el editor está listo
+      this.editorReady = false;
+      if (window.tinymce && this.editorId && tinymce.get(this.editorId)) {
+        const editorInstance = tinymce.get(this.editorId);
+        if (editorInstance.initialized) {
+          this.editorReady = true;
+        } else {
+          editorInstance.on('init', () => {
+            this.editorReady = true;
+            this.updateChatState();
+          });
+        }
+      } else {
+        // Si no es TinyMCE, asumimos que el editorAdapter está listo después de initializeComponents
+        this.editorReady = true;
+      }
+
+      // Solo actualizar el chat si el editor está listo
+      if (this.editorReady) {
+        this.updateChatState();
+      }
 
       // Reforzar la vinculación de eventos después de la inicialización
       setTimeout(() => {
@@ -478,6 +497,7 @@ class AITextEnhancer extends HTMLElement {
       }
     }
 
+    // Solo loguear el contenido si el editor está listo
     console.log("[AITextEnhancer] Opening modal with current state:", {
       apiProvider: this.apiProvider,
       model: this.apiModel,
@@ -486,8 +506,9 @@ class AITextEnhancer extends HTMLElement {
         this.context?.substring(0, 50) +
         (this.context?.length > 50 ? "..." : ""),
       imageUrl: this.imageUrl,
-      hasContent: Boolean(this.currentContent?.trim()),
+      hasContent: this.editorReady ? Boolean(this.currentContent?.trim()) : false,
       hasContext: Boolean(this.context?.trim()),
+      editorReady: this.editorReady
     });
 
     modal.classList.add("open");
@@ -1116,11 +1137,18 @@ class AITextEnhancer extends HTMLElement {
       chatComponent.removeAttribute("supports-images");
     }
 
+    // Solo accede al contenido si el editor está listo
+    let contentLength = 0;
+    if (this.editorReady) {
+      contentLength = this.currentContent?.length || 0;
+    }
+
     // Log for debugging
     console.log("[AITextEnhancer] Updated chat state:", {
-      contentLength: this.currentContent?.length || 0,
+      contentLength: contentLength,
       contextLength: this.context?.length || 0,
-      supportsImages: chatComponent.getAttribute("supports-images")
+      supportsImages: chatComponent.getAttribute("supports-images"),
+      editorReady: this.editorReady
     });
   }
 
