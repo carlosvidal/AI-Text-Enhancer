@@ -59,13 +59,7 @@ export class ChatWithImage extends HTMLElement {
     return this.getAttribute("initial-prompt") || "";
   }
 
-  get hasContent() {
-    return this.getAttribute("has-content") === "true";
-  }
 
-  get hasContext() {
-    return this.getAttribute("has-context") === "true";
-  }
 
   async connectedCallback() {
     this.render();
@@ -114,19 +108,22 @@ export class ChatWithImage extends HTMLElement {
     const content = this.getAttribute("content") || this.currentContent || "";
     const context = this.getAttribute("context") || "";
 
-    if (this.hasContent && this.hasContext) {
+    const hasContent = !!content.trim();
+    const hasContext = !!context.trim();
+
+    if (hasContent && hasContext) {
       // Ambos presentes
       prompt =
         (this.translations?.chat?.contentAndContextPrompt
           ? `${this.translations.chat.contentAndContextPrompt}\n\n${content}\n\n${this.translations?.chat?.contextLabel || "Contexto:"}\n${context}`
           : `Mejora el siguiente texto considerando el siguiente contexto:\n\n${content}\n\nContexto:\n${context}`);
-    } else if (this.hasContent) {
+    } else if (hasContent) {
       // Solo contenido
       prompt =
         (this.translations?.chat?.contentPrompt
           ? `${this.translations.chat.contentPrompt}\n\n${content}`
           : `Mejora el siguiente texto:\n\n${content}`);
-    } else if (this.hasContext) {
+    } else if (hasContext) {
       // Solo contexto
       prompt =
         (this.translations?.chat?.contextPrompt

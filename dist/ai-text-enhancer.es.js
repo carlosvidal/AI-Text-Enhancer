@@ -1659,12 +1659,6 @@ class ChatWithImage extends HTMLElement {
   get initialPrompt() {
     return this.getAttribute("initial-prompt") || "";
   }
-  get hasContent() {
-    return this.getAttribute("has-content") === "true";
-  }
-  get hasContext() {
-    return this.getAttribute("has-context") === "true";
-  }
   async connectedCallback() {
     this.render();
     this.setupEventListeners();
@@ -1702,7 +1696,9 @@ class ChatWithImage extends HTMLElement {
     let prompt = "";
     const content = this.getAttribute("content") || this.currentContent || "";
     const context = this.getAttribute("context") || "";
-    if (this.hasContent && this.hasContext) {
+    const hasContent = !!content.trim();
+    const hasContext = !!context.trim();
+    if (hasContent && hasContext) {
       prompt = ((_b = (_a = this.translations) == null ? void 0 : _a.chat) == null ? void 0 : _b.contentAndContextPrompt) ? `${this.translations.chat.contentAndContextPrompt}
 
 ${content}
@@ -1714,13 +1710,13 @@ ${content}
 
 Contexto:
 ${context}`;
-    } else if (this.hasContent) {
+    } else if (hasContent) {
       prompt = ((_f = (_e = this.translations) == null ? void 0 : _e.chat) == null ? void 0 : _f.contentPrompt) ? `${this.translations.chat.contentPrompt}
 
 ${content}` : `Mejora el siguiente texto:
 
 ${content}`;
-    } else if (this.hasContext) {
+    } else if (hasContext) {
       prompt = ((_h = (_g = this.translations) == null ? void 0 : _g.chat) == null ? void 0 : _h.contextPrompt) ? `${this.translations.chat.contextPrompt}
 
 ${context}` : `Crea una descripción profesional basado en este contexto:
