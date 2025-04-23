@@ -1132,7 +1132,10 @@ class AITextEnhancer extends HTMLElement {
     if (!this.shadowRoot) return;
 
     const chatComponent = this.shadowRoot.querySelector("chat-with-image");
-    if (!chatComponent) return;
+    if (!chatComponent) {
+      console.warn("[AITextEnhancer] No se encontró el componente chat-with-image en el DOM");
+      return;
+    }
 
     // Propaga supports-images al componente interno
     if (this.hasAttribute("supports-images")) {
@@ -1141,15 +1144,29 @@ class AITextEnhancer extends HTMLElement {
       chatComponent.removeAttribute("supports-images");
     }
 
+    // Propaga context SIEMPRE
+    if (typeof this.context === "string") {
+      chatComponent.setAttribute("context", this.context);
+      console.log("[AITextEnhancer] Propagando context al chat:", this.context);
+    } else {
+      chatComponent.removeAttribute("context");
+      console.log("[AITextEnhancer] Context vacío o no string, removido del chat");
+    }
+
     // Solo accede al contenido si el editor está listo
-    let contentLength = 0;
+    let contentValue = "";
     if (this.editorReady) {
-      contentLength = this.currentContent?.length || 0;
+      contentValue = this.currentContent || "";
+      chatComponent.setAttribute("content", contentValue);
+      console.log("[AITextEnhancer] Propagando content al chat:", contentValue);
+    } else {
+      chatComponent.removeAttribute("content");
+      console.log("[AITextEnhancer] Editor NO listo, no se propaga content");
     }
 
     // Log for debugging
     console.log("[AITextEnhancer] Updated chat state:", {
-      contentLength: contentLength,
+      contentLength: contentValue.length,
       contextLength: this.context?.length || 0,
       supportsImages: chatComponent.getAttribute("supports-images"),
       editorReady: this.editorReady

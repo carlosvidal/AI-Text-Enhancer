@@ -6340,22 +6340,37 @@ class AITextEnhancer extends HTMLElement {
    * This should be called whenever editor content or context changes
    */
   updateChatState() {
-    var _a, _b;
+    var _a;
     if (!this.shadowRoot) return;
     const chatComponent = this.shadowRoot.querySelector("chat-with-image");
-    if (!chatComponent) return;
+    if (!chatComponent) {
+      console.warn("[AITextEnhancer] No se encontró el componente chat-with-image en el DOM");
+      return;
+    }
     if (this.hasAttribute("supports-images")) {
       chatComponent.setAttribute("supports-images", this.getAttribute("supports-images"));
     } else {
       chatComponent.removeAttribute("supports-images");
     }
-    let contentLength = 0;
+    if (typeof this.context === "string") {
+      chatComponent.setAttribute("context", this.context);
+      console.log("[AITextEnhancer] Propagando context al chat:", this.context);
+    } else {
+      chatComponent.removeAttribute("context");
+      console.log("[AITextEnhancer] Context vacío o no string, removido del chat");
+    }
+    let contentValue = "";
     if (this.editorReady) {
-      contentLength = ((_a = this.currentContent) == null ? void 0 : _a.length) || 0;
+      contentValue = this.currentContent || "";
+      chatComponent.setAttribute("content", contentValue);
+      console.log("[AITextEnhancer] Propagando content al chat:", contentValue);
+    } else {
+      chatComponent.removeAttribute("content");
+      console.log("[AITextEnhancer] Editor NO listo, no se propaga content");
     }
     console.log("[AITextEnhancer] Updated chat state:", {
-      contentLength,
-      contextLength: ((_b = this.context) == null ? void 0 : _b.length) || 0,
+      contentLength: contentValue.length,
+      contextLength: ((_a = this.context) == null ? void 0 : _a.length) || 0,
       supportsImages: chatComponent.getAttribute("supports-images"),
       editorReady: this.editorReady
     });
