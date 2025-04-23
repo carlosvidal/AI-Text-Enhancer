@@ -194,14 +194,17 @@ export class TinyMCEAdapter {
       // Estrategia 1: Usar el método getContent directamente (v4+ principalmente)
       if (this._hasMethod("getContent")) {
         try {
+          // Verifica que editorInstance y getContent sean válidos
+          if (!this.editorInstance || typeof this.editorInstance.getContent !== "function") {
+            console.warn("[TinyMCEAdapter] getContent no es una función en la instancia de TinyMCE:", this.editorInstance);
+            return "";
+          }
           // Algunos editores necesitan especificar el formato
           const content = this.editorInstance.getContent({ format: "html" });
 
           if (this.options.debug) {
             console.log(
-              `[TinyMCEAdapter] Retrieved content using getContent() (${
-                content?.length || 0
-              } chars)`
+              `[TinyMCEAdapter] Retrieved content using getContent() (${content?.length || 0} chars)`
             );
           }
 

@@ -62,6 +62,7 @@ export class ChatWithImage extends HTMLElement {
 
 
   async connectedCallback() {
+    console.log("[ChatWithImage] connectedCallback: imageUrl=", this.imageUrl, "content=", this.getAttribute("content"), "context=", this.getAttribute("context"));
     this.render();
     this.setupEventListeners();
 
@@ -75,7 +76,11 @@ export class ChatWithImage extends HTMLElement {
 
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue) return;
-
+    console.log(`[ChatWithImage] attributeChangedCallback: ${name} from`, oldValue, "to", newValue, {
+      content: this.getAttribute("content"),
+      context: this.getAttribute("context"),
+      initialPrompt: this.getAttribute("initial-prompt")
+    });
     switch (name) {
       case "language":
         this.updateTranslations();
@@ -111,6 +116,8 @@ export class ChatWithImage extends HTMLElement {
     const hasContent = !!content.trim();
     const hasContext = !!context.trim();
 
+    console.log("[setInitialPrompt] content:", content, "context:", context, "hasContent:", hasContent, "hasContext:", hasContext);
+
     if (hasContent && hasContext) {
       // Ambos presentes
       prompt =
@@ -132,6 +139,8 @@ export class ChatWithImage extends HTMLElement {
     } else if (this.initialPrompt) {
       prompt = this.initialPrompt;
     }
+
+    console.log("[setInitialPrompt] prompt seleccionado:", prompt);
 
     // Set the prompt in the input
     if (prompt && chatInput.innerText.trim() === "") {

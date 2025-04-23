@@ -1660,6 +1660,7 @@ class ChatWithImage extends HTMLElement {
     return this.getAttribute("initial-prompt") || "";
   }
   async connectedCallback() {
+    console.log("[ChatWithImage] connectedCallback: imageUrl=", this.imageUrl, "content=", this.getAttribute("content"), "context=", this.getAttribute("context"));
     this.render();
     this.setupEventListeners();
     if (this.imageUrl) {
@@ -1669,6 +1670,11 @@ class ChatWithImage extends HTMLElement {
   }
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue) return;
+    console.log(`[ChatWithImage] attributeChangedCallback: ${name} from`, oldValue, "to", newValue, {
+      content: this.getAttribute("content"),
+      context: this.getAttribute("context"),
+      initialPrompt: this.getAttribute("initial-prompt")
+    });
     switch (name) {
       case "language":
         this.updateTranslations();
@@ -1698,6 +1704,7 @@ class ChatWithImage extends HTMLElement {
     const context = this.getAttribute("context") || "";
     const hasContent = !!content.trim();
     const hasContext = !!context.trim();
+    console.log("[setInitialPrompt] content:", content, "context:", context, "hasContent:", hasContent, "hasContext:", hasContext);
     if (hasContent && hasContext) {
       prompt = ((_b = (_a = this.translations) == null ? void 0 : _a.chat) == null ? void 0 : _b.contentAndContextPrompt) ? `${this.translations.chat.contentAndContextPrompt}
 
@@ -1725,6 +1732,7 @@ ${context}`;
     } else if (this.initialPrompt) {
       prompt = this.initialPrompt;
     }
+    console.log("[setInitialPrompt] prompt seleccionado:", prompt);
     if (prompt && chatInput.innerText.trim() === "") {
       chatInput.innerText = prompt;
       if (document.activeElement === chatInput) {
@@ -3356,6 +3364,10 @@ class TinyMCEAdapter {
       }
       if (this._hasMethod("getContent")) {
         try {
+          if (!this.editorInstance || typeof this.editorInstance.getContent !== "function") {
+            console.warn("[TinyMCEAdapter] getContent no es una función en la instancia de TinyMCE:", this.editorInstance);
+            return "";
+          }
           const content = this.editorInstance.getContent({ format: "html" });
           if (this.options.debug) {
             console.log(
