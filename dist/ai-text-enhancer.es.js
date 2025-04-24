@@ -1690,12 +1690,13 @@ class ChatWithImage extends HTMLElement {
       case "initial-prompt":
       case "has-content":
       case "has-context":
+      case "content":
+      case "context":
         this.updateInitialPrompt();
         break;
     }
   }
-  setInitialPrompt() {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+  async setInitialPrompt() {
     if (!this.shadowRoot) return;
     const chatInput = this.shadowRoot.querySelector(".chat-input");
     if (!chatInput) return;
@@ -1706,29 +1707,11 @@ class ChatWithImage extends HTMLElement {
     const hasContext = !!context.trim();
     console.log("[setInitialPrompt] content:", content, "context:", context, "hasContent:", hasContent, "hasContext:", hasContext);
     if (hasContent && hasContext) {
-      prompt = ((_b = (_a = this.translations) == null ? void 0 : _a.chat) == null ? void 0 : _b.contentAndContextPrompt) ? `${this.translations.chat.contentAndContextPrompt}
-
-${content}
-
-${((_d = (_c = this.translations) == null ? void 0 : _c.chat) == null ? void 0 : _d.contextLabel) || "Contexto:"}
-${context}` : `Mejora el siguiente texto considerando el siguiente contexto:
-
-${content}
-
-Contexto:
-${context}`;
+      prompt = context + "\n\n" + (this.initialPrompt || "¿Cómo puedo ayudarte a mejorar este texto?");
     } else if (hasContent) {
-      prompt = ((_f = (_e = this.translations) == null ? void 0 : _e.chat) == null ? void 0 : _f.contentPrompt) ? `${this.translations.chat.contentPrompt}
-
-${content}` : `Mejora el siguiente texto:
-
-${content}`;
+      prompt = this.initialPrompt || "¿Cómo puedo ayudarte a mejorar este texto?";
     } else if (hasContext) {
-      prompt = ((_h = (_g = this.translations) == null ? void 0 : _g.chat) == null ? void 0 : _h.contextPrompt) ? `${this.translations.chat.contextPrompt}
-
-${context}` : `Crea una descripción profesional basado en este contexto:
-
-${context}`;
+      prompt = context + "\n\n" + (this.initialPrompt || "¿Quieres generar una descripción basada en este contexto?");
     } else if (this.initialPrompt) {
       prompt = this.initialPrompt;
     }
@@ -1745,7 +1728,7 @@ ${context}`;
       }
     }
   }
-  updateInitialPrompt() {
+  async updateInitialPrompt() {
     var _a;
     const chatInput = (_a = this.shadowRoot) == null ? void 0 : _a.querySelector(".chat-input");
     if (chatInput && chatInput.innerText.trim() === "") {
@@ -6339,7 +6322,7 @@ class AITextEnhancer extends HTMLElement {
    * Updates the ChatWithImage component with current content and context state
    * This should be called whenever editor content or context changes
    */
-  updateChatState() {
+  async updateChatState() {
     var _a;
     if (!this.shadowRoot) return;
     const chatComponent = this.shadowRoot.querySelector("chat-with-image");
@@ -6361,7 +6344,14 @@ class AITextEnhancer extends HTMLElement {
     }
     let contentValue = "";
     if (this.editorReady) {
-      contentValue = this.currentContent || "";
+      if (this.editorAdapter && typeof this.editorAdapter.getContent === "function") {
+        const maybePromise = this.editorAdapter.getContent();
+        if (typeof maybePromise === "string") {
+          contentValue = maybePromise;
+        } else if (maybePromise && typeof maybePromise.then === "function") {
+          contentValue = await maybePromise;
+        }
+      }
       chatComponent.setAttribute("content", contentValue);
       console.log("[AITextEnhancer] Propagando content al chat:", contentValue);
     } else {

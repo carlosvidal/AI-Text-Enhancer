@@ -96,12 +96,14 @@ export class ChatWithImage extends HTMLElement {
       case "initial-prompt":
       case "has-content":
       case "has-context":
+      case "content":
+      case "context":
         this.updateInitialPrompt();
         break;
     }
   }
 
-  setInitialPrompt() {
+  async setInitialPrompt() {
     if (!this.shadowRoot) return;
 
     const chatInput = this.shadowRoot.querySelector(".chat-input");
@@ -121,21 +123,18 @@ export class ChatWithImage extends HTMLElement {
     if (hasContent && hasContext) {
       // Ambos presentes
       prompt =
-        (this.translations?.chat?.contentAndContextPrompt
-          ? `${this.translations.chat.contentAndContextPrompt}\n\n${content}\n\n${this.translations?.chat?.contextLabel || "Contexto:"}\n${context}`
-          : `Mejora el siguiente texto considerando el siguiente contexto:\n\n${content}\n\nContexto:\n${context}`);
+        context +
+        "\n\n" +
+        (this.initialPrompt || "¿Cómo puedo ayudarte a mejorar este texto?");
     } else if (hasContent) {
       // Solo contenido
-      prompt =
-        (this.translations?.chat?.contentPrompt
-          ? `${this.translations.chat.contentPrompt}\n\n${content}`
-          : `Mejora el siguiente texto:\n\n${content}`);
+      prompt = this.initialPrompt || "¿Cómo puedo ayudarte a mejorar este texto?";
     } else if (hasContext) {
       // Solo contexto
       prompt =
-        (this.translations?.chat?.contextPrompt
-          ? `${this.translations.chat.contextPrompt}\n\n${context}`
-          : `Crea una descripción profesional basado en este contexto:\n\n${context}`);
+        context +
+        "\n\n" +
+        (this.initialPrompt || "¿Quieres generar una descripción basada en este contexto?");
     } else if (this.initialPrompt) {
       prompt = this.initialPrompt;
     }
@@ -158,7 +157,7 @@ export class ChatWithImage extends HTMLElement {
     }
   }
 
-  updateInitialPrompt() {
+  async updateInitialPrompt() {
     // Check if the input is empty before updating to avoid overwriting user input
     const chatInput = this.shadowRoot?.querySelector(".chat-input");
     if (chatInput && chatInput.innerText.trim() === "") {

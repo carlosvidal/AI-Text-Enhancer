@@ -1128,7 +1128,7 @@ class AITextEnhancer extends HTMLElement {
    * Updates the ChatWithImage component with current content and context state
    * This should be called whenever editor content or context changes
    */
-  updateChatState() {
+  async updateChatState() {
     if (!this.shadowRoot) return;
 
     const chatComponent = this.shadowRoot.querySelector("chat-with-image");
@@ -1153,10 +1153,20 @@ class AITextEnhancer extends HTMLElement {
       console.log("[AITextEnhancer] Context vacío o no string, removido del chat");
     }
 
-    // Solo accede al contenido si el editor está listo
+    // Obtén el contenido de forma asíncrona si es necesario
     let contentValue = "";
     if (this.editorReady) {
-      contentValue = this.currentContent || "";
+      if (
+        this.editorAdapter &&
+        typeof this.editorAdapter.getContent === "function"
+      ) {
+        const maybePromise = this.editorAdapter.getContent();
+        if (typeof maybePromise === "string") {
+          contentValue = maybePromise;
+        } else if (maybePromise && typeof maybePromise.then === "function") {
+          contentValue = await maybePromise;
+        }
+      }
       chatComponent.setAttribute("content", contentValue);
       console.log("[AITextEnhancer] Propagando content al chat:", contentValue);
     } else {
