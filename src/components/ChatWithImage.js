@@ -120,7 +120,11 @@ export class ChatWithImage extends HTMLElement {
     const chatInput = this.shadowRoot.querySelector(".chat-input");
     if (!chatInput) return;
 
-    // Determine which initial prompt to use
+    // Lógica para seleccionar el prompt inicial adecuado según el estado del editor y contexto
+    // - Si hay contenido: "Ayúdame a mejorar el contenido de mi editor"
+    // - Si NO hay contenido pero SÍ contexto: "Ayúdame a crear un contenido basado en el contexto."
+    // - Si no hay contenido ni contexto: "Ayúdame a crear una descripción atractiva para..."
+    // No se copia el contenido/contexto al input.
     let prompt = "";
 
     const content = this.getAttribute("content") || this.currentContent || "";
@@ -129,37 +133,18 @@ export class ChatWithImage extends HTMLElement {
     const hasContent = !!content.trim();
     const hasContext = !!context.trim();
 
-    console.log(
-      "[setInitialPrompt] content:",
-      content,
-      "context:",
-      context,
-      "hasContent:",
-      hasContent,
-      "hasContext:",
-      hasContext
-    );
-
-    if (hasContent && hasContext) {
-      // Ambos presentes: mostrar contenido y contexto, pedir mejorar el contenido considerando el contexto
-      prompt = `Descripción actual:\n${content}\n\nContexto del producto:\n${context}\n\nPor favor, mejora la descripción teniendo en cuenta el contexto.`;
-    } else if (hasContent) {
-      // Solo contenido: mostrar contenido, pedir mejorarlo
-      prompt = `Descripción actual:\n${content}\n\nPor favor, mejora la descripción.`;
+    if (hasContent) {
+      prompt = "Ayúdame a mejorar el contenido de mi editor";
     } else if (hasContext) {
-      // Solo contexto: pedir crear una descripción basada en el contexto
-      prompt = `Contexto del producto:\n${context}\n\nPor favor, genera una descripción atractiva y persuasiva basada en este contexto.`;
-    } else if (this.initialPrompt) {
-      prompt = this.initialPrompt;
+      prompt = "Ayúdame a crear un contenido basado en el contexto.";
+    } else {
+      prompt = "Ayúdame a crear una descripción atractiva para...";
     }
 
-    console.log("[setInitialPrompt] prompt seleccionado:", prompt);
-
-    // Set the prompt in the input
+    // Solo establecer el prompt si el input está vacío
     if (prompt && chatInput.innerText.trim() === "") {
       chatInput.innerText = prompt;
-
-      // Place cursor at end of text
+      // Opcional: colocar el cursor al final
       if (document.activeElement === chatInput) {
         const selection = window.getSelection();
         const range = document.createRange();
