@@ -32,7 +32,7 @@ export class ChatWithImage extends HTMLElement {
   }
 
   get apiModel() {
-    return this.getAttribute("apiModel") || "";
+    return this.getAttribute("apiModel") || "gpt-3.5-turbo";
   }
 
   get temperature() {

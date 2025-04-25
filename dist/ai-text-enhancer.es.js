@@ -1641,7 +1641,7 @@ class ChatWithImage extends HTMLElement {
     return this.getAttribute("apiProvider") || "";
   }
   get apiModel() {
-    return this.getAttribute("apiModel") || "";
+    return this.getAttribute("apiModel") || "gpt-3.5-turbo";
   }
   get temperature() {
     return this.getAttribute("temperature") || "";
