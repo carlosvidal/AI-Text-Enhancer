@@ -6301,7 +6301,7 @@ class AITextEnhancer extends HTMLElement {
    * con soporte para URLs de imágenes externas afectadas por CORS
    */
   async handleChatMessage(event) {
-    const { message, image } = event.detail;
+    const { message, image, content, context } = event.detail;
     try {
       if (!(message == null ? void 0 : message.trim()) && !image) {
         throw new Error("Message cannot be empty");
@@ -6334,8 +6334,18 @@ class AITextEnhancer extends HTMLElement {
       } else if (image instanceof File) {
         console.log("[AITextEnhancer] Using image file:", image.name);
       }
+      if (typeof this._hasSentContentContext === "undefined") {
+        this._hasSentContentContext = false;
+      }
+      let contentToSend = void 0;
+      if (!this._hasSentContentContext && (typeof content === "string" || typeof context === "string")) {
+        contentToSend = (content || "") + (content && context ? "\n\n" : "") + (context || "");
+        this._hasSentContentContext = true;
+      } else {
+        contentToSend = "";
+      }
       await this.apiClient.chatResponse(
-        this.currentContent,
+        contentToSend,
         message.trim(),
         imageParameter,
         onProgress

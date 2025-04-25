@@ -1023,7 +1023,8 @@ class AITextEnhancer extends HTMLElement {
    * con soporte para URLs de imágenes externas afectadas por CORS
    */
   async handleChatMessage(event) {
-    const { message, image } = event.detail;
+    // --- INICIO CAMBIO: Manejo robusto de envío de content/context solo en el primer mensaje ---
+    const { message, image, content, context } = event.detail;
 
     try {
       // Validar mensaje
@@ -1062,22 +1063,29 @@ class AITextEnhancer extends HTMLElement {
 
       // Determinar el tipo de imagen (URL o File)
       let imageParameter = image;
-
-      // Si la imagen es una string pero no empieza con 'data:' (que sería un data URL),
-      // asumimos que es una URL externa y la pasamos directamente
       if (typeof image === "string" && !image.startsWith("data:")) {
         console.log("[AITextEnhancer] Using external image URL:", image);
-        // Mantener la URL como string, el API client la maneja adecuadamente
-      }
-      // De lo contrario, si es un objeto File, lo pasamos como está
-      else if (image instanceof File) {
+      } else if (image instanceof File) {
         console.log("[AITextEnhancer] Using image file:", image.name);
       }
-      // O podría ser null/undefined (sin imagen)
+
+      // --- Lógica para enviar content/context solo en el primer mensaje ---
+      if (typeof this._hasSentContentContext === "undefined") {
+        this._hasSentContentContext = false;
+      }
+
+      let contentToSend = undefined;
+      if (!this._hasSentContentContext && (typeof content === "string" || typeof context === "string")) {
+        // Solo en el primer mensaje, enviar content/context si existen
+        contentToSend = (content || "") + ((content && context) ? "\n\n" : "") + (context || "");
+        this._hasSentContentContext = true;
+      } else {
+        contentToSend = ""; // Para mensajes siguientes, nunca enviar content/context
+      }
 
       // Hacer solicitud API con streaming
       await this.apiClient.chatResponse(
-        this.currentContent,
+        contentToSend,
         message.trim(),
         imageParameter,
         onProgress
@@ -1107,6 +1115,7 @@ class AITextEnhancer extends HTMLElement {
         this.notificationManager.error(`Chat error: ${error.message}`);
       }
     }
+    // --- FIN CAMBIO ---
   }
   // Agrega este método para solicitar actualizaciones explícitas
   requestUpdate(part = null) {
