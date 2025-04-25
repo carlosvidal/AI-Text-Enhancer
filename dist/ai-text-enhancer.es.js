@@ -1720,38 +1720,13 @@ class ChatWithImage extends HTMLElement {
     const context = this.getAttribute("context") || "";
     const hasContent = !!content.trim();
     const hasContext = !!context.trim();
-    console.log(
-      "[setInitialPrompt] content:",
-      content,
-      "context:",
-      context,
-      "hasContent:",
-      hasContent,
-      "hasContext:",
-      hasContext
-    );
-    if (hasContent && hasContext) {
-      prompt = `Descripción actual:
-${content}
-
-Contexto del producto:
-${context}
-
-Por favor, mejora la descripción teniendo en cuenta el contexto.`;
-    } else if (hasContent) {
-      prompt = `Descripción actual:
-${content}
-
-Por favor, mejora la descripción.`;
+    if (hasContent) {
+      prompt = "Ayúdame a mejorar el contenido de mi editor";
     } else if (hasContext) {
-      prompt = `Contexto del producto:
-${context}
-
-Por favor, genera una descripción atractiva y persuasiva basada en este contexto.`;
-    } else if (this.initialPrompt) {
-      prompt = this.initialPrompt;
+      prompt = "Ayúdame a crear un contenido basado en el contexto.";
+    } else {
+      prompt = "Ayúdame a crear una descripción atractiva para...";
     }
-    console.log("[setInitialPrompt] prompt seleccionado:", prompt);
     if (prompt && chatInput.innerText.trim() === "") {
       chatInput.innerText = prompt;
       if (document.activeElement === chatInput) {
