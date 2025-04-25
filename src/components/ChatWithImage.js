@@ -307,7 +307,9 @@ export class ChatWithImage extends HTMLElement {
 
     this.shadowRoot.innerHTML = "";
     this.shadowRoot.appendChild(style);
-    this.shadowRoot.appendChild(template);
+    this.shadowRoot.appendChild(
+      document.createRange().createContextualFragment(template)
+    );
 
     this.setupEventListeners();
   }

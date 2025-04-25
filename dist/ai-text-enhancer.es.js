@@ -1887,7 +1887,9 @@ Por favor, genera una descripción atractiva y persuasiva basada en este context
     `;
     this.shadowRoot.innerHTML = "";
     this.shadowRoot.appendChild(style);
-    this.shadowRoot.appendChild(template);
+    this.shadowRoot.appendChild(
+      document.createRange().createContextualFragment(template)
+    );
     this.setupEventListeners();
   }
   setupEventListeners() {
