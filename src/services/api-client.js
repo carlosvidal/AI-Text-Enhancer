@@ -696,7 +696,7 @@ class APIClient {
     try {
       if (
         imageFile &&
-        this.modelManager.isImageSupportedForProvider(this.config.provider)
+        (this.config.provider === "openai" || this.config.provider === "google" || this.config.provider === "anthropic")
       ) {
         return await this.makeRequestWithImage(
           prompt,
@@ -732,7 +732,7 @@ class APIClient {
         // Si hay imagen y el proveedor la soporta, formatear adecuadamente
         if (
           image &&
-          this.modelManager.isImageSupportedForProvider(this.config.provider)
+          (this.config.provider === "openai" || this.config.provider === "google" || this.config.provider === "anthropic")
         ) {
           try {
             const imageData = await this.imageToBase64(image);
@@ -880,7 +880,12 @@ class APIClient {
   }
 
   get supportsImages() {
-    return this.modelManager.isImageSupportedForProvider(this.config.provider);
+    // Providers supporting images: openai, google, anthropic
+    return (
+      this.config.provider === "openai" ||
+      this.config.provider === "google" ||
+      this.config.provider === "anthropic"
+    );
   }
 
   // Método auxiliar para crear wrapper de debug para onProgress

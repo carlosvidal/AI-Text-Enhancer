@@ -2867,7 +2867,7 @@ Crea una descripción profesional y atractiva que destaque sus características 
     const prompt = prompts[action] || prompts.improve;
     const progressHandler = this.config.debugMode ? this._createDebugProgressHandler(onProgress) : onProgress;
     try {
-      if (imageFile && this.modelManager.isImageSupportedForProvider(this.config.provider)) {
+      if (imageFile && (this.config.provider === "openai" || this.config.provider === "google" || this.config.provider === "anthropic")) {
         return await this.makeRequestWithImage(
           prompt,
           content,
@@ -2893,7 +2893,7 @@ Crea una descripción profesional y atractiva que destaque sus características 
       ];
       let hasImage = false;
       if (message) {
-        if (image && this.modelManager.isImageSupportedForProvider(this.config.provider)) {
+        if (image && (this.config.provider === "openai" || this.config.provider === "google" || this.config.provider === "anthropic")) {
           try {
             const imageData = await this.imageToBase64(image);
             const mimeType = image.type || "image/jpeg";
@@ -3022,7 +3022,7 @@ Crea una descripción profesional y atractiva que destaque sus características 
     }
   }
   get supportsImages() {
-    return this.modelManager.isImageSupportedForProvider(this.config.provider);
+    return this.config.provider === "openai" || this.config.provider === "google" || this.config.provider === "anthropic";
   }
   // Método auxiliar para crear wrapper de debug para onProgress
   _createDebugProgressHandler(originalHandler) {
