@@ -114,6 +114,13 @@ export class ChatWithImage extends HTMLElement {
     }
   }
 
+  // Helper to extract visible text from HTML
+  htmlToText(html) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html || "";
+    return tmp.textContent || tmp.innerText || "";
+  }
+
   async setInitialPrompt() {
     if (!this.shadowRoot) return;
 
@@ -127,7 +134,8 @@ export class ChatWithImage extends HTMLElement {
     // No se copia el contenido/contexto al input.
     let prompt = "";
 
-    const content = this.getAttribute("content") || this.currentContent || "";
+    const contentHtml = this.getAttribute("content") || this.currentContent || "";
+    const content = this.htmlToText(contentHtml);
     const context = this.getAttribute("context") || "";
 
     const hasContent = !!content.trim();

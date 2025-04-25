@@ -1711,12 +1711,19 @@ class ChatWithImage extends HTMLElement {
         break;
     }
   }
+  // Helper to extract visible text from HTML
+  htmlToText(html) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html || "";
+    return tmp.textContent || tmp.innerText || "";
+  }
   async setInitialPrompt() {
     if (!this.shadowRoot) return;
     const chatInput = this.shadowRoot.querySelector(".chat-input");
     if (!chatInput) return;
     let prompt = "";
-    const content = this.getAttribute("content") || this.currentContent || "";
+    const contentHtml = this.getAttribute("content") || this.currentContent || "";
+    const content = this.htmlToText(contentHtml);
     const context = this.getAttribute("context") || "";
     const hasContent = !!content.trim();
     const hasContext = !!context.trim();
