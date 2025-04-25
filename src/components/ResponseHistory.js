@@ -171,10 +171,16 @@ export class ResponseHistory extends HTMLElement {
         mainContent = "";
       }
     } else if (response.action === "chat-response") {
-      // Convertir Markdown a HTML antes de mostrar
-      mainContent = this.markdownHandler
-        ? this.markdownHandler.convert(response.content)
-        : response.content;
+      // Mostrar texto plano durante el streaming, y HTML cuando termina
+      if (response.streamingActive === false || response.streamingActive === undefined) {
+        // Streaming terminado: mostrar HTML
+        mainContent = this.markdownHandler
+          ? this.markdownHandler.convert(response.content)
+          : response.content;
+      } else {
+        // Streaming activo: mostrar solo texto plano
+        mainContent = response.content;
+      }
     } else {
       // Otros tipos: markdown o texto plano
       mainContent = this.markdownHandler
