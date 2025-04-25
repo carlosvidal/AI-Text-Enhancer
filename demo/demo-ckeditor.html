@@ -65,13 +65,13 @@
     <!-- Script para importar el componente -->
     <script type="module">
       // Importar componente base
-      import "../dist/ai-text-enhancer.umd.js";
+      import "./js/ai-text-enhancer.umd.js";
 
       // Inicializar CKEditor con un botón personalizado
       document.addEventListener("DOMContentLoaded", async () => {
         try {
           // Primero importamos el componente AI Text Enhancer
-          await import("../dist/ai-text-enhancer.umd.js");
+          await import("../js/ai-text-enhancer.umd.js");
 
           // Inicializar CKEditor con configuración más simple
           ClassicEditor.create(document.querySelector("#ckeditor-container"), {

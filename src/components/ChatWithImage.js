@@ -320,6 +320,10 @@ export class ChatWithImage extends HTMLElement {
     const uploadButton = this.shadowRoot.querySelector(".chat-upload-button");
     const imageInput = this.shadowRoot.querySelector("#imageInput");
 
+    if (!form) {
+      console.warn("[ChatWithImage] No se encontró el formulario .chat-form en el shadowRoot.");
+      return;
+    }
     form.addEventListener("submit", this.handleSubmit.bind(this));
 
     // Prevent default enter behavior and handle form submission
@@ -349,6 +353,61 @@ export class ChatWithImage extends HTMLElement {
         e.target.value = "";
       });
     }
+  }
+
+  // Dummy method to avoid fatal error if translations are missing
+  updateTranslations() {
+    // Aquí puedes agregar lógica de traducción si lo necesitas en el futuro
+  }
+
+  /**
+   * Método handleSubmit actualizado para manejar mensajes y base64 de imágenes
+   */
+  async handleSubmit(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const input = this.shadowRoot.querySelector('.chat-input');
+    const message = input.innerText.trim();
+
+    // Procesar imagen si existe
+    let imageBase64 = null;
+    if (this.tempImage instanceof File) {
+      imageBase64 = await this.fileToBase64(this.tempImage);
+    } else if (typeof this.tempImage === 'string') {
+      imageBase64 = this.tempImage; // Puede ser una URL ya procesada
+    }
+
+    if (message || imageBase64) {
+      this.dispatchEvent(
+        new CustomEvent('chatMessage', {
+          detail: {
+            message,
+            image: imageBase64,
+            apiProvider: this.apiProvider,
+            apiModel: this.apiModel,
+            temperature: this.temperature,
+          },
+          bubbles: true,
+          composed: true,
+        })
+      );
+      input.innerText = '';
+      this.tempImage = null;
+      const container = this.shadowRoot.querySelector('.image-preview-container');
+      if (container) {
+        container.remove();
+      }
+    }
+  }
+
+  // Utilidad para convertir archivo a base64
+  fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
   }
 
   handleFileSelect(event) {
