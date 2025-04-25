@@ -321,7 +321,9 @@ export class ChatWithImage extends HTMLElement {
     const imageInput = this.shadowRoot.querySelector("#imageInput");
 
     if (!form) {
-      console.warn("[ChatWithImage] No se encontró el formulario .chat-form en el shadowRoot.");
+      console.warn(
+        "[ChatWithImage] No se encontró el formulario .chat-form en el shadowRoot."
+      );
       return;
     }
     form.addEventListener("submit", this.handleSubmit.bind(this));
@@ -361,39 +363,57 @@ export class ChatWithImage extends HTMLElement {
   }
 
   /**
-   * Método handleSubmit actualizado para manejar mensajes y base64 de imágenes
+   * Método handleSubmit actualizado para manejar mensajes y base64 de imágenes.
+   * Envía content/context solo en el primer mensaje como adjunto.
    */
   async handleSubmit(event) {
     event.preventDefault();
     event.stopPropagation();
-    const input = this.shadowRoot.querySelector('.chat-input');
+    const input = this.shadowRoot.querySelector(".chat-input");
     const message = input.innerText.trim();
+
+    // Inicializa el flag si no existe
+    if (typeof this.isFirstMessage === "undefined") {
+      this.isFirstMessage = true;
+    }
 
     // Procesar imagen si existe
     let imageBase64 = null;
     if (this.tempImage instanceof File) {
       imageBase64 = await this.fileToBase64(this.tempImage);
-    } else if (typeof this.tempImage === 'string') {
-      imageBase64 = this.tempImage; // Puede ser una URL ya procesada
+    } else if (typeof this.tempImage === "string") {
+      imageBase64 = this.tempImage;
+    }
+
+    // Construir payload
+    const payload = {
+      message,
+      image: imageBase64,
+      apiProvider: this.apiProvider,
+      apiModel: this.apiModel,
+      temperature: this.temperature,
+    };
+
+    // Adjuntar content/context solo en el primer mensaje
+    if (this.isFirstMessage) {
+      payload.content = this.getAttribute("content");
+      payload.context = this.getAttribute("context");
+      this.isFirstMessage = false;
     }
 
     if (message || imageBase64) {
       this.dispatchEvent(
-        new CustomEvent('chatMessage', {
-          detail: {
-            message,
-            image: imageBase64,
-            apiProvider: this.apiProvider,
-            apiModel: this.apiModel,
-            temperature: this.temperature,
-          },
+        new CustomEvent("chatMessage", {
+          detail: payload,
           bubbles: true,
           composed: true,
         })
       );
-      input.innerText = '';
+      input.innerText = "";
       this.tempImage = null;
-      const container = this.shadowRoot.querySelector('.image-preview-container');
+      const container = this.shadowRoot.querySelector(
+        ".image-preview-container"
+      );
       if (container) {
         container.remove();
       }
@@ -405,7 +425,7 @@ export class ChatWithImage extends HTMLElement {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
-      reader.onerror = error => reject(error);
+      reader.onerror = (error) => reject(error);
       reader.readAsDataURL(file);
     });
   }

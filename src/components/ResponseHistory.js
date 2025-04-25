@@ -170,6 +170,9 @@ export class ResponseHistory extends HTMLElement {
       } else {
         mainContent = "";
       }
+    } else if (response.action === "chat-response") {
+      // Renderiza como HTML formateado (no markdown plano)
+      mainContent = response.content;
     } else {
       mainContent = this.markdownHandler
         ? this.markdownHandler.convert(response.content)
