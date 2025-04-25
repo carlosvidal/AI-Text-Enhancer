@@ -307,9 +307,9 @@ export class ChatWithImage extends HTMLElement {
 
     this.shadowRoot.innerHTML = "";
     this.shadowRoot.appendChild(style);
-    this.shadowRoot.appendChild(
-      document.createRange().createContextualFragment(template)
-    );
+    this.shadowRoot.appendChild(template);
+
+    this.setupEventListeners();
   }
 
   setupEventListeners() {
@@ -354,70 +354,6 @@ export class ChatWithImage extends HTMLElement {
     if (file) {
       this.tempImage = file;
     }
-  }
-
-  /**
-   * Método handleSubmit actualizado para manejar URLs de imágenes
-   */
-  handleSubmit(event) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const input = this.shadowRoot.querySelector(".chat-input");
-    const prompt = input.innerText.trim();
-    const content = this.getAttribute("content") || this.currentContent || "";
-    const context = this.getAttribute("context") || "";
-    const image = this.tempImage;
-
-    // Enviar como objeto estructurado
-    if (prompt || image) {
-      this.dispatchEvent(
-        new CustomEvent("chatMessage", {
-          detail: {
-            prompt,
-            content,
-            context,
-            image,
-            apiProvider: this.apiProvider,
-            apiModel: this.apiModel,
-            temperature: this.temperature,
-          },
-          bubbles: true,
-          composed: true,
-        })
-      );
-      input.innerText = "";
-
-      // Limpiar imagen temporal y vista previa
-      this.tempImage = null;
-      const container = this.shadowRoot.querySelector(
-        ".image-preview-container"
-      );
-      if (container) {
-        container.remove();
-      }
-    }
-  }
-
-  updateTranslations() {
-    const input = this.shadowRoot.querySelector(".chat-input");
-    const submitButton = this.shadowRoot.querySelector(".chat-submit");
-
-    if (input && submitButton) {
-      input.setAttribute(
-        "data-placeholder",
-        this.translations?.chat?.placeholder || "Ask a question..."
-      );
-      submitButton.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M5 12h14"/>
-          <path d="m12 5 7 7-7 7"/>
-        </svg>
-      `;
-    }
-
-    // Update initial prompt based on new language
-    this.updateInitialPrompt();
   }
 
   updateUploadVisibility() {
