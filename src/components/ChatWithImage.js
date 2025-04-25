@@ -59,10 +59,15 @@ export class ChatWithImage extends HTMLElement {
     return this.getAttribute("initial-prompt") || "";
   }
 
-
-
   async connectedCallback() {
-    console.log("[ChatWithImage] connectedCallback: imageUrl=", this.imageUrl, "content=", this.getAttribute("content"), "context=", this.getAttribute("context"));
+    console.log(
+      "[ChatWithImage] connectedCallback: imageUrl=",
+      this.imageUrl,
+      "content=",
+      this.getAttribute("content"),
+      "context=",
+      this.getAttribute("context")
+    );
     this.render();
     this.setupEventListeners();
 
@@ -76,11 +81,17 @@ export class ChatWithImage extends HTMLElement {
 
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue) return;
-    console.log(`[ChatWithImage] attributeChangedCallback: ${name} from`, oldValue, "to", newValue, {
-      content: this.getAttribute("content"),
-      context: this.getAttribute("context"),
-      initialPrompt: this.getAttribute("initial-prompt")
-    });
+    console.log(
+      `[ChatWithImage] attributeChangedCallback: ${name} from`,
+      oldValue,
+      "to",
+      newValue,
+      {
+        content: this.getAttribute("content"),
+        context: this.getAttribute("context"),
+        initialPrompt: this.getAttribute("initial-prompt"),
+      }
+    );
     switch (name) {
       case "language":
         this.updateTranslations();
@@ -118,7 +129,16 @@ export class ChatWithImage extends HTMLElement {
     const hasContent = !!content.trim();
     const hasContext = !!context.trim();
 
-    console.log("[setInitialPrompt] content:", content, "context:", context, "hasContent:", hasContent, "hasContext:", hasContext);
+    console.log(
+      "[setInitialPrompt] content:",
+      content,
+      "context:",
+      context,
+      "hasContent:",
+      hasContent,
+      "hasContext:",
+      hasContext
+    );
 
     if (hasContent && hasContext) {
       // Ambos presentes
@@ -128,13 +148,15 @@ export class ChatWithImage extends HTMLElement {
         (this.initialPrompt || "¿Cómo puedo ayudarte a mejorar este texto?");
     } else if (hasContent) {
       // Solo contenido
-      prompt = this.initialPrompt || "¿Cómo puedo ayudarte a mejorar este texto?";
+      prompt =
+        this.initialPrompt || "¿Cómo puedo ayudarte a mejorar este texto?";
     } else if (hasContext) {
       // Solo contexto
       prompt =
         context +
         "\n\n" +
-        (this.initialPrompt || "¿Quieres generar una descripción basada en este contexto?");
+        (this.initialPrompt ||
+          "¿Quieres generar una descripción basada en este contexto?");
     } else if (this.initialPrompt) {
       prompt = this.initialPrompt;
     }
