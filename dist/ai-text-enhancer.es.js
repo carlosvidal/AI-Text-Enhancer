@@ -1016,7 +1016,7 @@ class ResponseHistory extends HTMLElement {
         mainContent = "";
       }
     } else if (response.action === "chat-response") {
-      mainContent = response.content;
+      mainContent = this.markdownHandler ? this.markdownHandler.convert(response.content) : response.content;
     } else {
       mainContent = this.markdownHandler ? this.markdownHandler.convert(response.content) : response.content;
     }
