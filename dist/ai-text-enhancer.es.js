@@ -1729,11 +1729,23 @@ class ChatWithImage extends HTMLElement {
       hasContext
     );
     if (hasContent && hasContext) {
-      prompt = context + "\n\n" + (this.initialPrompt || "¿Cómo puedo ayudarte a mejorar este texto?");
+      prompt = `Descripción actual:
+${content}
+
+Contexto del producto:
+${context}
+
+Por favor, mejora la descripción teniendo en cuenta el contexto.`;
     } else if (hasContent) {
-      prompt = this.initialPrompt || "¿Cómo puedo ayudarte a mejorar este texto?";
+      prompt = `Descripción actual:
+${content}
+
+Por favor, mejora la descripción.`;
     } else if (hasContext) {
-      prompt = context + "\n\n" + (this.initialPrompt || "¿Quieres generar una descripción basada en este contexto?");
+      prompt = `Contexto del producto:
+${context}
+
+Por favor, genera una descripción atractiva y persuasiva basada en este contexto.`;
     } else if (this.initialPrompt) {
       prompt = this.initialPrompt;
     }
@@ -1919,13 +1931,18 @@ class ChatWithImage extends HTMLElement {
     event.preventDefault();
     event.stopPropagation();
     const input = this.shadowRoot.querySelector(".chat-input");
-    const message = input.innerText.trim();
-    if (message || this.tempImage) {
+    const prompt = input.innerText.trim();
+    const content = this.getAttribute("content") || this.currentContent || "";
+    const context = this.getAttribute("context") || "";
+    const image = this.tempImage;
+    if (prompt || image) {
       this.dispatchEvent(
         new CustomEvent("chatMessage", {
           detail: {
-            message,
-            image: this.tempImage,
+            prompt,
+            content,
+            context,
+            image,
             apiProvider: this.apiProvider,
             apiModel: this.apiModel,
             temperature: this.temperature

@@ -141,22 +141,14 @@ export class ChatWithImage extends HTMLElement {
     );
 
     if (hasContent && hasContext) {
-      // Ambos presentes
-      prompt =
-        context +
-        "\n\n" +
-        (this.initialPrompt || "¿Cómo puedo ayudarte a mejorar este texto?");
+      // Ambos presentes: mostrar contenido y contexto, pedir mejorar el contenido considerando el contexto
+      prompt = `Descripción actual:\n${content}\n\nContexto del producto:\n${context}\n\nPor favor, mejora la descripción teniendo en cuenta el contexto.`;
     } else if (hasContent) {
-      // Solo contenido
-      prompt =
-        this.initialPrompt || "¿Cómo puedo ayudarte a mejorar este texto?";
+      // Solo contenido: mostrar contenido, pedir mejorarlo
+      prompt = `Descripción actual:\n${content}\n\nPor favor, mejora la descripción.`;
     } else if (hasContext) {
-      // Solo contexto
-      prompt =
-        context +
-        "\n\n" +
-        (this.initialPrompt ||
-          "¿Quieres generar una descripción basada en este contexto?");
+      // Solo contexto: pedir crear una descripción basada en el contexto
+      prompt = `Contexto del producto:\n${context}\n\nPor favor, genera una descripción atractiva y persuasiva basada en este contexto.`;
     } else if (this.initialPrompt) {
       prompt = this.initialPrompt;
     }
@@ -372,14 +364,20 @@ export class ChatWithImage extends HTMLElement {
     event.stopPropagation();
 
     const input = this.shadowRoot.querySelector(".chat-input");
-    const message = input.innerText.trim();
+    const prompt = input.innerText.trim();
+    const content = this.getAttribute("content") || this.currentContent || "";
+    const context = this.getAttribute("context") || "";
+    const image = this.tempImage;
 
-    if (message || this.tempImage) {
+    // Enviar como objeto estructurado
+    if (prompt || image) {
       this.dispatchEvent(
         new CustomEvent("chatMessage", {
           detail: {
-            message,
-            image: this.tempImage,
+            prompt,
+            content,
+            context,
+            image,
             apiProvider: this.apiProvider,
             apiModel: this.apiModel,
             temperature: this.temperature,
