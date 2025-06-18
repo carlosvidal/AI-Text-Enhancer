@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/yegor256/tacit@gh-pages/tacit-css-1.8.1.min.css"
+    />
+    <style>
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+      }
+
+      div {
+        margin-bottom: 1rem;
+      }
+    </style>
+
+    <style>
+      .api-settings-form {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+      }
+
+      .api-settings-form h3 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+      }
+
+      .api-settings-form div {
+        margin-bottom: 1rem;
+      }
+
+      .api-settings-form label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+      }
+
+      .api-settings-form input,
+      .api-settings-form select {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+      }
+
+      .api-settings-form button {
+        width: 100%;
+        padding: 0.75rem;
+        background: #0d6efd;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .api-settings-form button:hover {
+        background: #0b5ed7;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- API Key Form -->
+    <!-- API Settings Form -->
+    <!-- Eliminada la configuración de API Key/proveedor/modelo: todo va por proxy -->
+<!-- Componente AI actualizado -->
+<ai-text-enhancer
+  id="btn-684cdeaa-d5a2afea"
+    tenant-id="ten-684cc05b-5d6457e5"
+  editor-id="producto_descripcion"
+  editor-type="tinymce"
+  language="es"
+  user-id="DEMO"
+  proxy-endpoint="http://llmproxy.test:8080/api/llm-proxy?cache=bust"
+  supports-images="true"
+></ai-text-enhancer>
+    <!-- FORM -->
+    <form>
+      <h2>Información de tu Producto</h2>
+
+      <div>
+        <label for="nombre">Nombre:</label>
+        <input
+          type="text"
+          id="nombre"
+          name="nombre"
+          value="Jabón Menta Natura"
+        />
+      </div>
+
+      <div>
+        <label for="codigo">Número o código de referencia:</label>
+        <input type="text" id="codigo" name="codigo" value="PROD12345" />
+      </div>
+
+      <div>
+        <label for="descripcion">Descripción:</label>
+        <textarea
+          id="producto_descripcion"
+          name="descripcion"
+          rows="5"
+          placeholder="Describe tu producto aquí..."
+        >Un jabón artesanal hecho a mano con ingredientes naturales y deliciosa fragancia a menta fresca. Prensado en frio, 100% puro y natural
+</textarea>
+
+<!-- TinyMCE v4: script clásico, inicializa después de que el textarea existe -->
+<script src="lib/tinymce/4/tinymce/js/tinymce/tinymce.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    tinymce.init({
+      selector: "#producto_descripcion",
+      height: 300,
+      menubar: false,
+      plugins: [
+        "advlist", "autolink", "lists", "link", "image", "charmap", "preview",
+        "anchor", "searchreplace", "visualblocks", "code", "fullscreen",
+        "insertdatetime", "media", "table", "help", "wordcount"
+      ],
+      toolbar: "undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link image"
+    });
+  });
+</script>
+
+
+
+      <h3>Imágenes</h3>
+      <img
+        src="https://www.kanbotanicals.com/cdn/shop/files/mentatercerafoto_2.jpg?v=1692628978&width=1946"
+        alt="Jabón Artesanal"
+        style="max-width: 400px; height: auto"
+      />
+
+      <p>Por favor sube una imagen de máximo 9 Mb.</p>
+
+      <h3>Categorías</h3>
+
+      <div>
+        <label
+          ><input type="checkbox" name="categoria" value="ABARROTES" checked />
+          ABARROTES</label
+        >
+        <label
+          ><input type="checkbox" name="categoria" value="Aceites y Vinagres" />
+          Aceites y Vinagres</label
+        >
+        <label
+          ><input type="checkbox" name="categoria" value="Arroz y Pastas" />
+          Arroz y Pastas</label
+        >
+      </div>
+
+      <h3>Marcas</h3>
+
+      <div>
+        <label for="marca">Seleccione una marca:</label>
+        <select id="marca" name="marca">
+          <option value="" disabled>Seleccione una marca...</option>
+          <option value="7 DRAGONES" selected>7 DRAGONES</option>
+          <option value="AGUA KANGEN">AGUA KANGEN</option>
+          <option value="ALAMEDRA INTEGRAL">ALAMEDRA INTEGRAL</option>
+          <!-- Continuar con las demás marcas -->
+        </select>
+      </div>
+
+      <button type="submit">Enviar</button>
+    </form>
+    <p id="resultado"></p>
+
+    <script>
+      // Espera a que el DOM esté completamente cargado
+      document.addEventListener("DOMContentLoaded", function () {
+        // Elementos del formulario
+        const nombreInput = document.getElementById("nombre");
+        const codigoInput = document.getElementById("codigo");
+        const categoriaCheckboxes = document.querySelectorAll(
+          'input[name="categoria"]'
+        );
+        const marcaSelect = document.getElementById("marca");
+
+        // Variable para almacenar el promt y el contexto
+        let myPrompt = "";
+        let contexto = "";
+
+        const enhancer = document.querySelector("ai-text-enhancer");
+
+        // Función para actualizar el contexto y pasarlo al componente AI
+        function actualizarConcatenacion() {
+          const nombre = document.getElementById("nombre").value;
+          const codigo = document.getElementById("codigo").value;
+          let categorias = [];
+          document.querySelectorAll('input[name="categoria"]:checked').forEach(cb => categorias.push(cb.value));
+          const descripcion = tinymce.get("producto_descripcion") ? tinymce.get("producto_descripcion").getContent({format: 'text'}) : '';
+          const contexto = `Nombre: ${nombre}\nCódigo: ${codigo}\nCategorías: ${categorias.join(', ')}\nDescripción: ${descripcion}`;
+          enhancer.setAttribute("context", contexto);
+        }
+
+        // Escuchar cambios en los campos
+        nombreInput.addEventListener("input", actualizarConcatenacion);
+        codigoInput.addEventListener("input", actualizarConcatenacion);
+        categoriaCheckboxes.forEach((checkbox) => {
+          checkbox.addEventListener("change", actualizarConcatenacion);
+        });
+        marcaSelect.addEventListener("change", actualizarConcatenacion);
+
+        // Llamar a la función inicialmente para mostrar valores por defecto
+        actualizarConcatenacion();
+      });
+
+      document.querySelector('form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        console.log('Form submission prevented');
+      });
+    </script>
+  <!-- Importa el componente AI después de TinyMCE -->
+<script type="module" src="./js/ai-text-enhancer.umd.js?v=20250617-FINAL-1"></script>
+</body>
+</html>

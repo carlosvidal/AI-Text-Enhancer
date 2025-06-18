@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Fetch Direct</title>
+</head>
+<body>
+    <h1>Test Fetch Directo</h1>
+    <button id="testBtn">Probar Fetch</button>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Enviando petición...';
+            
+            try {
+                const payload = {
+                    "buttonId": "btn-684cdeaa-d5a2afea",
+                    "userId": "DEMO",
+                    "tenantId": "ten-684cc05b-5d6457e5",
+                    "messages": [
+                        {"role": "system", "content": "Test system"},
+                        {"role": "user", "content": "Test user"}
+                    ],
+                    "temperature": 0.7,
+                    "stream": false,
+                    "hasImage": false
+                };
+
+                console.log('Enviando payload:', payload);
+
+                // Agregar más logging
+                console.log('Fetch URL:', 'http://llmproxy.test/api/llm-proxy?cache=bust');
+                console.log('Fetch method: POST');
+                console.log('Fetch headers:', {'Content-Type': 'application/json'});
+                
+                const response = await fetch('http://llmproxy.test/api/llm-proxy?cache=bust', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                console.log('Response recibida!');
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
+
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                resultDiv.innerHTML = `
+                    <h3>Éxito!</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Response:</strong> ${data.response}</p>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <h3>Error!</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

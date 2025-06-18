@@ -2470,14 +2470,8 @@ class APIClient {
   }) {
     var _a;
     try {
-      const model = this.config.models[this.config.provider];
-      if (!model) {
-        throw new Error("Model not configured for provider");
-      }
       const progressHandler = this.config.debugMode ? this._createDebugProgressHandler(onProgress) : onProgress;
       const payload = {
-        provider: this.config.provider,
-        model,
         messages: [
           {
             role: "system",
@@ -2665,12 +2659,7 @@ ${content || "Please create a new description."}`
           parts: userParts
         });
       }
-      const visionModel = this.modelManager.getVisionModelForProvider(
-        this.config.provider
-      );
       const payload = {
-        provider: this.config.provider,
-        model: visionModel || this.config.models[this.config.provider],
         messages,
         temperature: this.config.temperature,
         stream: true,
@@ -2684,8 +2673,6 @@ ${content || "Please create a new description."}`
       };
       console.log("[APIClient] Sending image request to proxy:", {
         endpoint: this.config.proxyEndpoint,
-        provider: this.config.provider,
-        model: payload.model,
         hasImage: true,
         isExternalUrl
       });
@@ -2943,10 +2930,7 @@ Crea una descripción profesional y atractiva que destaque sus características 
           messages.push({ role: "user", content: message });
         }
       }
-      const model = this.config.model || "gpt-3.5-turbo";
       const payload = {
-        provider: this.config.provider,
-        model,
         messages,
         temperature: this.config.temperature,
         stream: true,
@@ -2962,8 +2946,6 @@ Crea una descripción profesional y atractiva que destaque sus características 
       );
       console.log("[APIClient] Sending chat request to proxy:", {
         endpoint: this.config.proxyEndpoint,
-        provider: this.config.provider,
-        model: payload.model,
         hasImage
       });
       this._streamCounter = 0;

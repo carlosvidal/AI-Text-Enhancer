@@ -263,20 +263,13 @@ class APIClient {
 
   async makeRequest(prompt, content, onProgress = () => {}) {
     try {
-      const model = this.config.models[this.config.provider];
-      if (!model) {
-        throw new Error("Model not configured for provider");
-      }
-
       // Crear wrapper para onProgress que nos permita debugging
       const progressHandler = this.config.debugMode
         ? this._createDebugProgressHandler(onProgress)
         : onProgress;
 
-      // Preparar el payload para el proxy
+      // Preparar el payload para el proxy (provider y model se obtienen del buttonId en el servidor)
       const payload = {
-        provider: this.config.provider,
-        model: model,
         messages: [
           {
             role: "system",
@@ -497,14 +490,7 @@ class APIClient {
         });
       }
 
-      // Get the appropriate vision model
-      const visionModel = this.modelManager.getVisionModelForProvider(
-        this.config.provider
-      );
-
       const payload = {
-        provider: this.config.provider,
-        model: visionModel || this.config.models[this.config.provider],
         messages: messages,
         temperature: this.config.temperature,
         stream: true,
@@ -517,8 +503,6 @@ class APIClient {
 
       console.log("[APIClient] Sending image request to proxy:", {
         endpoint: this.config.proxyEndpoint,
-        provider: this.config.provider,
-        model: payload.model,
         hasImage: true,
         isExternalUrl: isExternalUrl,
       });
@@ -804,12 +788,7 @@ class APIClient {
         }
       }
 
-      // Seleccionar el modelo adecuado
-      const model = this.config.model || "gpt-3.5-turbo";
-
       const payload = {
-        provider: this.config.provider,
-        model: model,
         messages: messages,
         temperature: this.config.temperature,
         stream: true,
@@ -826,8 +805,6 @@ class APIClient {
 
       console.log("[APIClient] Sending chat request to proxy:", {
         endpoint: this.config.proxyEndpoint,
-        provider: this.config.provider,
-        model: payload.model,
         hasImage: hasImage,
       });
 

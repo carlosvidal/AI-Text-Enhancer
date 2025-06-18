@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Test</title>
+</head>
+<body>
+    <h1>CORS Test</h1>
+    <button id="testBtn">Test CORS Request</button>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch('http://llmproxy.test:8080/api/llm-proxy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-3.5-turbo',
+                        messages: [{ role: 'user', content: 'test' }],
+                        tenantId: 'ten-684cc05b-5d6457e5',
+                        userId: 'DEMO',
+                        buttonId: 'btn-684cdeaa-d5a2afea'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<h3 style="color: green;">Success!</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<h3 style="color: red;">Error: ${response.status}</h3><p>${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<h3 style="color: red;">Network Error</h3><p>${error.message}</p>`;
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
