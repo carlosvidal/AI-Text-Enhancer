@@ -381,6 +381,8 @@ export class ResponseHistory extends HTMLElement {
         console.log("[ResponseHistory] Tool button clicked:", {
           action,
           responseId,
+          responseContent: response.content,
+          responseContentLength: response.content?.length || 0,
         });
         this.dispatchEvent(
           new CustomEvent("toolaction", {

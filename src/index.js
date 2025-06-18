@@ -1211,6 +1211,8 @@ class AITextEnhancer extends HTMLElement {
       action,
       responseId,
       contentLength: content ? content.length : 0,
+      content: content ? content.substring(0, 100) + "..." : "undefined",
+      contextLength: this.context ? this.context.length : 0,
     });
 
     if (!action) {

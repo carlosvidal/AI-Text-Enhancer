@@ -668,14 +668,19 @@ class APIClient {
     // Ensure context is always a string to prevent undefined interpolation
     const safeContext = context || "";
     
+    // Build context section for prompts
+    const contextSection = safeContext.trim() 
+      ? `\nConsiderando estos detalles del producto:\n${safeContext}\n\n`
+      : "\n";
+    
     const prompts = {
-      improve: `Mejora esta descripción considerando estos detalles del producto:\n${safeContext}\n\nDescripción actual:`,
-      summarize: `Teniendo en cuenta estos detalles del producto:\n${safeContext}\n\nCrea un resumen conciso y efectivo de la siguiente descripción:`,
-      expand: `Basándote en estos detalles del producto:\n${safeContext}\n\nExpande esta descripción añadiendo más detalles, beneficios y casos de uso:`,
-      paraphrase: `Considerando estos detalles del producto:\n${safeContext}\n\nReescribe esta descripción manteniendo el mensaje principal pero con un enfoque fresco:`,
-      "more-formal": `Usando estos detalles del producto:\n${safeContext}\n\nReescribe esta descripción con un tono más formal, profesional y técnico, manteniendo la información clave pero usando un lenguaje más sofisticado y corporativo:`,
-      "more-casual": `Usando estos detalles del producto:\n${safeContext}\n\nReescribe esta descripción con un tono más casual y cercano, como si estuvieras explicándolo a un amigo, manteniendo un lenguaje accesible y conversacional pero sin perder profesionalismo:`,
-      empty: `Usando estos detalles del producto:\n${safeContext}\n\nCrea una descripción profesional y atractiva que destaque sus características principales:`,
+      improve: `Mejora esta descripción de producto.${contextSection}Descripción actual:`,
+      summarize: `Crea un resumen conciso y efectivo de la siguiente descripción.${contextSection}Descripción:`,
+      expand: `Expande esta descripción añadiendo más detalles, beneficios y casos de uso.${contextSection}Descripción:`,
+      paraphrase: `Reescribe esta descripción manteniendo el mensaje principal pero con un enfoque fresco.${contextSection}Descripción:`,
+      "more-formal": `Reescribe esta descripción con un tono más formal, profesional y técnico, manteniendo la información clave pero usando un lenguaje más sofisticado y corporativo.${contextSection}Descripción:`,
+      "more-casual": `Reescribe esta descripción con un tono más casual y cercano, como si estuvieras explicándolo a un amigo, manteniendo un lenguaje accesible y conversacional pero sin perder profesionalismo.${contextSection}Descripción:`,
+      empty: `Crea una descripción profesional y atractiva que destaque las características principales del producto.${contextSection}Información:`,
     };
 
     const prompt = prompts[action] || prompts.improve;

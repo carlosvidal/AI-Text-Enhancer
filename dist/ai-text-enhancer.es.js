@@ -1177,6 +1177,7 @@ class ResponseHistory extends HTMLElement {
   }
   setupEventListeners() {
     this.shadowRoot.addEventListener("click", (e) => {
+      var _a;
       const button = e.target.closest("button");
       if (!button) return;
       const responseId = button.dataset.responseId;
@@ -1187,7 +1188,9 @@ class ResponseHistory extends HTMLElement {
         const action = button.dataset.action;
         console.log("[ResponseHistory] Tool button clicked:", {
           action,
-          responseId
+          responseId,
+          responseContent: response.content,
+          responseContentLength: ((_a = response.content) == null ? void 0 : _a.length) || 0
         });
         this.dispatchEvent(
           new CustomEvent("toolaction", {
@@ -1235,7 +1238,7 @@ class ResponseHistory extends HTMLElement {
           })
         );
         setTimeout(() => {
-          var _a;
+          var _a2;
           console.log("[ResponseHistory] Attempting to close modal");
           try {
             let element = this;
@@ -1244,7 +1247,7 @@ class ResponseHistory extends HTMLElement {
                 "[ResponseHistory] Checking element for modal class:",
                 element
               );
-              if ((_a = element.classList) == null ? void 0 : _a.contains("modal")) {
+              if ((_a2 = element.classList) == null ? void 0 : _a2.contains("modal")) {
                 console.log("[ResponseHistory] Found modal element:", element);
                 element.classList.remove("open");
                 break;
@@ -2542,6 +2545,9 @@ class APIClient {
   }) {
     var _a;
     try {
+      if (!this.config) {
+        throw new Error("APIClient config is not initialized");
+      }
       const progressHandler = this.config.debugMode ? this._createDebugProgressHandler(onProgress) : onProgress;
       const payload = {
         messages: [
@@ -2879,38 +2885,30 @@ ${content || "Please create a new description."}`
   }
   async enhanceText(content, action = "improve", imageFile = null, context = "", onProgress = () => {
   }) {
+    var _a;
+    const safeContext = context || "";
+    const contextSection = safeContext.trim() ? `
+Considerando estos detalles del producto:
+${safeContext}
+
+` : "\n";
     const prompts = {
-      improve: `Mejora esta descripción considerando estos detalles del producto:
-${context}
-
-Descripción actual:`,
-      summarize: `Teniendo en cuenta estos detalles del producto:
-${context}
-
-Crea un resumen conciso y efectivo de la siguiente descripción:`,
-      expand: `Basándote en estos detalles del producto:
-${context}
-
-Expande esta descripción añadiendo más detalles, beneficios y casos de uso:`,
-      paraphrase: `Considerando estos detalles del producto:
-${context}
-
-Reescribe esta descripción manteniendo el mensaje principal pero con un enfoque fresco:`,
-      "more-formal": `Usando estos detalles del producto:
-${context}
-
-Reescribe esta descripción con un tono más formal, profesional y técnico, manteniendo la información clave pero usando un lenguaje más sofisticado y corporativo:`,
-      "more-casual": `Usando estos detalles del producto:
-${context}
-
-Reescribe esta descripción con un tono más casual y cercano, como si estuvieras explicándolo a un amigo, manteniendo un lenguaje accesible y conversacional pero sin perder profesionalismo:`,
-      empty: `Usando estos detalles del producto:
-${context}
-
-Crea una descripción profesional y atractiva que destaque sus características principales:`
+      improve: `Mejora esta descripción de producto.${contextSection}Descripción actual:`,
+      summarize: `Crea un resumen conciso y efectivo de la siguiente descripción.${contextSection}Descripción:`,
+      expand: `Expande esta descripción añadiendo más detalles, beneficios y casos de uso.${contextSection}Descripción:`,
+      paraphrase: `Reescribe esta descripción manteniendo el mensaje principal pero con un enfoque fresco.${contextSection}Descripción:`,
+      "more-formal": `Reescribe esta descripción con un tono más formal, profesional y técnico, manteniendo la información clave pero usando un lenguaje más sofisticado y corporativo.${contextSection}Descripción:`,
+      "more-casual": `Reescribe esta descripción con un tono más casual y cercano, como si estuvieras explicándolo a un amigo, manteniendo un lenguaje accesible y conversacional pero sin perder profesionalismo.${contextSection}Descripción:`,
+      empty: `Crea una descripción profesional y atractiva que destaque las características principales del producto.${contextSection}Información:`
     };
     const prompt = prompts[action] || prompts.improve;
-    const progressHandler = this.config.debugMode ? this._createDebugProgressHandler(onProgress) : onProgress;
+    console.log("[APIClient] enhanceText called with:", {
+      action,
+      contentLength: (content == null ? void 0 : content.length) || 0,
+      contextLength: (safeContext == null ? void 0 : safeContext.length) || 0,
+      hasPrompt: !!prompt
+    });
+    const progressHandler = ((_a = this.config) == null ? void 0 : _a.debugMode) ? this._createDebugProgressHandler(onProgress) : onProgress;
     try {
       if (imageFile && (this.config.provider === "openai" || this.config.provider === "google" || this.config.provider === "anthropic")) {
         return await this.makeRequestWithImage(
@@ -6485,7 +6483,9 @@ class AITextEnhancer extends HTMLElement {
     console.log("[AITextEnhancer] Tool action received:", {
       action,
       responseId,
-      contentLength: content ? content.length : 0
+      contentLength: content ? content.length : 0,
+      content: content ? content.substring(0, 100) + "..." : "undefined",
+      contextLength: this.context ? this.context.length : 0
     });
     if (!action) {
       console.error("[AITextEnhancer] Tool action missing action parameter");
