@@ -263,6 +263,11 @@ class APIClient {
 
   async makeRequest(prompt, content, onProgress = () => {}) {
     try {
+      // Validate that config exists
+      if (!this.config) {
+        throw new Error("APIClient config is not initialized");
+      }
+      
       // Crear wrapper para onProgress que nos permita debugging
       const progressHandler = this.config.debugMode
         ? this._createDebugProgressHandler(onProgress)
@@ -660,20 +665,31 @@ class APIClient {
     context = "",
     onProgress = () => {}
   ) {
+    // Ensure context is always a string to prevent undefined interpolation
+    const safeContext = context || "";
+    
     const prompts = {
-      improve: `Mejora esta descripción considerando estos detalles del producto:\n${context}\n\nDescripción actual:`,
-      summarize: `Teniendo en cuenta estos detalles del producto:\n${context}\n\nCrea un resumen conciso y efectivo de la siguiente descripción:`,
-      expand: `Basándote en estos detalles del producto:\n${context}\n\nExpande esta descripción añadiendo más detalles, beneficios y casos de uso:`,
-      paraphrase: `Considerando estos detalles del producto:\n${context}\n\nReescribe esta descripción manteniendo el mensaje principal pero con un enfoque fresco:`,
-      "more-formal": `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más formal, profesional y técnico, manteniendo la información clave pero usando un lenguaje más sofisticado y corporativo:`,
-      "more-casual": `Usando estos detalles del producto:\n${context}\n\nReescribe esta descripción con un tono más casual y cercano, como si estuvieras explicándolo a un amigo, manteniendo un lenguaje accesible y conversacional pero sin perder profesionalismo:`,
-      empty: `Usando estos detalles del producto:\n${context}\n\nCrea una descripción profesional y atractiva que destaque sus características principales:`,
+      improve: `Mejora esta descripción considerando estos detalles del producto:\n${safeContext}\n\nDescripción actual:`,
+      summarize: `Teniendo en cuenta estos detalles del producto:\n${safeContext}\n\nCrea un resumen conciso y efectivo de la siguiente descripción:`,
+      expand: `Basándote en estos detalles del producto:\n${safeContext}\n\nExpande esta descripción añadiendo más detalles, beneficios y casos de uso:`,
+      paraphrase: `Considerando estos detalles del producto:\n${safeContext}\n\nReescribe esta descripción manteniendo el mensaje principal pero con un enfoque fresco:`,
+      "more-formal": `Usando estos detalles del producto:\n${safeContext}\n\nReescribe esta descripción con un tono más formal, profesional y técnico, manteniendo la información clave pero usando un lenguaje más sofisticado y corporativo:`,
+      "more-casual": `Usando estos detalles del producto:\n${safeContext}\n\nReescribe esta descripción con un tono más casual y cercano, como si estuvieras explicándolo a un amigo, manteniendo un lenguaje accesible y conversacional pero sin perder profesionalismo:`,
+      empty: `Usando estos detalles del producto:\n${safeContext}\n\nCrea una descripción profesional y atractiva que destaque sus características principales:`,
     };
 
     const prompt = prompts[action] || prompts.improve;
+    
+    // Add debugging information
+    console.log("[APIClient] enhanceText called with:", {
+      action,
+      contentLength: content?.length || 0,
+      contextLength: safeContext?.length || 0,
+      hasPrompt: !!prompt
+    });
 
     // Función wrapper para el manejo de progreso
-    const progressHandler = this.config.debugMode
+    const progressHandler = this.config?.debugMode
       ? this._createDebugProgressHandler(onProgress)
       : onProgress;
 
