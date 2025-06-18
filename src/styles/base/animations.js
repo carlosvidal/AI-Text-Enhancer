@@ -34,4 +34,21 @@ export const animations = `
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
   }
+
+  @keyframes typingCursor {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* Typing animation styles */
+  .typing-animation::after {
+    content: '|';
+    color: var(--ai-primary, #2563eb);
+    animation: typingCursor 1s infinite;
+    margin-left: 2px;
+  }
+
+  .typing-animation {
+    position: relative;
+  }
 `;

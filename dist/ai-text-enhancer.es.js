@@ -360,6 +360,23 @@ const animations = `
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
   }
+
+  @keyframes typingCursor {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* Typing animation styles */
+  .typing-animation::after {
+    content: '|';
+    color: var(--ai-primary, #2563eb);
+    animation: typingCursor 1s infinite;
+    margin-left: 2px;
+  }
+
+  .typing-animation {
+    position: relative;
+  }
 `;
 const previewStyles = `
   .preview {
@@ -1264,9 +1281,8 @@ class ResponseHistory extends HTMLElement {
     this.responses.push(response);
     this.render();
   }
-  // Método mejorado para updateResponse en ResponseHistory.js
+  // Método mejorado para updateResponse en ResponseHistory.js con animación letra por letra
   updateResponse(id, contentOrCallback) {
-    var _a;
     const index = this.responses.findIndex((r) => r.id === id);
     if (index === -1) return;
     const response = this.responses[index];
@@ -1297,19 +1313,23 @@ class ResponseHistory extends HTMLElement {
         firstChunk = "C" + firstChunk;
         response.content = firstChunk;
       }
-      const textNode = document.createTextNode(firstChunk);
       contentElement.innerHTML = "";
-      contentElement.appendChild(textNode);
+      const textContainer = document.createElement("span");
+      contentElement.appendChild(textContainer);
       contentElement.dataset.streamingActive = "true";
       contentElement.classList.add("typing-animation");
+      if (!contentElement._typingQueue) {
+        contentElement._typingQueue = [];
+        contentElement._currentText = "";
+        contentElement._isTyping = false;
+      }
+      if (firstChunk) {
+        this._addToTypingQueue(contentElement, firstChunk);
+      }
     } else if (isIncrementalUpdate && contentElement.dataset.streamingActive === "true") {
-      response.content.substring(oldContent.length);
-      if (contentElement.lastChild && contentElement.lastChild.nodeType === Node.TEXT_NODE) {
-        contentElement.lastChild.nodeValue = response.content;
-      } else {
-        const textNode = document.createTextNode(response.content);
-        contentElement.innerHTML = "";
-        contentElement.appendChild(textNode);
+      const newTextPart = response.content.substring(oldContent.length);
+      if (newTextPart) {
+        this._addToTypingQueue(contentElement, newTextPart);
       }
       const container = responseEntry.parentNode;
       if (container) {
@@ -1324,23 +1344,26 @@ class ResponseHistory extends HTMLElement {
       );
       const isStreamingComplete = response.content.length > 50;
       if (isStreamingComplete && contentElement.dataset.streamingActive === "true") {
-        contentElement.classList.remove("typing-animation");
-        contentElement.dataset.streamingActive = "false";
-        const textContent = response.content;
-        const scrollTop = ((_a = responseEntry.parentNode) == null ? void 0 : _a.scrollTop) || 0;
-        if (this.markdownHandler) {
-          try {
-            contentElement.innerHTML = this.markdownHandler.convert(textContent);
-          } catch (error) {
-            console.error("[ResponseHistory] Error applying markdown:", error);
+        this._finishTypingAnimation(contentElement, response.content, () => {
+          var _a;
+          contentElement.classList.remove("typing-animation");
+          contentElement.dataset.streamingActive = "false";
+          const textContent = response.content;
+          const scrollTop = ((_a = responseEntry.parentNode) == null ? void 0 : _a.scrollTop) || 0;
+          if (this.markdownHandler) {
+            try {
+              contentElement.innerHTML = this.markdownHandler.convert(textContent);
+            } catch (error) {
+              console.error("[ResponseHistory] Error applying markdown:", error);
+              contentElement.textContent = textContent;
+            }
+          } else {
             contentElement.textContent = textContent;
           }
-        } else {
-          contentElement.textContent = textContent;
-        }
-        if (responseEntry.parentNode) {
-          responseEntry.parentNode.scrollTop = scrollTop;
-        }
+          if (responseEntry.parentNode) {
+            responseEntry.parentNode.scrollTop = scrollTop;
+          }
+        });
       } else if (!isIncrementalUpdate) {
         if (this.markdownHandler) {
           contentElement.innerHTML = this.markdownHandler.convert(
@@ -1351,6 +1374,55 @@ class ResponseHistory extends HTMLElement {
         }
       }
     }
+  }
+  // Método para añadir texto a la cola de animación
+  _addToTypingQueue(contentElement, text) {
+    if (!contentElement._typingQueue) {
+      contentElement._typingQueue = [];
+      contentElement._currentText = "";
+      contentElement._isTyping = false;
+    }
+    for (let char of text) {
+      contentElement._typingQueue.push(char);
+    }
+    if (!contentElement._isTyping) {
+      this._processTypingQueue(contentElement);
+    }
+  }
+  // Método para procesar la cola de animación letra por letra
+  _processTypingQueue(contentElement) {
+    if (!contentElement._typingQueue || contentElement._typingQueue.length === 0) {
+      contentElement._isTyping = false;
+      return;
+    }
+    contentElement._isTyping = true;
+    const processNext = () => {
+      if (contentElement._typingQueue.length === 0) {
+        contentElement._isTyping = false;
+        return;
+      }
+      const nextChar = contentElement._typingQueue.shift();
+      contentElement._currentText += nextChar;
+      const textContainer = contentElement.querySelector("span");
+      if (textContainer) {
+        textContainer.textContent = contentElement._currentText;
+      }
+      setTimeout(processNext, 30);
+    };
+    processNext();
+  }
+  // Método para finalizar la animación de escritura inmediatamente
+  _finishTypingAnimation(contentElement, finalText, callback) {
+    if (contentElement._typingQueue) {
+      contentElement._typingQueue = [];
+      contentElement._isTyping = false;
+      contentElement._currentText = finalText;
+      const textContainer = contentElement.querySelector("span");
+      if (textContainer) {
+        textContainer.textContent = finalText;
+      }
+    }
+    setTimeout(callback, 100);
   }
   getTypingPlaceholder() {
     return '<span class="typing">|</span>';

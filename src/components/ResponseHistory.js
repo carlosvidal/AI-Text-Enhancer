@@ -483,7 +483,7 @@ export class ResponseHistory extends HTMLElement {
     this.render();
   }
 
-  // Método mejorado para updateResponse en ResponseHistory.js
+  // Método mejorado para updateResponse en ResponseHistory.js con animación letra por letra
   updateResponse(id, contentOrCallback) {
     const index = this.responses.findIndex((r) => r.id === id);
     if (index === -1) return;
@@ -517,7 +517,7 @@ export class ResponseHistory extends HTMLElement {
     const contentElement = responseEntry.querySelector(".response-content");
     if (!contentElement) return;
 
-    // =========== ESTRATEGIA DE STREAMING SIN PARPADEO ===========
+    // =========== ESTRATEGIA DE STREAMING CON ANIMACIÓN LETRA POR LETRA ===========
 
     // CASO 1: Primera actualización - Configuración inicial
     if (isFirstUpdate) {
@@ -538,16 +538,28 @@ export class ResponseHistory extends HTMLElement {
         response.content = firstChunk;
       }
 
-      // Crear un nodo de texto para actualizaciones incrementales
-      const textNode = document.createTextNode(firstChunk);
-
       // Asegurarnos de que el contenedor esté limpio
       contentElement.innerHTML = "";
-      contentElement.appendChild(textNode);
+      
+      // Crear contenedor para el texto
+      const textContainer = document.createElement("span");
+      contentElement.appendChild(textContainer);
 
       // Marcar como streaming activo y añadir clase para cursor
       contentElement.dataset.streamingActive = "true";
       contentElement.classList.add("typing-animation");
+      
+      // Inicializar la cola de animación
+      if (!contentElement._typingQueue) {
+        contentElement._typingQueue = [];
+        contentElement._currentText = "";
+        contentElement._isTyping = false;
+      }
+
+      // Añadir el primer chunk a la cola
+      if (firstChunk) {
+        this._addToTypingQueue(contentElement, firstChunk);
+      }
     }
 
     // CASO 2: Actualización incremental durante streaming
@@ -558,17 +570,9 @@ export class ResponseHistory extends HTMLElement {
       // Calcular solo el nuevo texto añadido
       const newTextPart = response.content.substring(oldContent.length);
 
-      // Si tiene un nodo de texto como último hijo, actualizarlo directamente
-      if (
-        contentElement.lastChild &&
-        contentElement.lastChild.nodeType === Node.TEXT_NODE
-      ) {
-        // Actualizar el nodeValue para evitar parpadeo
-        contentElement.lastChild.nodeValue = response.content;
-      } else {
-        const textNode = document.createTextNode(response.content);
-        contentElement.innerHTML = "";
-        contentElement.appendChild(textNode);
+      if (newTextPart) {
+        // Añadir el nuevo texto a la cola de animación
+        this._addToTypingQueue(contentElement, newTextPart);
       }
 
       // Mantener el scroll al final si está cerca del final
@@ -595,32 +599,35 @@ export class ResponseHistory extends HTMLElement {
         isStreamingComplete &&
         contentElement.dataset.streamingActive === "true"
       ) {
-        contentElement.classList.remove("typing-animation");
-        contentElement.dataset.streamingActive = "false";
+        // Esperar a que termine la animación actual antes de aplicar markdown
+        this._finishTypingAnimation(contentElement, response.content, () => {
+          contentElement.classList.remove("typing-animation");
+          contentElement.dataset.streamingActive = "false";
 
-        // Preservar el contenido texto antes de aplicar markdown
-        const textContent = response.content;
+          // Preservar el contenido texto antes de aplicar markdown
+          const textContent = response.content;
 
-        // Hacer una copia del contenido para restaurar punto de scroll
-        const scrollTop = responseEntry.parentNode?.scrollTop || 0;
+          // Hacer una copia del contenido para restaurar punto de scroll
+          const scrollTop = responseEntry.parentNode?.scrollTop || 0;
 
-        // Aplicar formato markdown si está disponible
-        if (this.markdownHandler) {
-          try {
-            contentElement.innerHTML =
-              this.markdownHandler.convert(textContent);
-          } catch (error) {
-            console.error("[ResponseHistory] Error applying markdown:", error);
+          // Aplicar formato markdown si está disponible
+          if (this.markdownHandler) {
+            try {
+              contentElement.innerHTML =
+                this.markdownHandler.convert(textContent);
+            } catch (error) {
+              console.error("[ResponseHistory] Error applying markdown:", error);
+              contentElement.textContent = textContent;
+            }
+          } else {
             contentElement.textContent = textContent;
           }
-        } else {
-          contentElement.textContent = textContent;
-        }
 
-        // Restaurar desplazamiento para evitar saltos
-        if (responseEntry.parentNode) {
-          responseEntry.parentNode.scrollTop = scrollTop;
-        }
+          // Restaurar desplazamiento para evitar saltos
+          if (responseEntry.parentNode) {
+            responseEntry.parentNode.scrollTop = scrollTop;
+          }
+        });
       }
       // Si no es incremental pero no es final de streaming, actualizar normalmente
       else if (!isIncrementalUpdate) {
@@ -633,6 +640,75 @@ export class ResponseHistory extends HTMLElement {
         }
       }
     }
+  }
+
+  // Método para añadir texto a la cola de animación
+  _addToTypingQueue(contentElement, text) {
+    if (!contentElement._typingQueue) {
+      contentElement._typingQueue = [];
+      contentElement._currentText = "";
+      contentElement._isTyping = false;
+    }
+
+    // Añadir cada carácter a la cola
+    for (let char of text) {
+      contentElement._typingQueue.push(char);
+    }
+
+    // Iniciar la animación si no está ya en curso
+    if (!contentElement._isTyping) {
+      this._processTypingQueue(contentElement);
+    }
+  }
+
+  // Método para procesar la cola de animación letra por letra
+  _processTypingQueue(contentElement) {
+    if (!contentElement._typingQueue || contentElement._typingQueue.length === 0) {
+      contentElement._isTyping = false;
+      return;
+    }
+
+    contentElement._isTyping = true;
+
+    const processNext = () => {
+      if (contentElement._typingQueue.length === 0) {
+        contentElement._isTyping = false;
+        return;
+      }
+
+      // Tomar el siguiente carácter
+      const nextChar = contentElement._typingQueue.shift();
+      contentElement._currentText += nextChar;
+
+      // Actualizar el contenido mostrado
+      const textContainer = contentElement.querySelector("span");
+      if (textContainer) {
+        textContainer.textContent = contentElement._currentText;
+      }
+
+      // Programar el siguiente carácter con un pequeño delay
+      setTimeout(processNext, 30); // 30ms por carácter para efecto de escritura
+    };
+
+    processNext();
+  }
+
+  // Método para finalizar la animación de escritura inmediatamente
+  _finishTypingAnimation(contentElement, finalText, callback) {
+    if (contentElement._typingQueue) {
+      // Limpiar la cola y mostrar el texto completo inmediatamente
+      contentElement._typingQueue = [];
+      contentElement._isTyping = false;
+      contentElement._currentText = finalText;
+
+      const textContainer = contentElement.querySelector("span");
+      if (textContainer) {
+        textContainer.textContent = finalText;
+      }
+    }
+
+    // Ejecutar callback después de un breve delay
+    setTimeout(callback, 100);
   }
 
   getTypingPlaceholder() {
