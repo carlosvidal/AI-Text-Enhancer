@@ -71,6 +71,8 @@ class APIClient {
 
         if (
           data.choices &&
+          data.choices.length > 0 &&
+          data.choices[0] &&
           data.choices[0].delta &&
           data.choices[0].delta.content !== undefined
         ) {

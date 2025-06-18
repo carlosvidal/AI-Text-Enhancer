@@ -2399,7 +2399,7 @@ class APIClient {
       console.log("[APIClient] Iniciando procesamiento de stream");
       const extractContentFromJSON = (data) => {
         let content = "";
-        if (data.choices && data.choices[0].delta && data.choices[0].delta.content !== void 0) {
+        if (data.choices && data.choices.length > 0 && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content !== void 0) {
           content = data.choices[0].delta.content;
         } else if (data.text !== void 0) {
           content = data.text;
