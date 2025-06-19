@@ -44,6 +44,23 @@ export const modalStyles = `
     color: var(--ai-text);
   }
 
+  .version-info {
+    background: var(--ai-secondary);
+    color: var(--ai-text-light);
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--ai-radius-sm);
+    cursor: help;
+    user-select: none;
+    transition: all 0.2s ease;
+  }
+
+  .version-info:hover {
+    background: var(--ai-secondary-hover);
+    color: var(--ai-text);
+  }
+
   .modal-body {
     flex: 1;
     display: flex;

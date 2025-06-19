@@ -151,6 +151,9 @@ export function createTemplate(component) {
         <button class="close-button" aria-label="Close modal">×</button>
         <div class="modal-header">
           <h2>${t?.modalTitle || "Enhance Text"}</h2>
+          <div class="version-info" title="Version ${component.version || '1.0.0'} - ${component.buildDate || 'Development'}">
+            v${component.version || '1.0.0'}
+          </div>
         </div>
         
         <div class="modal-body">

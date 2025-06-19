@@ -1,3 +1,5 @@
+const VERSION = "1.1.0";
+const BUILD_DATE = "2025-06-19T02:24:40.134Z";
 const TRANSLATIONS = {
   en: {
     modalTrigger: "Enhance with AI (Beta)",
@@ -5297,6 +5299,23 @@ const modalStyles = `
     color: var(--ai-text);
   }
 
+  .version-info {
+    background: var(--ai-secondary);
+    color: var(--ai-text-light);
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--ai-radius-sm);
+    cursor: help;
+    user-select: none;
+    transition: all 0.2s ease;
+  }
+
+  .version-info:hover {
+    background: var(--ai-secondary-hover);
+    color: var(--ai-text);
+  }
+
   .modal-body {
     flex: 1;
     display: flex;
@@ -5528,6 +5547,9 @@ function createTemplate(component) {
         <button class="close-button" aria-label="Close modal">×</button>
         <div class="modal-header">
           <h2>${(t == null ? void 0 : t.modalTitle) || "Enhance Text"}</h2>
+          <div class="version-info" title="Version ${component.version || "1.0.0"} - ${component.buildDate || "Development"}">
+            v${component.version || "1.0.0"}
+          </div>
         </div>
         
         <div class="modal-body">
@@ -5612,6 +5634,9 @@ class AITextEnhancer extends HTMLElement {
       usageControl: null
     });
     this.bindMethods();
+    this.version = VERSION;
+    this.buildDate = BUILD_DATE;
+    console.log(`[AITextEnhancer] Version ${VERSION} (${BUILD_DATE})`);
   }
   bindMethods() {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i;

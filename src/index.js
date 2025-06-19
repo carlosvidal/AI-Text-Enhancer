@@ -1,5 +1,6 @@
 // Versión mejorada del archivo index.js con todas las correcciones integradas
 
+import { VERSION, BUILD_DATE } from "./version.js";
 import { ResponseHistory } from "./components/ResponseHistory.js";
 import { ChatWithImage } from "./components/ChatWithImage.js";
 import { ToolBar } from "./components/ToolBar.js";
@@ -82,6 +83,12 @@ class AITextEnhancer extends HTMLElement {
 
     // Configuración del endpoint del proxy (única integración)
     // this.proxyEndpoint = this.getAttribute("proxy-endpoint") || "";
+    
+    // Store version info
+    this.version = VERSION;
+    this.buildDate = BUILD_DATE;
+    
+    console.log(`[AITextEnhancer] Version ${VERSION} (${BUILD_DATE})`);
   }
 
   bindMethods() {

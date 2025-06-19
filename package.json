@@ -1,6 +1,6 @@
 {
   "name": "ai-text-enhancer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A powerful web component for enhancing product descriptions using AI. This component integrates seamlessly with existing text editors and provides real-time AI-powered text enhancement capabilities.",
   "main": "dist/ai-text-enhancer.umd.js",
   "module": "dist/ai-text-enhancer.es.js",
@@ -12,9 +12,18 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cp dist/ai-text-enhancer.umd.js demo/js/",
+    "build": "node scripts/inject-version.js && vite build && cp dist/ai-text-enhancer.umd.js demo/js/",
     "preview": "vite preview",
-    "watch": "vite build --watch"
+    "watch": "vite build --watch",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version",
+    "release:patch": "npm run version:patch && npm run build && npm run tag:create",
+    "release:minor": "npm run version:minor && npm run build && npm run tag:create",
+    "release:major": "npm run version:major && npm run build && npm run tag:create",
+    "tag:create": "node scripts/create-tag.js",
+    "show:version": "node -p \"require('./package.json').version\"",
+    "help": "node scripts/help.js"
   },
   "keywords": [],
   "author": "",
