@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Stream Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        .log { background: #f5f5f5; padding: 10px; white-space: pre-wrap; font-family: monospace; }
+        button { padding: 10px 20px; margin: 10px; }
+        .result { padding: 10px; margin: 10px 0; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>Debug Stream Connection Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Direct Fetch Test</h2>
+        <button onclick="testDirectFetch()">Test Direct Fetch</button>
+        <div id="directResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Component Test</h2>
+        <textarea id="testText" rows="4" cols="50" placeholder="Escribe algo para mejorar...">Un jabón artesanal hecho a mano con ingredientes naturales.</textarea><br>
+        <button onclick="testComponent()">Test Component</button>
+        <div id="componentResult" class="result"></div>
+        
+        <ai-text-enhancer
+            id="btn-684cdeaa-d5a2afea"
+            tenant-id="ten-684cc05b-5d6457e5"
+            editor-id="testText"
+            editor-type="textarea"
+            language="es"
+            user-id="DEMO"
+            proxy-endpoint="http://localhost:8081/index.php/api/llm-proxy"
+            supports-images="false"
+        ></ai-text-enhancer>
+    </div>
+
+    <div class="test-section">
+        <h2>Debug Log</h2>
+        <div id="debugLog" class="log"></div>
+    </div>
+
+    <script src="js/ai-text-enhancer.umd.js"></script>
+    <script>
+        function log(message) {
+            const debugLog = document.getElementById('debugLog');
+            const timestamp = new Date().toISOString();
+            debugLog.textContent += `[${timestamp}] ${message}\n`;
+            console.log(message);
+        }
+
+        async function testDirectFetch() {
+            log('🧪 Iniciando test directo de fetch...');
+            const resultDiv = document.getElementById('directResult');
+            resultDiv.innerHTML = 'Testing...';
+
+            try {
+                const payload = {
+                    messages: [
+                        {
+                            role: "system",
+                            content: "You are a professional content enhancer. Improve the text while maintaining its core message and intent."
+                        },
+                        {
+                            role: "user",
+                            content: "Un jabón artesanal hecho a mano con ingredientes naturales y deliciosa fragancia a menta fresca. Prensado en frio, 100% puro y natural\n\nAyúdame a crear una descripción atractiva para este producto."
+                        }
+                    ],
+                    temperature: 0.7,
+                    stream: true,
+                    tenantId: "ten-684cc05b-5d6457e5",
+                    userId: "DEMO",
+                    buttonId: "btn-684cdeaa-d5a2afea",
+                    hasImage: false
+                };
+
+                log('📤 Enviando request...');
+                
+                const response = await fetch('http://localhost:8081/index.php/api/llm-proxy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                log(`📥 Response status: ${response.status}`);
+                log(`📥 Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                let result = '';
+                let chunks = 0;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) {
+                        log('✅ Stream completado');
+                        break;
+                    }
+
+                    chunks++;
+                    const chunk = new TextDecoder().decode(value);
+                    result += chunk;
+                    log(`📦 Chunk ${chunks}: ${chunk.substring(0, 50)}...`);
+                    
+                    resultDiv.innerHTML = `<strong>Chunks recibidos:</strong> ${chunks}<br><strong>Contenido:</strong> ${result.substring(0, 200)}...`;
+                }
+
+                resultDiv.innerHTML = `<strong>✅ Test exitoso!</strong><br><strong>Chunks:</strong> ${chunks}<br><strong>Resultado:</strong> ${result}`;
+                log(`✅ Test directo completado. Total chunks: ${chunks}`);
+
+            } catch (error) {
+                log(`❌ Error en test directo: ${error.message}`);
+                resultDiv.innerHTML = `<strong>❌ Error:</strong> ${error.message}`;
+            }
+        }
+
+        function testComponent() {
+            log('🧪 Iniciando test del componente...');
+            const resultDiv = document.getElementById('componentResult');
+            const component = document.querySelector('ai-text-enhancer');
+            
+            if (!component) {
+                log('❌ Componente no encontrado');
+                resultDiv.innerHTML = '❌ Componente no encontrado';
+                return;
+            }
+
+            resultDiv.innerHTML = 'Testing component...';
+            
+            // Simular click en el trigger
+            const trigger = component.shadowRoot?.querySelector('.modal-trigger');
+            if (trigger) {
+                log('🖱️ Simulando click en trigger...');
+                trigger.click();
+                resultDiv.innerHTML = '✅ Trigger clickeado - revisa el modal';
+            } else {
+                log('❌ Trigger no encontrado en shadow DOM');
+                resultDiv.innerHTML = '❌ Trigger no encontrado';
+            }
+        }
+
+        // Monitor de eventos globales
+        window.addEventListener('error', (e) => {
+            log(`❌ Error global: ${e.message}`);
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            log(`❌ Promise rejection: ${e.reason}`);
+        });
+
+        // Log inicial
+        log('🚀 Debug page loaded');
+    </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 const VERSION = "1.1.0";
-const BUILD_DATE = "2025-06-19T02:24:40.134Z";
+const BUILD_DATE = "2025-06-19T17:25:09.705Z";
 const TRANSLATIONS = {
   en: {
     modalTrigger: "Enhance with AI (Beta)",
@@ -1380,41 +1380,20 @@ class ResponseHistory extends HTMLElement {
       }
     }
   }
-  // Método para añadir texto a la cola de animación
+  // Método para añadir texto directamente (sin animación letra por letra)
   _addToTypingQueue(contentElement, text) {
-    if (!contentElement._typingQueue) {
-      contentElement._typingQueue = [];
+    if (!contentElement._currentText) {
       contentElement._currentText = "";
-      contentElement._isTyping = false;
     }
-    for (let char of text) {
-      contentElement._typingQueue.push(char);
-    }
-    if (!contentElement._isTyping) {
-      this._processTypingQueue(contentElement);
+    contentElement._currentText += text;
+    const textContainer = contentElement.querySelector("span");
+    if (textContainer) {
+      textContainer.textContent = contentElement._currentText;
     }
   }
-  // Método para procesar la cola de animación letra por letra
+  // Método simplificado - ya no usa cola ni delay
   _processTypingQueue(contentElement) {
-    if (!contentElement._typingQueue || contentElement._typingQueue.length === 0) {
-      contentElement._isTyping = false;
-      return;
-    }
-    contentElement._isTyping = true;
-    const processNext = () => {
-      if (contentElement._typingQueue.length === 0) {
-        contentElement._isTyping = false;
-        return;
-      }
-      const nextChar = contentElement._typingQueue.shift();
-      contentElement._currentText += nextChar;
-      const textContainer = contentElement.querySelector("span");
-      if (textContainer) {
-        textContainer.textContent = contentElement._currentText;
-      }
-      setTimeout(processNext, 30);
-    };
-    processNext();
+    return;
   }
   // Método para finalizar la animación de escritura inmediatamente
   _finishTypingAnimation(contentElement, finalText, callback) {

@@ -644,55 +644,27 @@ export class ResponseHistory extends HTMLElement {
     }
   }
 
-  // Método para añadir texto a la cola de animación
+  // Método para añadir texto directamente (sin animación letra por letra)
   _addToTypingQueue(contentElement, text) {
-    if (!contentElement._typingQueue) {
-      contentElement._typingQueue = [];
+    if (!contentElement._currentText) {
       contentElement._currentText = "";
-      contentElement._isTyping = false;
     }
 
-    // Añadir cada carácter a la cola
-    for (let char of text) {
-      contentElement._typingQueue.push(char);
-    }
+    // Añadir el texto completo directamente
+    contentElement._currentText += text;
 
-    // Iniciar la animación si no está ya en curso
-    if (!contentElement._isTyping) {
-      this._processTypingQueue(contentElement);
+    // Actualizar el contenido mostrado inmediatamente
+    const textContainer = contentElement.querySelector("span");
+    if (textContainer) {
+      textContainer.textContent = contentElement._currentText;
     }
   }
 
-  // Método para procesar la cola de animación letra por letra
+  // Método simplificado - ya no usa cola ni delay
   _processTypingQueue(contentElement) {
-    if (!contentElement._typingQueue || contentElement._typingQueue.length === 0) {
-      contentElement._isTyping = false;
-      return;
-    }
-
-    contentElement._isTyping = true;
-
-    const processNext = () => {
-      if (contentElement._typingQueue.length === 0) {
-        contentElement._isTyping = false;
-        return;
-      }
-
-      // Tomar el siguiente carácter
-      const nextChar = contentElement._typingQueue.shift();
-      contentElement._currentText += nextChar;
-
-      // Actualizar el contenido mostrado
-      const textContainer = contentElement.querySelector("span");
-      if (textContainer) {
-        textContainer.textContent = contentElement._currentText;
-      }
-
-      // Programar el siguiente carácter con un pequeño delay
-      setTimeout(processNext, 30); // 30ms por carácter para efecto de escritura
-    };
-
-    processNext();
+    // Este método ya no es necesario ya que el texto se muestra directamente
+    // Se mantiene para compatibilidad pero no hace nada
+    return;
   }
 
   // Método para finalizar la animación de escritura inmediatamente
