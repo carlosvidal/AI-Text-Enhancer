@@ -127,12 +127,19 @@ class AITextEnhancer extends HTMLElement {
       "proxy-endpoint",
       "editor-type",
       "hide-trigger",
-      "id", // Añadido el atributo id
+      "initial-prompt",
+      "auto-send",
+      "id",
     ];
   }
 
   get language() {
     return this.getAttribute("language") || "en";
+  }
+
+  set language(value) {
+    if (value) this.setAttribute("language", value);
+    else this.removeAttribute("language");
   }
 
   get translations() {
@@ -143,12 +150,27 @@ class AITextEnhancer extends HTMLElement {
     return this.getAttribute("editor-id");
   }
 
+  set editorId(value) {
+    if (value) this.setAttribute("editor-id", value);
+    else this.removeAttribute("editor-id");
+  }
+
   get editorType() {
     return this.getAttribute("editor-type") || "textarea";
   }
 
+  set editorType(value) {
+    if (value) this.setAttribute("editor-type", value);
+    else this.removeAttribute("editor-type");
+  }
+
   get apiKey() {
     return this.getAttribute("api-key");
+  }
+
+  set apiKey(value) {
+    if (value) this.setAttribute("api-key", value);
+    else this.removeAttribute("api-key");
   }
 
   get prompt() {
@@ -156,6 +178,11 @@ class AITextEnhancer extends HTMLElement {
       this.getAttribute("prompt") ||
       "You are a professional content enhancer. Improve the text while maintaining its core message and intent."
     );
+  }
+
+  set prompt(value) {
+    if (value) this.setAttribute("prompt", value);
+    else this.removeAttribute("prompt");
   }
 
   get currentContent() {
@@ -166,28 +193,81 @@ class AITextEnhancer extends HTMLElement {
     return this.getAttribute("api-provider") || "openai";
   }
 
+  set apiProvider(value) {
+    if (value) this.setAttribute("api-provider", value);
+    else this.removeAttribute("api-provider");
+  }
+
   get apiModel() {
     return this.getAttribute("api-model") || "gpt-3.5-turbo";
+  }
+
+  set apiModel(value) {
+    if (value) this.setAttribute("api-model", value);
+    else this.removeAttribute("api-model");
   }
 
   get imageUrl() {
     return this.getAttribute("image-url");
   }
 
+  set imageUrl(value) {
+    if (value) this.setAttribute("image-url", value);
+    else this.removeAttribute("image-url");
+  }
+
   get context() {
     return this.getAttribute("context") || "";
+  }
+
+  set context(value) {
+    if (value) this.setAttribute("context", value);
+    else this.removeAttribute("context");
   }
 
   get proxyEndpoint() {
     return this.getAttribute("proxy-endpoint");
   }
 
+  set proxyEndpoint(value) {
+    if (value) this.setAttribute("proxy-endpoint", value);
+    else this.removeAttribute("proxy-endpoint");
+  }
+
   get hideTrigger() {
     return this.hasAttribute("hide-trigger");
   }
 
-  get componentId() { // Añadido getter para componentId
+  set hideTrigger(value) {
+    if (value) this.setAttribute("hide-trigger", "");
+    else this.removeAttribute("hide-trigger");
+  }
+
+  get initialPrompt() {
+    return this.getAttribute("initial-prompt") || "";
+  }
+
+  set initialPrompt(value) {
+    if (value) this.setAttribute("initial-prompt", value);
+    else this.removeAttribute("initial-prompt");
+  }
+
+  get autoSend() {
+    return this.hasAttribute("auto-send");
+  }
+
+  set autoSend(value) {
+    if (value) this.setAttribute("auto-send", "");
+    else this.removeAttribute("auto-send");
+  }
+
+  get componentId() {
     return this.getAttribute("id");
+  }
+
+  set componentId(value) {
+    if (value) this.setAttribute("id", value);
+    else this.removeAttribute("id");
   }
 
   // Método mejorado para connectedCallback
@@ -349,8 +429,14 @@ class AITextEnhancer extends HTMLElement {
 
   // Método mejorado para setupEditorListener
   setupEditorListener() {
-    if (!this.editorId) {
+    // For Quill with window.quillInstance, we don't need editor-id for the listener
+    if (!this.editorId && this.editorType !== "quill") {
       console.warn("[AITextEnhancer] No editor ID provided");
+      return;
+    }
+    if (!this.editorId && this.editorType === "quill") {
+      // Quill uses window.quillInstance; no DOM listener needed
+      console.log("[AITextEnhancer] Quill editor detected via window.quillInstance, skipping DOM listener");
       return;
     }
 
@@ -478,7 +564,7 @@ class AITextEnhancer extends HTMLElement {
       return;
     }
 
-    const modal = this.shadowRoot.querySelector(".modal");
+    let modal = this.shadowRoot.querySelector(".modal");
     if (!modal) {
       console.error("[AITextEnhancer] Modal element not found in shadowRoot");
 
@@ -546,12 +632,36 @@ class AITextEnhancer extends HTMLElement {
         this.updateVisibleTools();
         this.updateChatState();
 
-        // Enfocar el primer elemento interactivo para mejorar la accesibilidad
-        const firstFocusable = modal.querySelector(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (firstFocusable) {
-          firstFocusable.focus();
+        // Auto-send: only on first open (no chat history yet)
+        const hasHistory = this.responseHistory && this.responseHistory.responses && this.responseHistory.responses.length > 0;
+        if (this.autoSend && !hasHistory) {
+          const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+          if (chatComponent) {
+            chatComponent.setInitialPrompt(true);
+            setTimeout(() => {
+              const form = chatComponent.shadowRoot?.querySelector("form");
+              if (form) {
+                form.dispatchEvent(new Event("submit", { bubbles: true }));
+              }
+            }, 150);
+          }
+        } else {
+          // Subsequent opens or no auto-send: clear input and focus it
+          if (hasHistory) {
+            const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+            if (chatComponent) {
+              const chatInput = chatComponent.shadowRoot?.querySelector(".chat-input");
+              if (chatInput) {
+                chatInput.innerText = "";
+              }
+            }
+          }
+          const firstFocusable = modal.querySelector(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (firstFocusable) {
+            firstFocusable.focus();
+          }
         }
       }, 100);
     }
@@ -882,12 +992,13 @@ class AITextEnhancer extends HTMLElement {
       );
 
       // Inicializar editor adapter si editor ID es proporcionado
-      if (this.editorId) {
-        // Pasar el tipo de editor al crear EditorAdapter
-        this.editorAdapter = new EditorAdapter(this.editorId, this.editorType);
+      // Para Quill, el QuillAdapter usa window.quillInstance y no necesita editor-id
+      if (this.editorId || this.editorType === "quill") {
+        const adapterId = this.editorId || "quill-global";
+        this.editorAdapter = new EditorAdapter(adapterId, this.editorType);
         console.log(
           "[AITextEnhancer] Editor adapter initialized for",
-          this.editorId,
+          adapterId,
           "with type",
           this.editorType
         );
@@ -1091,12 +1202,18 @@ class AITextEnhancer extends HTMLElement {
       }
 
       // Hacer solicitud API con streaming
-      await this.apiClient.chatResponse(
+      const completeText = await this.apiClient.chatResponse(
         contentToSend,
         message.trim(),
         imageParameter,
         onProgress
       );
+
+      // Finalizar streaming: enviar texto completo como string para
+      // disparar CASO 3 en ResponseHistory (conversión markdown → HTML)
+      if (completeText) {
+        this.responseHistory.updateResponse(responseId, completeText);
+      }
 
       // Un último scroll para asegurar que todo el contenido sea visible
       setTimeout(() => {
@@ -1158,6 +1275,13 @@ class AITextEnhancer extends HTMLElement {
       chatComponent.setAttribute("supports-images", this.getAttribute("supports-images"));
     } else {
       chatComponent.removeAttribute("supports-images");
+    }
+
+    // Propaga initial-prompt al componente interno
+    if (this.initialPrompt) {
+      chatComponent.setAttribute("initial-prompt", this.initialPrompt);
+    } else {
+      chatComponent.removeAttribute("initial-prompt");
     }
 
     // Propaga context SIEMPRE
@@ -1296,6 +1420,11 @@ class AITextEnhancer extends HTMLElement {
           this.context,
           onProgress
         );
+
+        // Finalizar streaming: disparar conversión markdown → HTML (CASO 3)
+        if (completeText && this.responseHistory) {
+          this.responseHistory.updateResponse(tempResponse.id, completeText);
+        }
 
         // Cache for future requests if cache manager is available
         if (this.cacheManager) {

@@ -12,6 +12,18 @@ export class ResponseHistory extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.responses = [];
     this.markdownHandler = null;
+    this._objectUrls = new Set();
+  }
+
+  _releaseObjectUrls() {
+    for (const url of this._objectUrls) {
+      URL.revokeObjectURL(url);
+    }
+    this._objectUrls.clear();
+  }
+
+  disconnectedCallback() {
+    this._releaseObjectUrls();
   }
 
   static get observedAttributes() {
@@ -93,6 +105,13 @@ export class ResponseHistory extends HTMLElement {
 
       // Si tiene imagen, usar un layout especial
       if (hasImage) {
+        let imageSrc;
+        if (response.image instanceof Blob) {
+          imageSrc = URL.createObjectURL(response.image);
+          this._objectUrls.add(imageSrc);
+        } else {
+          imageSrc = response.image;
+        }
         entry.innerHTML = `
         <div class="response-content-wrapper">
           <div class="response-header mini">
@@ -109,9 +128,7 @@ export class ResponseHistory extends HTMLElement {
               ${response.content.replace(/^\*\*Pregunta:\*\*\s*/i, "")}
             </div>
             <div class="question-image mini">
-              <img src="${URL.createObjectURL(
-                response.image
-              )}" alt="Imagen adjunta">
+              <img src="${imageSrc}" alt="Imagen adjunta">
             </div>
           </div>
         </div>
@@ -704,6 +721,7 @@ export class ResponseHistory extends HTMLElement {
   }
 
   render() {
+    this._releaseObjectUrls();
     const style = document.createElement("style");
 
     // Añadir estilos base junto con mejoras para el layout compacto

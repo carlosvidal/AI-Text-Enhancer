@@ -1,5 +1,5 @@
-const VERSION = "1.1.0";
-const BUILD_DATE = "2025-06-19T17:25:09.705Z";
+const VERSION = "1.2.1";
+const BUILD_DATE = "2026-04-24T16:27:57.777Z";
 const TRANSLATIONS = {
   en: {
     modalTrigger: "Enhance with AI (Beta)",
@@ -906,6 +906,16 @@ class ResponseHistory extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.responses = [];
     this.markdownHandler = null;
+    this._objectUrls = /* @__PURE__ */ new Set();
+  }
+  _releaseObjectUrls() {
+    for (const url of this._objectUrls) {
+      URL.revokeObjectURL(url);
+    }
+    this._objectUrls.clear();
+  }
+  disconnectedCallback() {
+    this._releaseObjectUrls();
   }
   static get observedAttributes() {
     return ["language"];
@@ -969,6 +979,13 @@ class ResponseHistory extends HTMLElement {
     if (isQuestion) {
       const hasImage = response.image !== void 0 && response.image !== null;
       if (hasImage) {
+        let imageSrc;
+        if (response.image instanceof Blob) {
+          imageSrc = URL.createObjectURL(response.image);
+          this._objectUrls.add(imageSrc);
+        } else {
+          imageSrc = response.image;
+        }
         entry.innerHTML = `
         <div class="response-content-wrapper">
           <div class="response-header mini">
@@ -985,9 +1002,7 @@ class ResponseHistory extends HTMLElement {
               ${response.content.replace(/^\*\*Pregunta:\*\*\s*/i, "")}
             </div>
             <div class="question-image mini">
-              <img src="${URL.createObjectURL(
-          response.image
-        )}" alt="Imagen adjunta">
+              <img src="${imageSrc}" alt="Imagen adjunta">
             </div>
           </div>
         </div>
@@ -1423,6 +1438,7 @@ class ResponseHistory extends HTMLElement {
     this.render();
   }
   render() {
+    this._releaseObjectUrls();
     const style = document.createElement("style");
     style.textContent = `
       ${variables}
@@ -1777,24 +1793,29 @@ class ChatWithImage extends HTMLElement {
     tmp.innerHTML = html || "";
     return tmp.textContent || tmp.innerText || "";
   }
-  async setInitialPrompt() {
+  async setInitialPrompt(force = false) {
     if (!this.shadowRoot) return;
     const chatInput = this.shadowRoot.querySelector(".chat-input");
     if (!chatInput) return;
     let prompt = "";
-    const contentHtml = this.getAttribute("content") || this.currentContent || "";
-    const content = this.htmlToText(contentHtml);
-    const context = this.getAttribute("context") || "";
-    const hasContent = !!content.trim();
-    const hasContext = !!context.trim();
-    if (hasContent) {
-      prompt = "Ayúdame a mejorar el contenido de mi editor";
-    } else if (hasContext) {
-      prompt = "Ayúdame a crear un contenido basado en el contexto.";
+    const customPrompt = this.initialPrompt;
+    if (customPrompt) {
+      prompt = customPrompt;
     } else {
-      prompt = "Ayúdame a crear una descripción atractiva para...";
+      const contentHtml = this.getAttribute("content") || this.currentContent || "";
+      const content = this.htmlToText(contentHtml);
+      const context = this.getAttribute("context") || "";
+      const hasContent = !!content.trim();
+      const hasContext = !!context.trim();
+      if (hasContent) {
+        prompt = "Ayúdame a mejorar el contenido de mi editor";
+      } else if (hasContext) {
+        prompt = "Ayúdame a crear un contenido basado en el contexto.";
+      } else {
+        prompt = "Ayúdame a crear una descripción atractiva para...";
+      }
     }
-    if (prompt && chatInput.innerText.trim() === "") {
+    if (prompt && (force || chatInput.innerText.trim() === "")) {
       chatInput.innerText = prompt;
       if (document.activeElement === chatInput) {
         const selection = window.getSelection();
@@ -4819,7 +4840,7 @@ const responseHandlerMixin = {
         throw new Error("Response content is empty");
       }
       let contentToInsert = response.content;
-      if (this.markdownHandler && ["tinymce", "ckeditor", "froala"].includes((_a = this.editorAdapter) == null ? void 0 : _a.editorType)) {
+      if (this.markdownHandler && ["tinymce", "ckeditor", "froala", "quill"].includes((_a = this.editorAdapter) == null ? void 0 : _a.editorType)) {
         contentToInsert = this.markdownHandler.convert(response.content);
         console.log("[ResponseHandlers] Content converted to HTML for WYSIWYG editor");
       }
@@ -5646,12 +5667,17 @@ class AITextEnhancer extends HTMLElement {
       "proxy-endpoint",
       "editor-type",
       "hide-trigger",
+      "initial-prompt",
+      "auto-send",
       "id"
-      // Añadido el atributo id
     ];
   }
   get language() {
     return this.getAttribute("language") || "en";
+  }
+  set language(value) {
+    if (value) this.setAttribute("language", value);
+    else this.removeAttribute("language");
   }
   get translations() {
     return TRANSLATIONS[this.language] || TRANSLATIONS.en;
@@ -5659,14 +5685,30 @@ class AITextEnhancer extends HTMLElement {
   get editorId() {
     return this.getAttribute("editor-id");
   }
+  set editorId(value) {
+    if (value) this.setAttribute("editor-id", value);
+    else this.removeAttribute("editor-id");
+  }
   get editorType() {
     return this.getAttribute("editor-type") || "textarea";
+  }
+  set editorType(value) {
+    if (value) this.setAttribute("editor-type", value);
+    else this.removeAttribute("editor-type");
   }
   get apiKey() {
     return this.getAttribute("api-key");
   }
+  set apiKey(value) {
+    if (value) this.setAttribute("api-key", value);
+    else this.removeAttribute("api-key");
+  }
   get prompt() {
     return this.getAttribute("prompt") || "You are a professional content enhancer. Improve the text while maintaining its core message and intent.";
+  }
+  set prompt(value) {
+    if (value) this.setAttribute("prompt", value);
+    else this.removeAttribute("prompt");
   }
   get currentContent() {
     var _a;
@@ -5675,23 +5717,65 @@ class AITextEnhancer extends HTMLElement {
   get apiProvider() {
     return this.getAttribute("api-provider") || "openai";
   }
+  set apiProvider(value) {
+    if (value) this.setAttribute("api-provider", value);
+    else this.removeAttribute("api-provider");
+  }
   get apiModel() {
     return this.getAttribute("api-model") || "gpt-3.5-turbo";
+  }
+  set apiModel(value) {
+    if (value) this.setAttribute("api-model", value);
+    else this.removeAttribute("api-model");
   }
   get imageUrl() {
     return this.getAttribute("image-url");
   }
+  set imageUrl(value) {
+    if (value) this.setAttribute("image-url", value);
+    else this.removeAttribute("image-url");
+  }
   get context() {
     return this.getAttribute("context") || "";
+  }
+  set context(value) {
+    if (value) this.setAttribute("context", value);
+    else this.removeAttribute("context");
   }
   get proxyEndpoint() {
     return this.getAttribute("proxy-endpoint");
   }
+  set proxyEndpoint(value) {
+    if (value) this.setAttribute("proxy-endpoint", value);
+    else this.removeAttribute("proxy-endpoint");
+  }
   get hideTrigger() {
     return this.hasAttribute("hide-trigger");
   }
+  set hideTrigger(value) {
+    if (value) this.setAttribute("hide-trigger", "");
+    else this.removeAttribute("hide-trigger");
+  }
+  get initialPrompt() {
+    return this.getAttribute("initial-prompt") || "";
+  }
+  set initialPrompt(value) {
+    if (value) this.setAttribute("initial-prompt", value);
+    else this.removeAttribute("initial-prompt");
+  }
+  get autoSend() {
+    return this.hasAttribute("auto-send");
+  }
+  set autoSend(value) {
+    if (value) this.setAttribute("auto-send", "");
+    else this.removeAttribute("auto-send");
+  }
   get componentId() {
     return this.getAttribute("id");
+  }
+  set componentId(value) {
+    if (value) this.setAttribute("id", value);
+    else this.removeAttribute("id");
   }
   // Método mejorado para connectedCallback
   async connectedCallback() {
@@ -5820,8 +5904,12 @@ class AITextEnhancer extends HTMLElement {
   }
   // Método mejorado para setupEditorListener
   setupEditorListener() {
-    if (!this.editorId) {
+    if (!this.editorId && this.editorType !== "quill") {
       console.warn("[AITextEnhancer] No editor ID provided");
+      return;
+    }
+    if (!this.editorId && this.editorType === "quill") {
+      console.log("[AITextEnhancer] Quill editor detected via window.quillInstance, skipping DOM listener");
       return;
     }
     const editorElement = document.getElementById(this.editorId);
@@ -5918,7 +6006,7 @@ class AITextEnhancer extends HTMLElement {
       console.error("[AITextEnhancer] Shadow root not available");
       return;
     }
-    const modal = this.shadowRoot.querySelector(".modal");
+    let modal = this.shadowRoot.querySelector(".modal");
     if (!modal) {
       console.error("[AITextEnhancer] Modal element not found in shadowRoot");
       if (this.notificationManager) {
@@ -5968,13 +6056,38 @@ class AITextEnhancer extends HTMLElement {
     if (modal) {
       modal.classList.add("open");
       setTimeout(() => {
+        var _a;
         this.updateVisibleTools();
         this.updateChatState();
-        const firstFocusable = modal.querySelector(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (firstFocusable) {
-          firstFocusable.focus();
+        const hasHistory = this.responseHistory && this.responseHistory.responses && this.responseHistory.responses.length > 0;
+        if (this.autoSend && !hasHistory) {
+          const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+          if (chatComponent) {
+            chatComponent.setInitialPrompt(true);
+            setTimeout(() => {
+              var _a2;
+              const form = (_a2 = chatComponent.shadowRoot) == null ? void 0 : _a2.querySelector("form");
+              if (form) {
+                form.dispatchEvent(new Event("submit", { bubbles: true }));
+              }
+            }, 150);
+          }
+        } else {
+          if (hasHistory) {
+            const chatComponent = this.shadowRoot.querySelector("chat-with-image");
+            if (chatComponent) {
+              const chatInput = (_a = chatComponent.shadowRoot) == null ? void 0 : _a.querySelector(".chat-input");
+              if (chatInput) {
+                chatInput.innerText = "";
+              }
+            }
+          }
+          const firstFocusable = modal.querySelector(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (firstFocusable) {
+            firstFocusable.focus();
+          }
         }
       }, 100);
     }
@@ -6230,11 +6343,12 @@ class AITextEnhancer extends HTMLElement {
         "[AITextEnhancer] API client initialized with provider",
         this.apiProvider
       );
-      if (this.editorId) {
-        this.editorAdapter = new EditorAdapter(this.editorId, this.editorType);
+      if (this.editorId || this.editorType === "quill") {
+        const adapterId = this.editorId || "quill-global";
+        this.editorAdapter = new EditorAdapter(adapterId, this.editorType);
         console.log(
           "[AITextEnhancer] Editor adapter initialized for",
-          this.editorId,
+          adapterId,
           "with type",
           this.editorType
         );
@@ -6386,12 +6500,15 @@ class AITextEnhancer extends HTMLElement {
       } else {
         contentToSend = "";
       }
-      await this.apiClient.chatResponse(
+      const completeText = await this.apiClient.chatResponse(
         contentToSend,
         message.trim(),
         imageParameter,
         onProgress
       );
+      if (completeText) {
+        this.responseHistory.updateResponse(responseId, completeText);
+      }
       setTimeout(() => {
         const responseContainer = this.shadowRoot.querySelector(
           ".response-container"
@@ -6439,6 +6556,11 @@ class AITextEnhancer extends HTMLElement {
       chatComponent.setAttribute("supports-images", this.getAttribute("supports-images"));
     } else {
       chatComponent.removeAttribute("supports-images");
+    }
+    if (this.initialPrompt) {
+      chatComponent.setAttribute("initial-prompt", this.initialPrompt);
+    } else {
+      chatComponent.removeAttribute("initial-prompt");
     }
     if (typeof this.context === "string") {
       chatComponent.setAttribute("context", this.context);
@@ -6550,6 +6672,9 @@ class AITextEnhancer extends HTMLElement {
           this.context,
           onProgress
         );
+        if (completeText && this.responseHistory) {
+          this.responseHistory.updateResponse(tempResponse.id, completeText);
+        }
         if (this.cacheManager) {
           this.cacheManager.set(action, textToProcess, completeText);
         }

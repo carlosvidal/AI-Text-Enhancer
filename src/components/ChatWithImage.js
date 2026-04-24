@@ -121,38 +121,39 @@ export class ChatWithImage extends HTMLElement {
     return tmp.textContent || tmp.innerText || "";
   }
 
-  async setInitialPrompt() {
+  async setInitialPrompt(force = false) {
     if (!this.shadowRoot) return;
 
     const chatInput = this.shadowRoot.querySelector(".chat-input");
     if (!chatInput) return;
 
-    // Lógica para seleccionar el prompt inicial adecuado según el estado del editor y contexto
-    // - Si hay contenido: "Ayúdame a mejorar el contenido de mi editor"
-    // - Si NO hay contenido pero SÍ contexto: "Ayúdame a crear un contenido basado en el contexto."
-    // - Si no hay contenido ni contexto: "Ayúdame a crear una descripción atractiva para..."
-    // No se copia el contenido/contexto al input.
     let prompt = "";
 
-    const contentHtml = this.getAttribute("content") || this.currentContent || "";
-    const content = this.htmlToText(contentHtml);
-    const context = this.getAttribute("context") || "";
-
-    const hasContent = !!content.trim();
-    const hasContext = !!context.trim();
-
-    if (hasContent) {
-      prompt = "Ayúdame a mejorar el contenido de mi editor";
-    } else if (hasContext) {
-      prompt = "Ayúdame a crear un contenido basado en el contexto.";
+    // 1. Priority: custom initial-prompt attribute set by consuming app
+    const customPrompt = this.initialPrompt;
+    if (customPrompt) {
+      prompt = customPrompt;
     } else {
-      prompt = "Ayúdame a crear una descripción atractiva para...";
+      // 2. Fallback: auto-detect based on content/context state
+      const contentHtml = this.getAttribute("content") || this.currentContent || "";
+      const content = this.htmlToText(contentHtml);
+      const context = this.getAttribute("context") || "";
+
+      const hasContent = !!content.trim();
+      const hasContext = !!context.trim();
+
+      if (hasContent) {
+        prompt = "Ayúdame a mejorar el contenido de mi editor";
+      } else if (hasContext) {
+        prompt = "Ayúdame a crear un contenido basado en el contexto.";
+      } else {
+        prompt = "Ayúdame a crear una descripción atractiva para...";
+      }
     }
 
-    // Solo establecer el prompt si el input está vacío
-    if (prompt && chatInput.innerText.trim() === "") {
+    // Set prompt if input is empty, or force=true (used by auto-send)
+    if (prompt && (force || chatInput.innerText.trim() === "")) {
       chatInput.innerText = prompt;
-      // Opcional: colocar el cursor al final
       if (document.activeElement === chatInput) {
         const selection = window.getSelection();
         const range = document.createRange();

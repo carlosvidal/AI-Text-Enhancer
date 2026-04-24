@@ -1,3 +1,3 @@
 // Auto-generated version file
-export const VERSION = '1.1.0';
-export const BUILD_DATE = '2025-06-19T17:25:09.705Z';
+export const VERSION = '1.2.1';
+export const BUILD_DATE = '2026-04-24T16:27:57.777Z';

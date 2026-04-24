@@ -1,6 +1,6 @@
 {
   "name": "ai-text-enhancer",
-  "version": "1.1.0",
+  "version": "1.2.1",
   "description": "A powerful web component for enhancing product descriptions using AI. This component integrates seamlessly with existing text editors and provides real-time AI-powered text enhancement capabilities.",
   "main": "dist/ai-text-enhancer.umd.js",
   "module": "dist/ai-text-enhancer.es.js",
@@ -28,6 +28,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "marked": "^15.0.6"
   },

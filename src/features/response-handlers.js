@@ -76,7 +76,7 @@ export const responseHandlerMixin = {
 
       // Convertir el contenido markdown a HTML si es necesario
       let contentToInsert = response.content;
-      if (this.markdownHandler && ["tinymce", "ckeditor", "froala"].includes(this.editorAdapter?.editorType)) {
+      if (this.markdownHandler && ["tinymce", "ckeditor", "froala", "quill"].includes(this.editorAdapter?.editorType)) {
         contentToInsert = this.markdownHandler.convert(response.content);
         console.log("[ResponseHandlers] Content converted to HTML for WYSIWYG editor");
       }
