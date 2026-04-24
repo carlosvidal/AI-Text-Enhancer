@@ -28,6 +28,14 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/carlosvidal/AI-Text-Enhancer.git"
+  },
+  "homepage": "https://github.com/carlosvidal/AI-Text-Enhancer#readme",
+  "bugs": {
+    "url": "https://github.com/carlosvidal/AI-Text-Enhancer/issues"
+  },
   "files": [
     "dist"
   ],
