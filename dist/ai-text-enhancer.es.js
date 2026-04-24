@@ -1,5 +1,5 @@
-const VERSION = "1.2.1";
-const BUILD_DATE = "2026-04-24T16:27:57.777Z";
+const VERSION = "1.2.2";
+const BUILD_DATE = "2026-04-24T21:13:42.184Z";
 const TRANSLATIONS = {
   en: {
     modalTrigger: "Enhance with AI (Beta)",
@@ -1747,7 +1747,6 @@ class ChatWithImage extends HTMLElement {
       this.getAttribute("context")
     );
     this.render();
-    this.setupEventListeners();
     if (this.imageUrl) {
       await this.handleImageUrl(this.imageUrl);
     }
@@ -1968,7 +1967,11 @@ class ChatWithImage extends HTMLElement {
       );
       return;
     }
-    form.addEventListener("submit", this.handleSubmit.bind(this));
+    if (!this._boundHandleSubmit) {
+      this._boundHandleSubmit = this.handleSubmit.bind(this);
+    }
+    form.removeEventListener("submit", this._boundHandleSubmit);
+    form.addEventListener("submit", this._boundHandleSubmit);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();

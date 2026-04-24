@@ -69,7 +69,6 @@ export class ChatWithImage extends HTMLElement {
       this.getAttribute("context")
     );
     this.render();
-    this.setupEventListeners();
 
     if (this.imageUrl) {
       await this.handleImageUrl(this.imageUrl);
@@ -320,7 +319,11 @@ export class ChatWithImage extends HTMLElement {
       );
       return;
     }
-    form.addEventListener("submit", this.handleSubmit.bind(this));
+    if (!this._boundHandleSubmit) {
+      this._boundHandleSubmit = this.handleSubmit.bind(this);
+    }
+    form.removeEventListener("submit", this._boundHandleSubmit);
+    form.addEventListener("submit", this._boundHandleSubmit);
 
     // Prevent default enter behavior and handle form submission
     input.addEventListener("keydown", (e) => {
